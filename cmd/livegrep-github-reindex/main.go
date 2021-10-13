@@ -46,6 +46,7 @@ var (
 	flagHTTPUsername = flag.String("http-user", "git", "Override the username to use when cloning over https")
 	flagInstallation = flag.Bool("installation-token", false, "Treat the API key as a Github Application Installation Key when cloning")
 	flagDepth        = flag.Int("depth", 0, "clone repository with specify --depth=N depth.")
+	flagReposPerPage = flag.Int("repos-per-page", 50, "when fetching repositories, this is the number of repos to fetch per page. Max 100")
 	flagSkipMissing  = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
 	flagRepos        = stringList{}
 	flagOrgs         = stringList{}
@@ -328,7 +329,7 @@ func getOneRepo(client *github.Client, repo string) ([]*github.Repository, error
 func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error) {
 	var buf []*github.Repository
 	opt := &github.RepositoryListByOrgOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
+		ListOptions: github.ListOptions{PerPage: *flagReposPerPage},
 	}
 	for {
 		repos, resp, err := client.Repositories.ListByOrg(context.TODO(), org, opt)
@@ -347,7 +348,7 @@ func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error
 func getUserRepos(client *github.Client, user string) ([]*github.Repository, error) {
 	var buf []*github.Repository
 	opt := &github.RepositoryListOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
+		ListOptions: github.ListOptions{PerPage: *flagReposPerPage},
 	}
 	for {
 		repos, resp, err := client.Repositories.List(context.TODO(), user, opt)
