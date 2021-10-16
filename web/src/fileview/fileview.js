@@ -95,10 +95,13 @@ function init(initData) {
   var root = $('.file-content');
   var lineNumberContainer = root.find('.line-numbers');
   var helpScreen = $('.help-screen');
+  var fastForwardErrorScreen = $('.ff-error-screen');
 
   function doSearch(event, query, newTab) {
+    console.log('doSearch was called')
     var url;
     if (query !== undefined) {
+      console.log('query not undefined, query: ', query)
       url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(initData.repo_info.name);
     } else {
       url = '/search';
@@ -126,6 +129,22 @@ function init(initData) {
     return true;
   }
 
+  function showFastForwardError() {
+    fastForwardErrorScreen.removeClass('hidden').children().on('click', function(event) {
+      // Prevent clicks inside the element to reach the document
+      event.stopImmediatePropagation();
+      return true;
+    });
+
+    $(document).on('click', hideFastForwardError);
+  }
+
+  function hideFastForwardError() {
+    fastForwardErrorScreen.addClass('hidden').children().off('click');
+    $(document).off('click', hideFastForwardError);
+    return true;
+  }
+
   function handleHashChange(scrollElementIntoView) {
     if(scrollElementIntoView === undefined) {
       scrollElementIntoView = true; // default if nothing was provided
@@ -143,9 +162,43 @@ function init(initData) {
       }
     }
 
-    // Update the external-browse link
+    // Update the blame and external-browse links
+    $('#blame-link').attr('href', getBlameLink(range));
+    $('#log-link').attr('href', getLogLink());
     $('#external-link').attr('href', getExternalLink(range));
-    updateFragments(range, $('#permalink, #back-to-head'));
+    updateFragments(range, $('#permalink, #back-to-head', '#ff-link'));
+  }
+
+  function getLogLink() {
+    var url = '/log?repoName={name}&path={path}';
+    url = url.replace('{name}', initData.repo_info.name);
+    url = url.replace('{path}', initData.file_path)
+
+    return url
+  }
+
+  function getFastForwardLink(range) {
+    var url = '/view/{name}/{path}?commit={version}';
+    url = url.replace('{name}', initData.repo_info.name);
+    url = url.replace('{path}', initData.file_path);
+    url = url.replace('{version}', initData.commit);
+    if (range != null) {
+      url += '&ffl=' + range.start;
+    }
+  }
+
+  function getBlameLink(range) {
+    // Reassemble a new URL.
+    var url = '/blame?repoName={name}&hash={version}&path={path}';
+    url = url.replace('{version}', initData.commit);
+    url = url.replace('{name}', initData.repo_info.name);
+    url = url.replace('{path}', initData.file_path);
+
+    // Maybe add a line number hash.
+    if (range !== null) {
+      url += '#' + range.start;
+    }
+    return url;
   }
 
   function getLineNumber(range) {
@@ -168,7 +221,7 @@ function init(initData) {
     var repoName = initData.repo_info.name;
     var filePath = initData.file_path;
 
-    url = initData.repo_info.metadata['url_pattern'];
+    var url = initData.repo_info.metadata['url_pattern'];
 
     // If url not found, warn user and fail gracefully
     if (!url) { // deal with both undefined and empty string
@@ -195,7 +248,13 @@ function init(initData) {
       var $a = $(this);
       var href = $a.attr('href').split('#')[0];
       if (range !== null) {
-        href += '#L' + getLineNumber(range);
+        if (href.includes('&ffl=')) {
+          href = href.split('&ffl=')[0];
+          href += '&ffl=' + range.start;
+        } else {
+          href += '#L' + range.start;
+        }
+        // href += '#L' + getLineNumber(range);
       }
       $a.attr('href', href);
     });
@@ -223,6 +282,29 @@ function init(initData) {
         hideHelp();
       }
       $('#query').blur();
+    } else if (String.fromCharCode(event.which) == 'B') {
+      console.log('b was pressed!')
+      // Visually highlight the link to indicate what happened
+      var $a = $('#blame-link');
+      if ($a.length === 0) return;
+      $a.focus(); // TODO: switch to vanilla JS
+      window.location = $a.attr('href')
+    } else if (String.fromCharCode(event.which) == 'F') {
+      // Visually highlight the ff link to highlight what happened
+      var $a = $('#ff-link');
+      if ($a.length === 0) return;
+
+      $a.focus();
+      window.location = $('#ff-link').attr('href');
+    } else if (String.fromCharCode(event.which) == 'L') {
+      console.log('l was pressed!')
+      var $a = $('#log-link');
+      if ($a.length == 0) return;
+
+      console.log('a.attr(href)', $a.attr('href'))
+
+      $a.focus();
+      window.location = $a.attr('href');
     } else if(String.fromCharCode(event.which) == 'V') {
       // Visually highlight the external link to indicate what happened
       $('#external-link').focus();
@@ -320,6 +402,10 @@ function init(initData) {
     });
 
     initializeActionButtons($('.header .header-actions'));
+
+    if (document.location.hash.includes("ff-error")) {
+      showFastForwardError();
+    }
   }
 
   // The native browser handling of hashes in the location is to scroll
@@ -332,6 +418,12 @@ function init(initData) {
     lineNumberContainer.css({display: 'block'});
     initializePage();
   }, 1);
+
+  // I don't think we have to do this
+  // // Syntax highlighting.
+  // setTimeout(function() {
+  //   require('prism');
+  // }, 1);
 }
 
 module.exports = {

@@ -6,6 +6,8 @@ go_library(
     srcs = [
         "api.go",
         "backend.go",
+        "fastforward.go",
+        "fileblame.go",
         "fileview.go",
         "json.go",
         "query.go",
@@ -20,6 +22,7 @@ go_library(
     importpath = "github.com/livegrep/livegrep/server",
     visibility = ["//visibility:public"],
     deps = [
+        "//blameworthy:go_default_library",
         "//server/api:go_default_library",
         "//server/config:go_default_library",
         "//server/log:go_default_library",
@@ -38,6 +41,7 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
+        "fastforward_test.go",
         "query_test.go",
         "server_test.go",
     ],

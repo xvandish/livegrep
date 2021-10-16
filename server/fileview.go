@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/url"
 	"os/exec"
 	"path"
@@ -50,6 +51,7 @@ var extToLangMap map[string]string = map[string]string{
 	".sky":         "python",
 	".sql":         "sql",
 	".swift":       "swift",
+	".ts":          "typescript",
 	".tsx":         "tsx",
 	".xml":         "markup",
 	".yaml":        "yaml",
@@ -69,14 +71,16 @@ type directoryListEntry struct {
 }
 
 type fileViewerContext struct {
-	PathSegments   []breadCrumbEntry
-	Repo           config.RepoConfig
-	Commit         string
-	DirContent     *directoryContent
-	FileContent    *sourceFileContent
-	ExternalDomain string
-	Permalink      string
-	Headlink       string
+	PathSegments     []breadCrumbEntry
+	Repo             config.RepoConfig
+	Commit           string
+	DirContent       *directoryContent
+	FileContent      *sourceFileContent
+	IsBlameAvailable bool
+	ExternalDomain   string
+	Permalink        string
+	FastForwardLink  string
+	Headlink         string
 }
 
 type sourceFileContent struct {
@@ -108,7 +112,7 @@ func (s DirListingSort) Less(i, j int) bool {
 
 func gitCommitHash(ref string, repoPath string) (string, error) {
 	out, err := exec.Command(
-		"git", "-C", repoPath, "rev-parse", ref,
+		"git", "-C", repoPath, "show", "--quiet", "--pretty=%H", ref,
 	).Output()
 	if err != nil {
 		return "", err
@@ -125,7 +129,9 @@ func gitObjectType(obj string, repoPath string) (string, error) {
 }
 
 func gitCatBlob(obj string, repoPath string) (string, error) {
-	out, err := exec.Command("git", "-C", repoPath, "cat-file", "blob", obj).Output()
+	cmd := []string{"-C", repoPath, "cat-file", "blob", obj}
+	fmt.Printf("%v\n", cmd)
+	out, err := exec.Command("git", cmd...).Output()
 	if err != nil {
 		return "", err
 	}
@@ -197,11 +203,28 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 }
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
-	commitHash := commit
-	out, err := gitCommitHash(commit, repo.Path)
-	if err == nil {
-		commitHash = out[:strings.Index(out, "\n")]
+	blameHistory := getHistory(repo.Name)
+
+	headCommitHash := ""
+	if blameHistory != nil && len(blameHistory.Hashes) > 0 {
+		// To prevent the `b` blame shortcut from 404'ing,
+		// define "HEAD" as the most recent commit in the
+		// blame history, since the repository might have
+		// an even more recent commit as "HEAD".
+		h := blameHistory.Hashes
+		headCommitHash = h[len(h)-1]
+	} else {
+		out, err := gitShowCommit(commit, repo.Path, false)
+		if err == nil {
+			headCommitHash = out[:strings.Index(out, "\n")]
+		}
 	}
+
+	commitHash := commit
+	if commitHash == "HEAD" && headCommitHash != "" {
+		commitHash = headCommitHash
+	}
+
 	cleanPath := path.Clean(relativePath)
 	if cleanPath == "." {
 		cleanPath = ""
@@ -261,24 +284,30 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 
 	permalink := ""
 	headlink := ""
+
 	if !strings.HasPrefix(commitHash, commit) {
 		permalink = "?commit=" + commitHash[:16]
+	} else if dirContent != nil {
+		headlink = "."
 	} else {
-		if dirContent != nil {
-			headlink = "."
-		} else {
-			headlink = segments[len(segments)-1].Name
-		}
+		headlink = segments[len(segments)-1].Name
+	}
+
+	fastForwardLink := ""
+	if headCommitHash != "" && commitHash != headCommitHash {
+		fastForwardLink = "?commit=" + commitHash + "&ffl=1"
 	}
 
 	return &fileViewerContext{
-		PathSegments:   segments,
-		Repo:           repo,
-		Commit:         commit,
-		DirContent:     dirContent,
-		FileContent:    fileContent,
-		ExternalDomain: externalDomain,
-		Permalink:      permalink,
-		Headlink:       headlink,
+		PathSegments:     segments,
+		Repo:             repo,
+		Commit:           commit,
+		DirContent:       dirContent,
+		FileContent:      fileContent,
+		IsBlameAvailable: objectType == "blob" && blameHistory != nil,
+		ExternalDomain:   externalDomain,
+		Permalink:        permalink,
+		FastForwardLink:  fastForwardLink,
+		Headlink:         headlink,
 	}, nil
 }

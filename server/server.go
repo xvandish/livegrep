@@ -9,6 +9,8 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 	texttemplate "text/template"
 	"time"
 
@@ -128,6 +130,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	commit := r.URL.Query().Get("commit")
+	ffl := r.URL.Query().Get("ffl")
 	if commit == "" {
 		commit = "HEAD"
 	}
@@ -143,9 +146,44 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	h := getHistory(repo.Name).Hashes
+	head := h[len(h)-1]
+
+	if ffl != "" {
+		source_lineno, err := strconv.Atoi(ffl)
+		if err != nil {
+			http.Error(w, "Invalid line number", 404)
+			return
+		}
+		out, err := gitShowCommit(commit, repo.Path, false)
+		if err == nil {
+			commit = out[:strings.Index(out, "\n")][:16]
+		}
+		fmt.Print(commit, " ", head, "\n")
+		if commit != head {
+			ff_commit, ff_lineno, err := FastForward(repo, path, commit, head, source_lineno)
+			if err != nil {
+				log.Printf(ctx, err.Error())
+				http.Error(w, err.Error(), 404)
+				return
+			}
+			url := fmt.Sprint("/view/", repo.Name, "/", path, "?commit=", ff_commit, "#L", ff_lineno)
+			if ff_commit != head {
+				url += "#ff-error"
+			}
+			http.Redirect(w, r, url, 307)
+			return
+		} else {
+			// No fast-forwarding is necessary.
+			url := fmt.Sprint("/view/", repo.Name, "/", path, "?commit=", commit, "#L", source_lineno)
+			http.Redirect(w, r, url, 307)
+			return
+		}
+	}
+
 	data, err := buildFileData(path, repo, commit)
 	if err != nil {
-		http.Error(w, "Error reading file", 500)
+		http.Error(w, fmt.Sprintf("500 Error reading file: ", err), 500)
 		return
 	}
 
@@ -161,6 +199,176 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		ScriptData:    script_data,
 		IncludeHeader: false,
 		Data:          data,
+	})
+}
+
+func (s *server) ServeLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	repoName := q.Get("repoName")
+	path := q.Get("path")
+	offsetStr := r.URL.Query().Get("offset")
+
+	offset := 0
+	if offsetStr != "" {
+		var err error
+		offset, err = strconv.Atoi(offsetStr)
+		if err != nil {
+			http.Error(w, "Invalid offset", 400)
+			return
+		}
+	}
+
+	log.Printf(ctx, fmt.Sprintf("repoName: %s path: %s url: %s\n", repoName, path, r.URL.String()))
+	log.Printf(ctx, fmt.Sprintf("configured repos are: %+v\n", s.repos))
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	gitHistory, ok := histories[repo.Name]
+	if !ok {
+		http.Error(w, "Repo not configued for log", 404)
+		return
+	}
+
+	logData, err := buildLogData(repo, gitHistory, path, offset)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	s.renderPageCasual(ctx, w, r, "logfile.html", map[string]interface{}{
+		"path":    path,
+		"repo":    repo,
+		"logData": logData,
+	})
+}
+
+func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	log.Printf(ctx, fmt.Sprintf("hello from ServeBlame\n"))
+	q := r.URL.Query()
+	repoName := q.Get("repoName")
+	hash := q.Get("hash")
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+	log.Printf(ctx, fmt.Sprintf("repo exists\n"))
+
+	gitHistory, ok := histories[repo.Name]
+	if !ok {
+		http.Error(w, "Repo not configured for blame", 404)
+		return
+	}
+
+	log.Printf(ctx, fmt.Sprintf("repo configured for blame\n"))
+
+	path := q.Get("path")
+
+	// Not sure what this block is supposed to do...
+	// Can't see any instances where there would have been anything
+	// past the path
+	// if i+1 < len(rest) {
+	// 	dest := rest[i+1:]
+	// 	url, err := fileRedirect(gitHistory, repoName, hash, path, dest)
+	// 	if err != nil {
+	// 		http.Error(w, "Not found", 404)
+	// 		return
+	// 	}
+	// 	http.Redirect(w, r, url, 307)
+	// 	return
+	// }
+
+	data := BlameData{}
+	resolveCommit(repo, hash, path, &data)
+
+	log.Printf(ctx, fmt.Sprintf("data after resolveCommit : %v\n", data))
+	if data.CommitHash != hash {
+		destURL := strings.Replace(r.URL.Path, hash, data.CommitHash, 1)
+		http.Redirect(w, r, destURL, 307)
+		return
+	}
+	err := buildBlameData(repo, hash, gitHistory, path, &data)
+
+	log.Printf(ctx, fmt.Sprintf("data after buildBlameData : %v\n", data))
+	log.Printf(ctx, fmt.Sprintf("err is: %s\n", err))
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+	s.renderPageCasual(ctx, w, r, "blamefile.html", map[string]interface{}{
+		"repo":       repo,
+		"path":       path,
+		"commitHash": hash,
+		"blame":      data,
+		"content":    data.Content,
+	})
+}
+
+func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if len(s.repos) == 0 {
+		http.Error(w, "404 Repository browsing not enabled", 404)
+		return
+	}
+	q := r.URL.Query()
+	repoName := q.Get("repoName")
+	hash := q.Get("hash")
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "404 No such repository", 404)
+		return
+	}
+	rest := pat.Tail("/diff/:repo/:hash/", r.URL.Path)
+	if len(rest) > 0 && rest != "message" {
+		diffRedirect(w, r, repoName, hash, rest)
+		return
+	}
+	data := DiffData{}
+	data2 := BlameData{}
+	resolveCommit(repo, hash, "", &data2)
+	if data2.CommitHash != hash {
+		pat1 := "/" + hash + "/"
+		pat2 := "/" + data2.CommitHash + "/"
+		destURL := strings.Replace(r.URL.Path, pat1, pat2, 1)
+		http.Redirect(w, r, destURL, 307)
+		return
+	}
+	data.CommitHash = data2.CommitHash
+	data.Author = data2.Author
+	data.Date = data2.Date
+	data.Subject = data2.Subject
+	if len(data2.Body) > 0 {
+		data.Body = templates.TurnURLsIntoLinks(data2.Body)
+	}
+
+	if rest == "message" {
+		s.renderPageCasual(ctx, w, r, "blamemessage.html", map[string]interface{}{
+			"commitHash": hash,
+			"data":       data,
+		})
+		return
+	}
+
+	err := buildDiffData(repo, hash, &data)
+	if err != nil {
+		http.Error(w, err.Error(), 404)
+		return
+	}
+
+	s.renderPageCasual(ctx, w, r, "blamediff.html", map[string]interface{}{
+		"repo":       repo,
+		"path":       "NONE",
+		"commitHash": hash,
+		"blame":      data,
 	})
 }
 
@@ -192,6 +400,16 @@ func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 
 type stats struct {
 	IndexAge int64 `json:"index_age"`
+}
+
+func (s *server) ReloadIndexes(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if err := initBlame(s.config); err != nil {
+		message := fmt.Sprint("Error reloading blame data: ", err)
+		log.Printf(ctx, message)
+		http.Error(w, message, 500)
+		return
+	}
+	http.Error(w, "OK", 200)
 }
 
 func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -258,7 +476,7 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 	pageData.Config = s.config
 	pageData.AssetHashes = s.AssetHashes
 
-	nonce := "" // custom nonce computation can go here
+	nonce := ""
 
 	if nonce != "" {
 		pageData.Nonce = template.HTMLAttr(fmt.Sprintf(` nonce="%s"`, nonce))
@@ -270,6 +488,43 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 		return
 	}
 }
+
+func (s *server) renderPageCasual(ctx context.Context, w io.Writer, r *http.Request, templateName string, data map[string]interface{}) {
+	t, ok := s.Templates[templateName]
+	if !ok {
+		log.Printf(ctx, "Error: no template named %v", templateName)
+		return
+	}
+
+	data["AssetHashes"] = s.AssetHashes
+
+	nonce := ""
+
+	if nonce != "" {
+		nonce = fmt.Sprintf(` nonce="%s"`, nonce)
+	}
+	data["Nonce"] = template.HTMLAttr(nonce)
+
+	err := t.ExecuteTemplate(w, templateName, data)
+	if err != nil {
+		log.Printf(ctx, "Error rendering %v: %s", templateName, err)
+		return
+	}
+}
+
+// func getNonce(r *http.Request) string {
+// 	nonce := r.Header.Get("X-PP-CSP-Nonce")
+// 	if nonce == "" {
+// 		return ""
+// 	}
+// 	// Since we copy this directly into HTML, verify its alphabet.
+// 	// https://www.w3.org/TR/CSP3/#grammardef-base64-value
+// 	ok, _ := regexp.MatchString(`^[-A-Za-z0-9+/_=]+$`, nonce)
+// 	if !ok {
+// 		return ""
+// 	}
+// 	return nonce
+// }
 
 type reloadHandler struct {
 	srv   *server
@@ -307,6 +562,12 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.loadTemplates()
 
+	if err := initBlame(cfg); err != nil {
+		ctx := context.Background()
+		log.Printf(ctx, "Error: %s", err)
+		return nil, err
+	}
+
 	if cfg.Honeycomb.WriteKey != "" {
 		log.Printf(context.Background(),
 			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
@@ -338,7 +599,11 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.serveFilePathRegex = serveFilePathRegex
 
 	m := pat.New()
+	m.Add("GET", "/log", srv.Handler(srv.ServeLog))
+	m.Add("GET", "/blame", srv.Handler(srv.ServeBlame))
+	m.Add("GET", "/diff", srv.Handler(srv.ServeDiff))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
+	m.Add("GET", "/debug/reload-indexes", srv.Handler(srv.ReloadIndexes))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))

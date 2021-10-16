@@ -992,6 +992,8 @@ var CodesearchUI = function() {
   };
 }();
 
+console.log('going to log initData')
+console.log('initData: ', initData)
 CodesearchUI.repo_urls = initData.repo_urls;
 CodesearchUI.internalViewRepos = initData.internal_view_repos;
 CodesearchUI.defaultSearchRepos = initData.default_search_repos;

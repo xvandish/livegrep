@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes}}
+  <title>History for {{.path}}</title>
+</head>
+<body class="logfile"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - PING brhodes@ WITH ANY QUESTIONS</b></div>
+
+Viewing history for <b><a href="/view/{{.repo.Name}}/{{.path}}">{{.path}}</a></b>
+{{$repo := .repo}}{{$path := .path}}
+
+<table>
+    <thead>
+        <tr>
+            <th>Actions</th>
+            <th>Date</th>
+            <th>Commit</th>
+            <th>Author</th>
+            <th>Message</th>
+            <th>+/-</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range $info := .logData.Blames -}}
+            <tr>
+                <td>
+                    <a href="/view/{{$repo.Name}}/{{$path}}?commit={{$info.CommitHash}}">view</a> <a href="/diff?repoName={{$repo.Name}}&hash={{$info.CommitHash}}">diff</a> <a href="/blame?repoName={{$repo.Name}}&hash={{$info.CommitHash}}&path={{$path}}">blame</a> 
+                </td>
+                <td>{{$info.Date}}</td>
+                <td>{{$info.CommitHash}}</td>
+                <td>{{$info.Author}}</td>
+                <td>{{$info.Subject}}</td>
+                <td>{{$info.Content}}</td>
+            </tr>
+        {{end}}
+    </tbody>
+</table>
+
+{{if (ne .logData.PrevOffset -1)}}<a href="/log?repoName={{.repo.Name}}&path={{.path}}&offset={{.logData.PrevOffset}}">«</a>{{else}} {{end}}   {{if (ne .logData.NextOffset -1)}}<a href="/log?repoName={{.repo.Name}}&path={{.path}}&offset={{.logData.NextOffset}}">»</a>{{end}}
+
+</body>
+</html>
