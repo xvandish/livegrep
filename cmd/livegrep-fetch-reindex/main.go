@@ -23,7 +23,7 @@ var (
 	flagIndexPath     = flag.String("out", "livegrep.idx", "Path to write the index")
 	flagRevparse      = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
 	flagSkipMissing   = flag.Bool("skip-missing", false, "skip repositories where the specified revision is missing")
-	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
+	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to as HOST:PORT")
 )
 
 const Workers = 8

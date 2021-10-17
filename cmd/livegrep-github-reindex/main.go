@@ -25,14 +25,15 @@ import (
 const BLDeprecatedMessage = "This flag has been deprecated and will be removed in a future release. Please switch to the '-ignorelist' option."
 
 var (
-	flagCodesearch   = flag.String("codesearch", "", "Path to the `codesearch` binary")
-	flagFetchReindex = flag.String("fetch-reindex", "", "Path to the `livegrep-fetch-reindex` binary")
-	flagApiBaseUrl   = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
-	flagGithubKey    = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
-	flagRepoDir      = flag.String("dir", "repos", "Directory to store repos")
-	flagIgnorelist   = flag.String("ignorelist", "", "File containing a list of repositories to ignore when indexing")
-	flagDeprecatedBL = flag.String("blacklist", "", "[DEPRECATED] "+BLDeprecatedMessage)
-	flagIndexPath    = dynamicDefault{
+	flagCodesearch    = flag.String("codesearch", "", "Path to the `codesearch` binary")
+	flagFetchReindex  = flag.String("fetch-reindex", "", "Path to the `livegrep-fetch-reindex` binary")
+	flagApiBaseUrl    = flag.String("api-base-url", "https://api.github.com/", "Github API base url")
+	flagGithubKey     = flag.String("github-key", os.Getenv("GITHUB_KEY"), "Github API key")
+	flagRepoDir       = flag.String("dir", "repos", "Directory to store repos")
+	flagIgnorelist    = flag.String("ignorelist", "", "File containing a list of repositories to ignore when indexing")
+	flagDeprecatedBL  = flag.String("blacklist", "", "[DEPRECATED] "+BLDeprecatedMessage)
+	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to as HOST:PORT")
+	flagIndexPath     = dynamicDefault{
 		display: "${dir}/livegrep.idx",
 		fn:      func() string { return path.Join(*flagRepoDir, "livegrep.idx") },
 	}
@@ -149,6 +150,9 @@ func main() {
 	}
 	if *flagSkipMissing {
 		args = append(args, "--skip-missing")
+	}
+	if *flagReloadBackend != "" {
+		args = append(args, "--reload-backend", *flagReloadBackend)
 	}
 	args = append(args, configPath)
 
