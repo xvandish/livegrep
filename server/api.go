@@ -253,6 +253,38 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		e.Send()
 	}
 
+	// I can log these things, but they have no context -
+	// like I can't log a query {} took x seconds and so on
+	if s.statsd != nil {
+		s.statsd.Increment("search.invocations")
+
+		// s.statsd.
+
+		// I can easly log out the reply.Info stuff - but it's missing the context of what
+		// triggered it. What point is there in knowning that search results are taking a
+		// super long time if you can't tell what query it is thats giving you so much trouble?
+
+		// StatsD isn't really designed (as far as I can tell) to support
+		// a) tags
+		// b) if tags are supported by a specific implementation, unbounded sources for tags,
+		//	like request_id's aren't recommended.
+		// As a result, we stick with the simplest metrics we can send accross. If you wan't
+		// more functionality, you can switch to a provider-centric library, like a
+		// DataDog specific libary, that will let you send events or different tags per
+		// metric
+		// If you leave it as is, if you notice a spike in
+
+		// result_count doesn't really map super cleanly
+
+		// Timing values are expected in milliseconds.
+		s.statsd.Timing("search.re2_time")
+		s.statsd.Timing("search.git_time")
+		s.statsd.Timing("search.sort_time")
+		s.statsd.Timing("search.index_time") // TODO: This isn't actually a timing value
+		s.statsd.Timing("search.analyze_time")
+		s.statsd.Timing("search.total_time")
+	}
+
 	log.Printf(ctx,
 		"responding success results=%d why=%s stats=%s",
 		len(reply.Results),

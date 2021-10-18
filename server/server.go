@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"path"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/bmizerany/pat"
 	libhoney "github.com/honeycombio/libhoney-go"
+	statsd "gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -47,7 +49,8 @@ type server struct {
 	AssetHashes map[string]string
 	Layout      *template.Template
 
-	honey *libhoney.Builder
+	honey  *libhoney.Builder
+	statsd *statsd.Client
 
 	serveFilePathRegex *regexp.Regexp
 }
@@ -313,6 +316,32 @@ func New(cfg *config.Config) (http.Handler, error) {
 		srv.honey = libhoney.NewBuilder()
 		srv.honey.WriteKey = cfg.Honeycomb.WriteKey
 		srv.honey.Dataset = cfg.Honeycomb.Dataset
+	}
+
+	if cfg.StatsD.Address != "" {
+		log.Printf(context.Background(), "Initializing StatsD client")
+		args := []statsd.Option{statsd.Address(cfg.StatsD.Address)}
+
+		// leaving all validation to the library
+		if cfg.StatsD.FlushPeriod != nil {
+			args = append(args, statsd.FlushPeriod(cfg.StatsD.FlushPeriod))
+		}
+
+		if cfg.StatsD.Prefix != "" {
+			args = append(args, statsd.Prefix(cfg.StatsD.Prefix))
+		}
+
+		if len(cfg.StatsD.Tags) > 0 {
+			args = append(args, statsd.Tags(cfg.StatsD.Tags), statsd.TagsFormat(cfg.StatsD.TagsFormat))
+		}
+
+		statsdClient, err := statsd.New(args)
+
+		if err != nil {
+			log.Fatalf("could not initialize StatsD client: %v", err)
+		}
+		srv.statsd = statsdClient
+		log.Printf(context.Background(), "Finished initializing StatsD client")
 	}
 
 	for _, bk := range srv.config.Backends {
