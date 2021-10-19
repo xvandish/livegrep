@@ -579,7 +579,7 @@ func buildLogData(
 			return LogData{}, err
 		}
 
-		blameData.Date = blameData.Date
+		blameData.Date = blameData.Date[:19]
 
 		i := strings.Index(blameData.Author, "<")
 		j := strings.Index(blameData.Author, ">")
