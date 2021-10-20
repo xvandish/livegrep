@@ -6,10 +6,10 @@
 </head>
 <body class="blamefile"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping brhodes@ with comments</b>
 
-                                        commit <b><a href="/diff/{{.repo.Name}}/{{.commitHash}}/">{{.commitHash}}</a></b> file <b>{{.path}}</b> <a href="/view/{{.repo.Name}}/{{.path}}?commit={{.commitHash}}">View»</a>
+                                        commit <b><a href="/diff?repoName={{.repo.Name}}&hash={{.commitHash}}">{{.commitHash}}</a></b> file <b>{{.path}}</b> <a href="/view/{{.repo.Name}}/{{.path}}?commit={{.commitHash}}">View»</a>
 {{with .blame}}
 {{if .PreviousCommit}}«Previous commit{{else}}                {{end}}    {{if .NextCommit}}Next commit»{{else}}            {{end}}        Author: {{.Author}}
-{{if .PreviousCommit}}<a href="{{.PreviousCommit}}">{{.PreviousCommit}}</a>{{else}}                {{end}}    {{if .NextCommit}}<a href="{{.NextCommit}}">{{.NextCommit}}</a>{{else}}                {{end}}    Date: {{.Date}}
+{{if .PreviousCommit}}<a href="/blame?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}&path={{$.path}}">{{.PreviousCommit}}</a>{{else}}                {{end}}    {{if .NextCommit}}<a href="/blame?repoName={{$.repo.Name}}&hash={{.NextCommit}}&path={{$.path}}">{{.NextCommit}}</a>{{else}}                {{end}}    Date: {{.Date}}
                                         “{{.Subject}}”
 Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{$.content}}</div>&nbsp;&nbsp;<div id="hashes">
 {{- range .Lines -}}
