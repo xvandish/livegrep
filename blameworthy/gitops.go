@@ -44,6 +44,9 @@ type Hunk struct {
 	NewLength int
 }
 
+// I can't believe this isn't writing to a file for the log
+// with 4000 repos will this really be able to stay in memory?
+// my guess is sure, but the memory usage of the frontend will balloon
 func RunGitLog(repository_path string, revision string) (io.ReadCloser, error) {
 	cmd := exec.Command("git",
 		"-C", repository_path,

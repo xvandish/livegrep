@@ -198,6 +198,7 @@ function init(initData) {
     if (range !== null) {
       url += '#' + range.start;
     }
+    console.log('returning a blame link of', url)
     return url;
   }
 

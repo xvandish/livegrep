@@ -296,9 +296,11 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 	data := BlameData{}
 	resolveCommit(repo, hash, path, &data, nil)
 
-	log.Printf(ctx, fmt.Sprintf("data after resolveCommit : %v\n", data))
+	// In the case that we're trying to blame from the fileview of a file at HEAD,
+	// we'll have hash = "HEAD", data.CommitHash = "realHeadHash", so swap HEAD for the real hash
+	// might be applicable in other places, but not sure which
 	if data.CommitHash != hash {
-		destURL := strings.Replace(r.URL.Path, hash, data.CommitHash, 1)
+		destURL := strings.Replace(r.URL.String(), hash, data.CommitHash, 1)
 		http.Redirect(w, r, destURL, 307)
 		return
 	}
@@ -332,7 +334,15 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		http.Error(w, "404 No such repository", 404)
 		return
 	}
+
+	// what hidden option am I missing??????????????????
+	// should have tried to get this to work with the :/ :/ syntax to see
+	// what was available before blowing it up
+	// looks life diffRedirect can go to /diffA /blame or /diffB
 	rest := pat.Tail("/diff/:repo/:hash/", r.URL.Path)
+
+	// so we have the message option working. Whats this other one
+	//
 	if len(rest) > 0 && rest != "message" {
 		log.Printf(ctx, "doing this for some reason")
 		diffRedirect(w, r, repoName, hash, rest)
@@ -341,14 +351,17 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	data := DiffData{}
 	data2 := BlameData{}
 	resolveCommit(repo, hash, "", &data2, nil)
+
+	// In the case that we're trying to blame from the fileview of a file at HEAD,
+	// we'll have hash = "HEAD", data.CommitHash = "realHeadHash", so swap HEAD for the real hash
+	// might be applicable in other places, but not sure which
 	if data2.CommitHash != hash {
-		log.Printf(ctx, "doing this other thing for some reason")
-		pat1 := "/" + hash + "/"
-		pat2 := "/" + data2.CommitHash + "/"
-		destURL := strings.Replace(r.URL.Path, pat1, pat2, 1)
+		// TODO: look into r.URL.String() vs r.URL.Path
+		destURL := strings.Replace(r.URL.String(), hash, data.CommitHash, 1)
 		http.Redirect(w, r, destURL, 307)
 		return
 	}
+
 	data.CommitHash = data2.CommitHash
 	data.Author = data2.Author
 	data.Date = data2.Date
@@ -357,6 +370,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		data.Body = templates.TurnURLsIntoLinks(data2.Body)
 	}
 
+	// TODO: This could be solved with a dropdown/collapse instead
 	if q.Get("message") == "true" {
 		s.renderPageCasual(ctx, w, r, "blamemessage.html", map[string]interface{}{
 			"commitHash": hash,
