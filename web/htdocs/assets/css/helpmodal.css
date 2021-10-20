@@ -1,0 +1,42 @@
+.help-screen .u-modal-content {
+    width: 600px;
+    padding: 20px;
+}
+
+.help-screen li {
+    line-height: 2;
+}
+
+.help-screen .keyboard-shortcut {
+    background: rgba(0,0,0,0.05);
+    border: solid 1px rgba(0,0,0,0.05);
+    padding: 0px 3px;
+    font-weight: bold;
+}
+
+.u-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+    padding: 60px;
+    margin: 0;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.u-modal-content {
+    z-index: 1;
+    background: white;
+    border:  solid 1px rgba(0,0,0,0.25);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.25);
+    text-align: left;
+    display: inline-block;
+}
+
+/* Utility */
+.hidden {
+    display: none !important;
+}

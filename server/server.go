@@ -239,10 +239,15 @@ func (s *server) ServeLog(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	pathSegments := buildPathSegments(path, repoName)
+	exernalDomain := getExternalDomain(repo.Metadata["url_pattern"])
+
 	s.renderPageCasual(ctx, w, r, "logfile.html", map[string]interface{}{
-		"path":    path,
-		"repo":    repo,
-		"logData": logData,
+		"path":           path,
+		"repo":           repo,
+		"logData":        logData,
+		"pathSegments":   pathSegments,
+		"externalDomain": exernalDomain,
 	})
 }
 

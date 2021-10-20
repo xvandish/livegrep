@@ -1,8 +1,6 @@
 // this file initializes a stripped down version of the header that removes the
 // log and blame options, and (maybe) triggers help text if I feel up to it
 
-$ = require('jquery');
-
 var KeyCodes = {
   ESCAPE: 27,
   ENTER: 13,
@@ -14,18 +12,17 @@ function getSelectedText() {
 }
 
 
-function init(initData) {
-  var helpScreen = document.getElementById('.help-screen');
+function init(repoName, path, urlPattern) {
+  var helpScreen = document.getElementById('help-screen');
+  var helpScreenCard = document.getElementById('help-screen-card');
   var externalLink = document.getElementById('external-link')
-  externalLink.setAttribute('href', getExternalLink(range))
+  externalLink.setAttribute('href', getExternalLink())
 
 
   function doSearch(event, query, newTab) {
-    console.log('doSearch was called')
     var url;
     if (query !== undefined) {
-      console.log('query not undefined, query: ', query)
-      url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(initData.repo_info.name);
+      url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(repoName);
     } else {
       url = '/search';
     }
@@ -37,29 +34,18 @@ function init(initData) {
   }
 
   function showHelp() {
-    var otherHelp = document.getElementById('help-screen')
-    otherHelp.classList.toggle('help-screen')
-    otherHelp.addEventListener('click', (e) => {
-        e.preventDefault();
-    })
-
-    // helpScreen.removeClass('hidden').children().on('click', function(event) {
-    //   // Prevent clicks inside the element to reach the document
-    //   event.stopImmediatePropagation();
-    //   return true;
-    // });
+    helpScreen.classList.remove('hidden');
   }
 
   function hideHelp() {
-    helpScreen.classList.toggle('hidden')
+    helpScreen.classList.add('hidden')
   }
 
   
   function getExternalLink() {
-    var repoName = initData.repo_info.name;
-    var filePath = initData.file_path;
+    var filePath = path;
 
-    var url = initData.repo_info.metadata['url_pattern'];
+    var url = urlPattern;
 
     // If url not found, warn user and fail gracefully
     if (!url) { // deal with both undefined and empty string
@@ -75,40 +61,40 @@ function init(initData) {
 
     // XXX code copied
     url = url.replace('{lno}', ''); // no line number to point to
-    url = url.replace('{version}', initData.commit);
+    url = url.replace('{version}', 'HEAD'); // we don't have a specific commit while on the log page
     url = url.replace('{name}', repoName);
     url = url.replace('{path}', filePath);
     return url;
   }
 
   function processKeyEvent(event) {
-    if(event.which === KeyCodes.ENTER) {
+    if(event.code === 'Enter') {
       // Perform a new search with the selected text, if any
       var selectedText = getSelectedText();
       if(selectedText) {
         doSearch(event, selectedText, true);
       }
-    } else if(event.which === KeyCodes.SLASH_OR_QUESTION_MARK) {
+    } else if(event.code === 'Slash' || event.keyCode == 63) {
         event.preventDefault();
         if(event.shiftKey) {
           showHelp();
         } else {
           hideHelp();
-          doSearch(event, getSelectedText());
+          doSearch(event, getSelectedText(), false);
         }
-    } else if(event.which === KeyCodes.ESCAPE) {
+    } else if(event.code === 'Escape') {
       // Avoid swallowing the important escape key event unless we're sure we want to
-      if(!helpScreen.hasClass('hidden')) {
+      if(!helpScreen.classList.contains('hidden')) {
         event.preventDefault();
         hideHelp();
       }
     //   $('#query').blur(); don't know what this was supposed to do
-    } else if(String.fromCharCode(event.which) == 'V') {
+    } else if(event.code === 'KeyV') {
       // Visually highlight the external link to indicate what happened
       externalLink.focus() 
       window.location = externalLink.getAttribute('href')
-    } else if (String.fromCharCode(event.which) == 'N' || String.fromCharCode(event.which) == 'P') {
-      var goBackwards = String.fromCharCode(event.which) === 'P';
+    } else if (event.code === 'KeyN' || event.code ==  'KeyP') {
+      var goBackwards = event.code === 'KeyP';
       var selectedText = getSelectedText();
       if (selectedText) {
         window.find(selectedText, false /* case sensitive */, goBackwards);
@@ -117,7 +103,7 @@ function init(initData) {
     return true;
   }
 
-  function initializeActionButtons(root) {
+  function initializeActionButtons() {
     // Map out action name to function call, and automate the details of actually hooking
     // up the event handling.
     var ACTION_MAP = {
@@ -126,7 +112,7 @@ function init(initData) {
     };
 
     for(var actionName in ACTION_MAP) {
-      root.on('click auxclick', '[data-action-name="' + actionName + '"]',
+      document.querySelector(`a[data-action-name=${actionName}]`).addEventListener('click',
         // We can't use the action mapped handler directly here since the iterator (`actioName`)
         // will keep changing in the closure of the inline function.
         // Generating a click handler on the fly removes the dependency on closure which
@@ -153,21 +139,27 @@ function init(initData) {
   }
 
   function initializePage() {
-    window.document.addEventListener('click', (e) => {
+    window.document.addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
-        processKeyEvent(e)
-    })
+        processKeyEvent(e);
+    });
     
-    window.document.addEventListener('mouseup', () => {
+    window.document.addEventListener('selectionchange', () => {
         var selectedText = getSelectedText();
         if(selectedText) {
           showSelectionReminder(selectedText);
         } else {
           hideSelectionReminder();
         }
-    })
+    });
 
-    initializeActionButtons($('.header .header-actions'));
+    window.document.addEventListener('click', function(event) {
+      if (!helpScreen.classList.contains('hidden') && !event.target.closest("#help-screen-card")) { // check against card, not overlay
+        hideHelp();
+      }
+    });
+
+    // initializeActionButtons($('.header .header-actions'));
   }
 
   // The native browser handling of hashes in the location is to scroll
@@ -177,6 +169,7 @@ function init(initData) {
   // has loaded. We also need defer our own scroll handling since we can't
   // access the geometry of the DOM elements until they are visible.
   initializePage();
+  initializeActionButtons();
 }
 
-init()
+// init()

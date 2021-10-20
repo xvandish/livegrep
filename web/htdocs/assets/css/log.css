@@ -1,20 +1,24 @@
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
     margin: 0;
+    line-height: 1.2;
 }
 
 .content {
-    padding: 20px;
+    margin-top: 60px;
+    padding: 10px;
     overflow-x: auto; /* if the table overflows, scroll it */
 }
 
-.header h1 {
+h1 {
     font-size: 1.5em;
+    margin-left: 20px;
 }
 
 #log-table {
   font-family: monospace;
   border-spacing: 20px;
+  width: 100%;
 }
 
 #log-table thead {

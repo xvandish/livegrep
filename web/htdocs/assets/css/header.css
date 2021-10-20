@@ -4,18 +4,16 @@
   width: 100%;
   z-index: 1;
 
-  padding-top: 8px;
+  padding-top: 10px;
   padding-right: 5px;
-  padding-bottom: 8px;
-  /* The left padding should be the width of the .line-number column + the left margin
-       of the code block. This will align the header content with the code. */
-  padding-left: 95px;
+  padding-bottom: 10px;
+  padding-left: 25px;
 
   background-color: white;
   border-bottom: solid 1px rgba(0, 0, 0, 0.15);
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
 
-  margin-bottom: 30px;
+  font-family: "Menlo", "Consolas", "Monaco", monospace;
 }
 
 .header .repo {

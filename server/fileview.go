@@ -202,6 +202,33 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 	}
 }
 
+func buildPathSegments(relativePath string, repoName string) []breadCrumbEntry {
+	cleanPath := path.Clean(relativePath)
+	if cleanPath == "." {
+		cleanPath = ""
+	}
+	pathSplits := strings.Split(cleanPath, "/")
+
+	segments := make([]breadCrumbEntry, len(pathSplits))
+	for i, name := range pathSplits {
+		parentPath := path.Clean(strings.Join(pathSplits[0:i], "/"))
+		segments[i] = breadCrumbEntry{
+			Name: name,
+			Path: getFileUrl(repoName, parentPath, name, true),
+		}
+	}
+	return segments
+}
+
+func getExternalDomain(urlPattern string) string {
+	externalDomain := "external viewer"
+	if url, err := url.Parse(urlPattern); err == nil {
+		externalDomain = url.Hostname()
+	}
+
+	return externalDomain
+}
+
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
 	blameHistory := getHistory(repo.Name)
 
@@ -230,7 +257,6 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		cleanPath = ""
 	}
 	obj := commitHash + ":" + cleanPath
-	pathSplits := strings.Split(cleanPath, "/")
 
 	var fileContent *sourceFileContent
 	var dirContent *directoryContent
@@ -268,19 +294,8 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	}
 
-	segments := make([]breadCrumbEntry, len(pathSplits))
-	for i, name := range pathSplits {
-		parentPath := path.Clean(strings.Join(pathSplits[0:i], "/"))
-		segments[i] = breadCrumbEntry{
-			Name: name,
-			Path: getFileUrl(repo.Name, parentPath, name, true),
-		}
-	}
-
-	externalDomain := "external viewer"
-	if url, err := url.Parse(repo.Metadata["url_pattern"]); err == nil {
-		externalDomain = url.Hostname()
-	}
+	segments := buildPathSegments(relativePath, repo.Name)
+	externalDomain := getExternalDomain(repo.Metadata["url_pattern"])
 
 	permalink := ""
 	headlink := ""

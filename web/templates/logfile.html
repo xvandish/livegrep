@@ -3,23 +3,24 @@
 <head>
   {{linkTag .Nonce "stylesheet" "/assets/css/log.css" .AssetHashes}}
   {{linkTag .Nonce "stylesheet" "/assets/css/header.css" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/helpmodal.css" .AssetHashes}}
   <title>History for {{.repo.Name}}/{{.path}}</title>
   <!-- for now, add jquery. later on, just strip it out of the header code-->
   <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
 </head>
 <body class="logfile">
+    {{$repo := .repo}}{{$path := .path}}
     <header class="header">  
         <nav class="header-title">
-            {{$repo := .Repo.Name}}
-            <a href="/view/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
-            {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+            <a href="/view/{{$repo.Name}}/" class="path-segment repo" title="Repository: {{$repo.Name}}">{{$repo.Name}}</a>:
+            {{range $i, $e := .pathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
           </nav>
           <ul class="header-actions without-selection">
             <li class="header-action">
               <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
             </li>,
             <li class="header-action">
-              <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
+              <a id="external-link" data-action-name="" title="View at {{.externalDomain}}. Keyboard shortcut: v" href="#">view at {{.externalDomain}} [<span class='shortcut'>v</span>]</a>
             </li>,
             <li class="header-action">
               <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
@@ -38,14 +39,12 @@
             <li class="header-action">
               <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
             </li>
-          </ul>   
-        <h1>
-            Git Log for <b><a href="/view/{{.repo.Name}}/{{.path}}">{{.repo.Name}}/{{.path}}</a></b>
-        </h1>                   
+          </ul>                    
     </header>
-{{$repo := .repo}}{{$path := .path}}
+
 
 <div class="content">
+    <h1>Git Log</h1>  
     <table id="log-table">
         <thead>
             <tr>
@@ -93,21 +92,22 @@
 <section id="help-screen" class="help-screen u-modal-overlay hidden">
     <div id="help-screen-card" class="help-screen-card u-modal-content">
       <ul>
-        <li>Click on a line number to highlight it</li>
-        <li>Shift + click a second line number to highlight a range</li>
         <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
-        <li>Press <kbd class="keyboard-shortcut">b</kbd> to see which authors wrote which lines</li>
-        <li>Press <kbd class="keyboard-shortcut">l</kbd> to see the commit log for this file</li>
         <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {{.ExternalDomain}}</li>
-        <li>Press <kbd class="keyboard-shortcut">y</kbd> to create a permalink to this version of this file</li>
         <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>
         <li>Select some text and press <kbd class="keyboard-shortcut">enter</kbd> to search for that text in a new tab</li>
-        <li>Select some text and press <kbd class="keyboard-shortcut">p</kbd> for the previous match for that text</li>
-        <li>Select some text and press <kbd class="keyboard-shortcut">n</kbd> for the next match for that text</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">p</kbd> for the previous match for that text (on this page)</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">n</kbd> for the next match for that text (on this page)</li>
       </ul>
     </div>
   </section>
 </div>
 <script{{.Nonce}} src="/assets/raw-js/initialize-header.js"></script>
+<script>
+    var repoName = "{{$repo.Name}}"
+    var path = "{{$path}}"
+    var urlPattern = "{{$repo.Metadata.url_pattern}}"
+    init(repoName, path, urlPattern)
+</script>
 </body>
 </html>

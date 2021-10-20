@@ -392,7 +392,7 @@ function init(initData) {
       processKeyEvent(event);
     });
 
-    $(document).mouseup(function() {
+    window.document.addEventListener('selectionchange', function() {
       var selectedText = getSelectedText();
       if(selectedText) {
         showSelectionReminder(selectedText);

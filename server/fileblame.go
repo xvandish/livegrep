@@ -177,7 +177,6 @@ func resolveCommit(repo config.RepoConfig, commitName, path string, blameData *B
 	}
 	output, err := gitShowCommit(commitName, repo.Path, true)
 
-	log.Printf("gitShowCommit: %s\n", output)
 	if err != nil {
 		return err
 	}
@@ -602,7 +601,6 @@ func buildLogData(
 
 		lineData.Date = lineData.Date[:16]
 
-		log.Printf("author is: %s\n", lineData.Author)
 		matches := logAuthorRegex.FindStringSubmatch(lineData.Author)
 		if matches != nil {
 			lineData.AuthorName = matches[1]

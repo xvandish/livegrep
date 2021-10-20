@@ -1,7 +1,7 @@
 body {
   position: relative; /* so #hashes position is based on <body>'s */
   display: inline-block; /* allow body to expand to fit wide files */
-  /* white-space: pre; */
+  white-space: pre;
   font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
   font-size: 12px;
 }
