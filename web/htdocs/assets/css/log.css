@@ -1,0 +1,46 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+}
+
+.content {
+    padding: 20px;
+    overflow-x: auto; /* if the table overflows, scroll it */
+}
+
+.header h1 {
+    font-size: 1.5em;
+}
+
+#log-table {
+  font-family: monospace;
+  border-spacing: 20px;
+}
+
+#log-table thead {
+  text-align: left;
+}
+
+#log-table tr {
+  text-align: left;
+}
+
+#log-table td {
+  vertical-align: top;
+}
+
+.lines-added, .lines-removed, .files-changed {
+    text-align: right;
+}
+
+td.lines-added {
+    color: green;
+}
+
+td.lines-removed {
+    color: red;
+}
+
+.no-margin {
+    margin: 0;
+}

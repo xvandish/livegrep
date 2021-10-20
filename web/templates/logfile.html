@@ -1,16 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes}}
-  <title>History for {{.path}}</title>
+  {{linkTag .Nonce "stylesheet" "/assets/css/log.css" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/header.css" .AssetHashes}}
+  <title>History for {{.repo.Name}}/{{.path}}</title>
+  <!-- for now, add jquery. later on, just strip it out of the header code-->
+  <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
 </head>
-<body class="logfile"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - PING brhodes@ WITH ANY QUESTIONS</b></div>
-
-Viewing history for <b><a href="/view/{{.repo.Name}}/{{.path}}">{{.repo.Name}}/{{.path}}</a></b>
+<body class="logfile">
+    <header class="header">  
+        <nav class="header-title">
+            {{$repo := .Repo.Name}}
+            <a href="/view/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
+            {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+          </nav>
+          <ul class="header-actions without-selection">
+            <li class="header-action">
+              <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
+            </li>,
+            <li class="header-action">
+              <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
+            </li>,
+            <li class="header-action">
+              <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+            </li>
+          </ul>
+          <ul class="header-actions with-selection" style="display:none">
+            <li class="header-action">
+              search for selected text [/]
+            </li>,
+            <li class="header-action">
+              previous match [p]
+            </li>,
+            <li class="header-action">
+              next match [n]
+            </li>,
+            <li class="header-action">
+              <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+            </li>
+          </ul>   
+        <h1>
+            Git Log for <b><a href="/view/{{.repo.Name}}/{{.path}}">{{.repo.Name}}/{{.path}}</a></b>
+        </h1>                   
+    </header>
 {{$repo := .repo}}{{$path := .path}}
 
-<div class="table-wrapper">
-    <table>
+<div class="content">
+    <table id="log-table">
         <thead>
             <tr>
                 <th>Actions</th>
@@ -18,27 +54,60 @@ Viewing history for <b><a href="/view/{{.repo.Name}}/{{.path}}">{{.repo.Name}}/{
                 <th>Commit</th>
                 <th>Author</th>
                 <th>Message</th>
-                <th>+/-</th>
+                <th class="files-changed">Files</th>
+                <th class="lines-added">+</th>
+                <th class="lines-removed">-</th>
             </tr>
         </thead>
         <tbody>
-            {{range $info := .logData.Blames -}}
+            {{range $info := .logData.LogLines -}}
                 <tr>
-                    <td>
-                        <a href="/view/{{$repo.Name}}/{{$path}}?commit={{$info.CommitHash}}">view</a> <a href="/diff?repoName={{$repo.Name}}&hash={{$info.CommitHash}}">diff</a> <a href="/blame?repoName={{$repo.Name}}&hash={{$info.CommitHash}}&path={{$path}}">blame</a> 
+                    <td class="actions">
+                        <a href="/view/{{$repo.Name}}/{{$path}}?commit={{$info.CommitHash}}">view</a> 
+                        <a href="/diff?repoName={{$repo.Name}}&hash={{$info.CommitHash}}">diff</a> 
+                        <a href="/blame?repoName={{$repo.Name}}&hash={{$info.CommitHash}}&path={{$path}}">blame</a> 
                     </td>
-                    <td>{{$info.Date}}</td>
-                    <td>{{$info.CommitHash}}</td>
-                    <td>{{$info.Author}}</td>
-                    <td>{{$info.Subject}}</td>
-                    <td>{{$info.Content}}</td>
+                    <td class="log-date">{{$info.Date}}</td>
+                    <td class="commit-hash">{{$info.CommitHash}}</td>
+                    <td class="author">
+                        <p class="no-margin">
+                            {{$info.AuthorName}}
+                        </p>
+                        <p class="no-margin user-email">
+                            {{$info.AuthorEmail}}
+                        </p>
+                        
+                    </td>
+                    <td class="messaage">{{$info.Subject}}</td>
+                    <td class="files-changed">{{$info.NumFilesModified}}</td>
+                    <td class="lines-added">+{{$info.NumLinesAdded}}</td>
+                    <td class="lines-removed">-{{$info.NumLinesRemoved}}</td>
                 </tr>
             {{end}}
         </tbody>
     </table>
-</div>
+
 
 {{if (ne .logData.PrevOffset -1)}}<a href="/log?repoName={{.repo.Name}}&path={{.path}}&offset={{.logData.PrevOffset}}">«</a>{{else}} {{end}}   {{if (ne .logData.NextOffset -1)}}<a href="/log?repoName={{.repo.Name}}&path={{.path}}&offset={{.logData.NextOffset}}">»</a>{{end}}
 
+<section id="help-screen" class="help-screen u-modal-overlay hidden">
+    <div id="help-screen-card" class="help-screen-card u-modal-content">
+      <ul>
+        <li>Click on a line number to highlight it</li>
+        <li>Shift + click a second line number to highlight a range</li>
+        <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
+        <li>Press <kbd class="keyboard-shortcut">b</kbd> to see which authors wrote which lines</li>
+        <li>Press <kbd class="keyboard-shortcut">l</kbd> to see the commit log for this file</li>
+        <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {{.ExternalDomain}}</li>
+        <li>Press <kbd class="keyboard-shortcut">y</kbd> to create a permalink to this version of this file</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">enter</kbd> to search for that text in a new tab</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">p</kbd> for the previous match for that text</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">n</kbd> for the next match for that text</li>
+      </ul>
+    </div>
+  </section>
+</div>
+<script{{.Nonce}} src="/assets/raw-js/initialize-header.js"></script>
 </body>
 </html>

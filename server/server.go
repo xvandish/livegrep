@@ -289,7 +289,7 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 	// }
 
 	data := BlameData{}
-	resolveCommit(repo, hash, path, &data)
+	resolveCommit(repo, hash, path, &data, nil)
 
 	log.Printf(ctx, fmt.Sprintf("data after resolveCommit : %v\n", data))
 	if data.CommitHash != hash {
@@ -334,7 +334,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	data := DiffData{}
 	data2 := BlameData{}
-	resolveCommit(repo, hash, "", &data2)
+	resolveCommit(repo, hash, "", &data2, nil)
 	if data2.CommitHash != hash {
 		pat1 := "/" + hash + "/"
 		pat2 := "/" + data2.CommitHash + "/"

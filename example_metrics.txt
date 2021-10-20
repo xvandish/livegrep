@@ -1,0 +1,11 @@
+repository indexed in 855.477865s
+== begin metrics ==
+index.bytes 19699933299
+index.bytes.dedup 11699393281
+index.content.chunks 1013
+index.content.ranges 338326884
+index.data.chunks 88
+index.files 1395620
+index.lines 368306694
+index.lines.dedup 212400358
+== end metrics ==

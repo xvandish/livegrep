@@ -1,0 +1,76 @@
+.header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1;
+
+  padding-top: 8px;
+  padding-right: 5px;
+  padding-bottom: 8px;
+  /* The left padding should be the width of the .line-number column + the left margin
+       of the code block. This will align the header content with the code. */
+  padding-left: 95px;
+
+  background-color: white;
+  border-bottom: solid 1px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
+
+  margin-bottom: 30px;
+}
+
+.header .repo {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.header .repo:hover {
+  color: rgba(0, 0, 0, 1);
+}
+
+.header-title {
+  font-size: 13px;
+  padding: 0;
+  margin: 0 0 5px 0;
+  font-weight: normal;
+  overflow: auto;
+}
+
+/* Header actions */
+.header-actions {
+  font-size: 13px;
+  margin: 0;
+  padding: 0 0 0 5px;
+  color: rgba(0, 0, 0, 0.5);
+  border-left: solid 2px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.8s;
+}
+
+.header-actions:hover {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.header-action {
+  margin: 0;
+  display: inline-block;
+  list-style: none;
+}
+
+.header-action .keyboard-hint {
+  color: rgba(0, 0, 0, 0.25);
+  font-size: 10px;
+}
+
+.header-action a {
+  text-decoration: none;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.header-action a:hover,
+.header-action a:focus {
+  color: rgba(0, 0, 0, 1);
+}
+
+.header-action .shortcut {
+  font-weight: bolder;
+  text-decoration: underline;
+}
+/* END */

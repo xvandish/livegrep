@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -57,8 +58,20 @@ type BlameLine struct {
 	Symbol             string
 }
 
+type LogLine struct {
+	Date             string
+	CommitHash       string
+	Author           string
+	AuthorEmail      string
+	AuthorName       string
+	Subject          string
+	NumLinesAdded    int
+	NumLinesRemoved  int
+	NumFilesModified int
+}
+
 type LogData struct {
-	Blames []BlameData
+	LogLines []LogLine
 	// NextOffset is the offset to navigate to in order to
 	// paginate forwards. Will be -1 if you can't paginate
 	// forwards.
@@ -80,6 +93,7 @@ const (
 )
 
 var logPaginationLimit = 100
+var logAuthorRegex = regexp.MustCompile("\\s*(.*)\\s*<(.*)>") // Rodrigo Silva Mendoza <r@e.com>
 
 var histories = make(map[string]*blameworthy.GitHistory)
 var historiesLock = sync.RWMutex{}
@@ -136,7 +150,7 @@ func initBlame(cfg *config.Config) error {
 	return nil
 }
 
-func resolveCommit(repo config.RepoConfig, commitName, path string, data *BlameData) error {
+func resolveCommit(repo config.RepoConfig, commitName, path string, blameData *BlameData, logLine *LogLine) error {
 	// TODO: this is an awkward fix for a synchronization problem.
 	// The necessary order of operations of a server will be to "git
 	// pull" a new master before then running "git log", which means
@@ -162,15 +176,27 @@ func resolveCommit(repo config.RepoConfig, commitName, path string, data *BlameD
 		}
 	}
 	output, err := gitShowCommit(commitName, repo.Path, true)
+
+	log.Printf("gitShowCommit: %s\n", output)
 	if err != nil {
 		return err
 	}
 	lines := strings.SplitN(output, "\n", 5)
-	data.CommitHash = lines[0][:blameworthy.HashLength]
-	data.Author = lines[1]
-	data.Date = lines[2]
-	data.Subject = lines[3]
-	data.Body = strings.Trim(lines[4], "\n")
+
+	// This function is used for both blame and log information
+	if blameData != nil {
+		blameData.CommitHash = lines[0][:blameworthy.HashLength]
+		blameData.Author = lines[1]
+		blameData.Date = lines[2]
+		blameData.Subject = lines[3]
+		blameData.Body = strings.Trim(lines[4], "\n")
+	} else {
+		logLine.CommitHash = lines[0][:blameworthy.HashLength]
+		logLine.Author = lines[1]
+		logLine.Date = lines[2]
+		logLine.Subject = lines[3]
+	}
+
 	return nil
 }
 
@@ -552,7 +578,7 @@ func buildLogData(
 		count++
 
 		// TODO: this struct was really not designed for this case
-		blameData := BlameData{}
+		lineData := LogLine{}
 		commit := diffs[i].Commit
 
 		added := 0
@@ -565,32 +591,35 @@ func buildLogData(
 			}
 		}
 
-		blameData.Content = ""
-		if added > 0 && deleted > 0 {
-			blameData.Content = fmt.Sprint("-", deleted, ",+", added)
-		} else if added > 0 {
-			blameData.Content = fmt.Sprint("+", added)
-		} else if deleted > 0 {
-			blameData.Content = fmt.Sprint("-", deleted)
-		}
+		lineData.NumLinesAdded = added
+		lineData.NumLinesRemoved = deleted
+		lineData.NumFilesModified = len(commit.Diffs)
 
-		err := resolveCommit(repo, commit.Hash, repo.Path, &blameData)
+		err := resolveCommit(repo, commit.Hash, repo.Path, nil, &lineData)
 		if err != nil {
 			return LogData{}, err
 		}
 
-		blameData.Date = blameData.Date[:19]
+		lineData.Date = lineData.Date[:16]
 
-		i := strings.Index(blameData.Author, "<")
-		j := strings.Index(blameData.Author, ">")
-		if i != -1 && j != -1 && i < j {
-			blameData.Author = blameData.Author[i+1 : j]
-		}
-		if len(blameData.Author) > 20 {
-			blameData.Author = blameData.Author[:19] + "…"
+		log.Printf("author is: %s\n", lineData.Author)
+		matches := logAuthorRegex.FindStringSubmatch(lineData.Author)
+		if matches != nil {
+			lineData.AuthorName = matches[1]
+			lineData.AuthorEmail = matches[2]
+		} else {
+			// Just set author name using old method
+			i := strings.Index(lineData.Author, "<")
+			j := strings.Index(lineData.Author, ">")
+			if i != -1 && j != -1 && i < j {
+				lineData.AuthorName = lineData.Author[i+1 : j]
+			}
+			if len(lineData.Author) > 20 {
+				lineData.AuthorName = lineData.Author
+			}
 		}
 
-		data.Blames = append(data.Blames, blameData)
+		data.LogLines = append(data.LogLines, lineData)
 	}
 
 	// Set PrevOffset.
