@@ -334,6 +334,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 	rest := pat.Tail("/diff/:repo/:hash/", r.URL.Path)
 	if len(rest) > 0 && rest != "message" {
+		log.Printf(ctx, "doing this for some reason")
 		diffRedirect(w, r, repoName, hash, rest)
 		return
 	}
@@ -341,6 +342,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	data2 := BlameData{}
 	resolveCommit(repo, hash, "", &data2, nil)
 	if data2.CommitHash != hash {
+		log.Printf(ctx, "doing this other thing for some reason")
 		pat1 := "/" + hash + "/"
 		pat2 := "/" + data2.CommitHash + "/"
 		destURL := strings.Replace(r.URL.Path, pat1, pat2, 1)
@@ -355,7 +357,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		data.Body = templates.TurnURLsIntoLinks(data2.Body)
 	}
 
-	if rest == "message" {
+	if q.Get("message") == "true" {
 		s.renderPageCasual(ctx, w, r, "blamemessage.html", map[string]interface{}{
 			"commitHash": hash,
 			"data":       data,

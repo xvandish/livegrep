@@ -10,7 +10,7 @@
 {{with .blame}}
 {{if .PreviousCommit}}«Previous commit{{else}}                {{end}}    {{if .NextCommit}}Next commit»{{else}}            {{end}}        Author: {{.Author}}
 {{if .PreviousCommit}}<a href="/diff?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}">{{.PreviousCommit}}</a>{{else}}                {{end}}    {{if .NextCommit}}<a href="/diff?repoName={{$.repo.Name}}&hash={{.NextCommit}}">{{.NextCommit}}</a>{{else}}                {{end}}    Date: {{.Date}}
-                                        “{{.Subject}}”{{if .Body}} <a href="message"><b>Full commit message»</b></a>{{end}}
+                                        “{{.Subject}}”{{if .Body}} <a href="/diff?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}&message=true"><b>Full commit message»</b></a>{{end}}
 
 Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{range .FileDiffs}}
 <b>================ <a href="/blame?repoName={{$.repo.Name}}&hash={{$.commitHash}}&path={{.Path}}">{{.Path}}</a> ================</b>
