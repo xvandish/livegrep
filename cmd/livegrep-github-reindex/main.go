@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/livegrep/livegrep/src/proto/config"
@@ -38,6 +39,8 @@ var (
 	}
 	flagRevision                = flag.String("revision", "HEAD", "git revision to index")
 	flagUrlPattern              = flag.String("url-pattern", "https://github.com/{name}/blob/{version}/{path}#L{lno}", "when using the local frontend fileviewer, this string will be used to construt a link to the file source on github")
+	flagBlamePattern            = flag.String("blame-pattern", "git", "where blame information is fetched from for the local frontend blame/diff/log viewier. If you don't want to enable this, just set this to an empty string.")
+	flagIgnorelistBlame         = flag.String("ignorelist-blame", "", "File containing a list of repositories that Git Blame/Diff/Log info shouldn't be loaded for. If, for example, the repo has huge bot generated commits everyday.")
 	flagName                    = flag.String("name", "livegrep index", "The name to be stored in the index file")
 	flagNumRepoUpdateWorkers    = flag.String("num-repo-update-workers", "8", "Number of workers fetch-reindex will use to update repositories")
 	flagRevparse                = flag.Bool("revparse", true, "whether to `git rev-parse` the provided revision in generated links")
@@ -62,9 +65,17 @@ func init() {
 	flag.Var(&flagUsers, "user", "Specify a github user to index (may be passed multiple times)")
 }
 
-const Workers = 8
+// https://go-review.googlesource.com/c/go/+/202340/ changes made here make using
+// this function with defers in hot-paths very low cost, the nanoseconds we lose here should be fine
+func timeTrack(start time.Time, timerName string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", timerName, elapsed)
+}
+
+const Workers = 16
 
 func main() {
+	defer timeTrack(time.Now(), "livegrep-github-reindex")
 	flag.Parse()
 	log.SetFlags(0)
 
@@ -87,11 +98,17 @@ func main() {
 	}
 
 	var ignorelist map[string]struct{}
+	var ignorelistBlame map[string]struct{}
+
 	if *flagIgnorelist != "" {
 		var err error
 		ignorelist, err = loadIgnorelist(*flagIgnorelist)
 		if err != nil {
 			log.Fatalf("loading %s: %s", *flagIgnorelist, err)
+		}
+		ignorelistBlame, err = loadIgnorelist(*flagIgnorelistBlame)
+		if err != nil {
+			log.Fatalf("loading %s: %s", *flagIgnorelistBlame, err)
 		}
 	}
 
@@ -131,7 +148,7 @@ func main() {
 
 	sort.Sort(ReposByName(repos))
 
-	config, err := buildConfig(*flagName, *flagRepoDir, repos, *flagRevision)
+	config, err := buildConfig(*flagName, *flagRepoDir, repos, *flagRevision, ignorelistBlame)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -139,6 +156,8 @@ func main() {
 	if err := writeConfig(config, configPath); err != nil {
 		log.Fatalln(err.Error())
 	}
+
+	os.Exit(1)
 
 	index := flagIndexPath.Get().(string)
 
@@ -220,6 +239,7 @@ func loadRepos(
 	repos []string,
 	orgs []string,
 	users []string) ([]*github.Repository, error) {
+	defer timeTrack(time.Now(), "loadRepos")
 
 	jobc := make(chan loadJob)
 	done := make(chan struct{})
@@ -294,6 +314,7 @@ func runJobs(client *github.Client, jobc <-chan loadJob, done <-chan struct{}, o
 func filterRepos(repos []*github.Repository,
 	ignorelist map[string]struct{},
 	excludeForks bool, excludeArchived bool) []*github.Repository {
+	defer timeTrack(time.Now(), "filterRepos")
 	var out []*github.Repository
 
 	for _, r := range repos {
@@ -449,7 +470,10 @@ func writeConfig(config []byte, file string) error {
 func buildConfig(name string,
 	dir string,
 	repos []*github.Repository,
-	revision string) ([]byte, error) {
+	revision string,
+	ignorelistBlame map[string]struct{},
+) ([]byte, error) {
+	defer timeTrack(time.Now(), "buildConfig")
 	cfg := config.IndexSpec{
 		Name: name,
 	}
@@ -482,6 +506,16 @@ func buildConfig(name string,
 			password_env = "GITHUB_KEY"
 		}
 
+		blameKey := *flagBlamePattern
+		if blameKey != "" && ignorelistBlame != nil {
+			if strings.Contains(*r.FullName, "covid-19-data") {
+				log.Printf("r.FullName: %s ignorelistBlame[*r.FullName]: %v\n", *r.FullName, ignorelistBlame[*r.FullName])
+			}
+			if _, ok := ignorelistBlame[*r.FullName]; ok {
+				blameKey = ""
+			}
+		}
+
 		cfg.Repositories = append(cfg.Repositories, &config.RepoSpec{
 			Path:      path.Join(dir, *r.FullName),
 			Name:      *r.FullName,
@@ -490,6 +524,7 @@ func buildConfig(name string,
 				Github:     *r.HTMLURL,
 				Remote:     remote,
 				UrlPattern: *flagUrlPattern,
+				Blame:      blameKey,
 			},
 			CloneOptions: &config.CloneOptions{
 				Depth:       int32(*flagDepth),

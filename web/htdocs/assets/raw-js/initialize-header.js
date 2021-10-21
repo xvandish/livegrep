@@ -1,5 +1,6 @@
 // this file initializes a stripped down version of the header that removes the
 // log and blame options, and (maybe) triggers help text if I feel up to it
+// TODO: add back options (triggered by h or b) that takes you back 
 
 var KeyCodes = {
   ESCAPE: 27,
@@ -14,7 +15,6 @@ function getSelectedText() {
 
 function init(repoName, path, urlPattern) {
   var helpScreen = document.getElementById('help-screen');
-  var helpScreenCard = document.getElementById('help-screen-card');
   var externalLink = document.getElementById('external-link')
   externalLink.setAttribute('href', getExternalLink())
 

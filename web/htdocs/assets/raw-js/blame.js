@@ -62,6 +62,5 @@
     setTimeout(function() {
         target.scrollIntoView({ block: 'center' })
     }, 2)
-    
   });
 })();

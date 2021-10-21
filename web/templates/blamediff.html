@@ -2,9 +2,44 @@
 <html>
 <head>
   {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/header.css" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/helpmodal.css" .AssetHashes}}
   <title>Commit {{.commitHash}}</title>
 </head>
-<body class="wide"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping brhodes@ with comments :)</b>
+<body class="wide"><div id="header"> 
+  <header class="header">  
+    <nav class="header-title">
+        <!-- Diff doesn't load the diff of a file, just commits, so the only path ever here will be the root-->
+        <a href="/view/{{$.repo.Name}}/" class="path-segment repo" title="Repository: {{$.repo.Name}}">{{.repo.Name}}</a>
+      </nav>
+      <ul class="header-actions without-selection">
+        <li class="header-action">
+          <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
+        </li>,
+        <li class="header-action">
+          <a id="external-link" data-action-name="" title="View at {{.externalDomain}}. Keyboard shortcut: v" href="#">view at {{.externalDomain}} [<span class='shortcut'>v</span>]</a>
+        </li>,
+        <li class="header-action">
+          <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+        </li>
+      </ul>
+      <ul class="header-actions with-selection" style="display:none">
+        <li class="header-action">
+          search for selected text [/]
+        </li>,
+        <li class="header-action">
+          previous match [p]
+        </li>,
+        <li class="header-action">
+          next match [n]
+        </li>,
+        <li class="header-action">
+          <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+        </li>
+      </ul>                    
+</header>
+<div class="whitespace-content">
+  <b>THIS FEATURE IS IN ALPHA TESTING - ping @xvandish with comments :)</b>
 
                                         commit <b>{{.commitHash}}</b>
 {{with .blame}}
@@ -12,7 +47,7 @@
 {{if .PreviousCommit}}<a href="/diff?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}">{{.PreviousCommit}}</a>{{else}}                {{end}}    {{if .NextCommit}}<a href="/diff?repoName={{$.repo.Name}}&hash={{.NextCommit}}">{{.NextCommit}}</a>{{else}}                {{end}}    Date: {{.Date}}
                                         “{{.Subject}}”{{if .Body}} <a href="/diff?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}&message=true"><b>Full commit message»</b></a>{{end}}
 
-Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{range .FileDiffs}}
+Line added by:      Line deleted by:<div class="rtl"><div id="content">{{range .FileDiffs}}
 <b>================ <a href="/blame?repoName={{$.repo.Name}}&hash={{$.commitHash}}&path={{.Path}}">{{.Path}}</a> ================</b>
 
 {{.Content}}{{end}}</div>&nbsp;&nbsp;<div id="hashes">{{ range $i, $l := .FileDiffs }}
@@ -22,8 +57,28 @@ Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{r
 {{if .PreviousCommit.Hash}}<a href="{{.PreviousCommit.Hash}}.{{$i}}a{{.PreviousLineNumber}}">{{prettyCommit .PreviousCommit}}</a>{{else}}{{.PreviousCommit.Author}}{{end}} {{if .NextCommit.Hash}}<a href="{{.NextCommit.Hash}}.{{$i}}d{{.NextLineNumber}}">{{prettyCommit .NextCommit}}</a>{{else}}{{.NextCommit.Author}}{{end}}{{if .OldLineNumber}} <a id="{{$i}}d{{.OldLineNumber}}" href="{{$.blame.PreviousCommit}}.{{$i}}f{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}} {{if .NewLineNumber}}<a id="{{$i}}a{{.NewLineNumber}}" href="{{$.commitHash}}.{{$i}}f{{.NewLineNumber}}">{{.NewLineNumber | printf "%4d"}}</a>{{else}}    {{end}}{{if .Symbol}} <b class="{{if eq .Symbol "+"}}a{{else}}d{{end}}">{{.Symbol}}</b>{{end}}
 {{end}}{{end}}
 </div>{{end}}</div>
+<section id="help-screen" class="help-screen u-modal-overlay hidden">
+  <div id="help-screen-card" class="help-screen-card u-modal-content">
+    <ul>
+      <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
+      <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {{.ExternalDomain}}</li>
+      <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>
+      <li>Select some text and press <kbd class="keyboard-shortcut">enter</kbd> to search for that text in a new tab</li>
+      <li>Select some text and press <kbd class="keyboard-shortcut">p</kbd> for the previous match for that text (on this page)</li>
+      <li>Select some text and press <kbd class="keyboard-shortcut">n</kbd> for the next match for that text (on this page)</li>
+    </ul>
+  </div>
+</section>
+</div>
 <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
 <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/js-cookie/2.1.4/js.cookie.min.js" integrity="sha256-NjbogQqosWgor0UBdCURR5dzcvAgHnfUZMcZ8RCwkk8=" crossorigin="anonymous"></script>
 <script{{.Nonce}} src="/assets/raw-js/blame.js"></script>
+<script{{.Nonce}} src="/assets/raw-js/initialize-header.js"></script>
+<script>
+    var repoName = "{{$.repo.Name}}"
+    var path = ""
+    var urlPattern = "{{$.repo.Metadata.url_pattern}}"
+    init(repoName, path, urlPattern)
+</script>
 </body>
 </html>

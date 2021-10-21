@@ -352,7 +352,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	data2 := BlameData{}
 	resolveCommit(repo, hash, "", &data2, nil)
 
-	// In the case that we're trying to blame from the fileview of a file at HEAD,
+	// In the case that we're trying to diff from the HEAD commit,
 	// we'll have hash = "HEAD", data.CommitHash = "realHeadHash", so swap HEAD for the real hash
 	// might be applicable in other places, but not sure which
 	if data2.CommitHash != hash {
@@ -385,11 +385,15 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
+	// just get the root segment
+	pathSegments := buildPathSegments("", repoName)
+
 	s.renderPageCasual(ctx, w, r, "blamediff.html", map[string]interface{}{
-		"repo":       repo,
-		"path":       "NONE",
-		"commitHash": hash,
-		"blame":      data,
+		"repo":         repo,
+		"pathSegments": pathSegments,
+		"path":         "NONE",
+		"commitHash":   hash,
+		"blame":        data,
 	})
 }
 

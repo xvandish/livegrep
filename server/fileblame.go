@@ -287,6 +287,7 @@ func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash 
 		return
 	}
 	i := strings.Index(rest, ".")
+	// If . not present in rest
 	if i == -1 {
 		url := fmt.Sprint("/diff/", repoName, "/", rest, "/")
 		http.Redirect(w, r, url, 307)
@@ -315,6 +316,7 @@ func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash 
 
 	var fragment, url string
 	fmt.Print(rest[j], "\n")
+	// go to blame with a specific line?
 	if rest[j] == 102 { // "f"
 		fragment = rest[j+1:]
 		url = fmt.Sprint("/blame/", repoName, "/", destHash,
@@ -324,6 +326,7 @@ func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash 
 		destIndex := indexOfFileInCommit(gitHistory, path, destHash)
 		fragment = rest[j:]
 		// TODO: need to turn path into index into that other diff
+		// go to diff with a specific repo, commit, and line number?
 		url = fmt.Sprint("/diff/", repoName, "/", destHash,
 			"/#", destIndex, fragment)
 	}
