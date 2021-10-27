@@ -357,6 +357,7 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 	var wg sync.WaitGroup
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	for i := 1; i <= pagesToCall; i++ {
 		wg.Add(1)
@@ -369,12 +370,12 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 			var err error
 			var resp *github.Response
 			if method == "org" {
-				repos, resp, err = gClient.Repositories.ListByOrg(context.TODO(), org, &github.RepositoryListByOrgOptions{
+				repos, resp, err = gClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{
 					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
 				})
 				log.Printf("remaining rate: %d", resp.Rate.Remaining)
 			} else if method == "user" {
-				repos, _, err = gClient.Repositories.List(context.TODO(), user, &github.RepositoryListOptions{
+				repos, _, err = gClient.Repositories.List(ctx, user, &github.RepositoryListOptions{
 					ListOptions: github.ListOptions{PerPage: *flagReposPerPage, Page: page},
 				})
 			}
@@ -390,19 +391,15 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 	}
 
 	// close the channel in the background
-	// don't close over wg here, so no need to pass in like in for loop go funcs
 	go func() {
 		wg.Wait()
 		close(resStream)
 		close(semaphores)
 	}()
 
-	// read from channel as they come in until its closed
-
 	for res := range resStream {
 		if res.err != nil {
-			cancel() // cancel the other network requests going on
-			return nil, res.err
+			return nil, res.err // cancel will be called after this early return
 		}
 		resultsMatrix[res.Page-1] = res.Repos // Page index is 1 based
 	}
@@ -417,7 +414,7 @@ func callGitHubConcurrently(initialResp *github.Response, concurrencyLimit int, 
 }
 
 func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error) {
-	defer timeTrack(time.Now(), "getOrgRepos")
+	defer timeTrack(time.Now(), fmt.Sprintf("getOrgRepos - %s", org))
 	log.Printf("Fetching repositories for organization: %s", org)
 
 	opt := &github.RepositoryListByOrgOptions{
@@ -427,7 +424,7 @@ func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error
 
 	if err != nil {
 		return nil, err
-	} else if resp.LastPage == 1 { // if no more pages, return early
+	} else if resp.FirstPage == resp.LastPage { // if no more pages, return early
 		return repos, nil
 	}
 
@@ -436,17 +433,16 @@ func getOrgRepos(client *github.Client, org string) ([]*github.Repository, error
 }
 
 func getUserRepos(client *github.Client, user string) ([]*github.Repository, error) {
-	defer timeTrack(time.Now(), "getUserRepos")
+	defer timeTrack(time.Now(), fmt.Sprintf("getUserRepos - %s", user))
 	log.Printf("Fetching repositories for user: %s", user)
 
 	opt := &github.RepositoryListOptions{
 		ListOptions: github.ListOptions{PerPage: *flagReposPerPage},
 	}
 	repos, resp, err := client.Repositories.List(context.TODO(), user, opt)
-
 	if err != nil {
 		return nil, err
-	} else if resp.LastPage == 1 { // if no more pages, return early
+	} else if resp.FirstPage == resp.LastPage { // if no more pages, return early
 		return repos, nil
 	}
 
