@@ -6,6 +6,8 @@ interactive regex search of ~gigabyte-scale source repositories. You
 can see a running instance at
 [http://livegrep.com/](http://livegrep.com).
 
+This fork is maintained by Rodrigo Silva Mendoza (test comment)
+
 Building
 --------
 
