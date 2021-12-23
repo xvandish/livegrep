@@ -4,7 +4,7 @@
   {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes}}
   <title>File {{.path}} at {{.commitHash}}</title>
 </head>
-<body class="blamefile"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping brhodes@ with comments</b>
+<body class="blamefile whitespace-content"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping brhodes@ with comments</b>
 
                                         commit <b><a href="/diff?repoName={{.repo.Name}}&hash={{.commitHash}}">{{.commitHash}}</a></b> file <b>{{.path}}</b> <a href="/view/{{.repo.Name}}/{{.path}}?commit={{.commitHash}}">View»</a>
 {{with .blame}}

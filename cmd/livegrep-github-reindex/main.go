@@ -157,7 +157,7 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
-	os.Exit(1)
+// os.Exit(1)
 
 	index := flagIndexPath.Get().(string)
 
