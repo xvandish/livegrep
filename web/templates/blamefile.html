@@ -2,9 +2,42 @@
 <html>
 <head>
   {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes}}
-  <title>File {{.path}} at {{.commitHash}}</title>
+  {{linkTag .Nonce "stylesheet" "/assets/css/header.css" .AssetHashes}}
+  <title>Blame of file {{.path}} at {{.commitHash}}</title>
 </head>
-<body class="blamefile whitespace-content"><div id="header">                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping brhodes@ with comments</b>
+<body class="wide">
+    <header class="header">
+        <nav class="header-title">
+            <a href="/view/{{$.repo.Name}}/" class="path-segment repo" title="Repository: {{$.repo.Name}}">{{.repo.Name}}</a>
+            <a href="/view/{{$.repo.Name}}/{{$.path}}" class="path-segment" title="View file: {{$.path}}@${{.commitHash}}">{{$.path}}@{{$.commitHash}}</a>
+        </nav>
+        <ul class="header-actions without-selection">
+            <li class="header-action">
+            <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
+            </li>,
+            <li class="header-action">
+            <!-- <a id="external-link" data-action-name="" title="View at {{.externalDomain}}. Keyboard shortcut: v" href="#">view at {{.externalDomain}} [<span class='shortcut'>v</span>]</a> -->
+            </li>,
+            <li class="header-action">
+            <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+            </li>
+        </ul>
+        <ul class="header-actions with-selection" style="display:none">
+            <li class="header-action">
+            search for selected text [/]
+            </li>,
+            <li class="header-action">
+            previous match [p]
+            </li>,
+            <li class="header-action">
+            next match [n]
+            </li>,
+            <li class="header-action">
+            <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
+            </li>
+        </ul>                    
+    </header>
+<div id="blamefile" class="blamefile whitespace-content"><div>                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping xvandish@ with comments</b>
 
                                         commit <b><a href="/diff?repoName={{.repo.Name}}&hash={{.commitHash}}">{{.commitHash}}</a></b> file <b>{{.path}}</b> <a href="/view/{{.repo.Name}}/{{.path}}?commit={{.commitHash}}">View»</a>
 {{with .blame}}
@@ -17,7 +50,6 @@ Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{$
 {{end}}
 </div>{{end}}
 </div>
-<script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
 <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/js-cookie/2.1.4/js.cookie.min.js" integrity="sha256-NjbogQqosWgor0UBdCURR5dzcvAgHnfUZMcZ8RCwkk8=" crossorigin="anonymous"></script>
 <script{{.Nonce}} src="/assets/raw-js/blame.js"></script>
 </body>

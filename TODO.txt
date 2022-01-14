@@ -1,0 +1,24 @@
+Fix links in blame to actually work
+X Add fancy header to blame 
+X Replace jQuery in blame.js with vanilla JS
+Fix links in diff to actually work
+X Add filename to header in blame view (e.g xvandish/dotfiles [filename])
+Add filename to header in diff view (e.g xvandish/dotfiles [filename])
+Fix up the styling a bit for the blame page
+Fix up the stlying a bit for the diff page
+Maybe have livegrep-github-reindex run the blame command, and write the output
+to file
+  Right now the server loads blame on startup, and it tries to hold it in memory
+  However, on huge repositorys (like nytimes-covid-data), this takes forever,
+  and is going to be massiiive. Loading it from file (or memcache) makes more
+  sense, as well as offloading the computation work to a seperate process, so it
+  can be done at the same time as the repos are updating/updated
+Customize the help to point to me on slack maybe?
+
+## for other branches
+Add memcache to the server
+Experiment (in kubernetes) with multiple pods of a CS backend, and an
+envoy(like) mesh load balancing between them
+Vim navigation in Git log/diff/blame?
+Add a view that lets you see all changes in a commit
+StatsD implemetation for reporting indexingTimes, as well as search timings
