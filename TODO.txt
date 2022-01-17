@@ -1,10 +1,10 @@
-Fix links in blame to actually work
+X Fix links in blame to actually work
 X Add fancy header to blame 
 X Replace jQuery in blame.js with vanilla JS
 Fix links in diff to actually work
 X Add filename to header in blame view (e.g xvandish/dotfiles [filename])
 Add filename to header in diff view (e.g xvandish/dotfiles [filename])
-Fix up the styling a bit for the blame page
+X Fix up the styling a bit for the blame page
 Fix up the stlying a bit for the diff page
 Maybe have livegrep-github-reindex run the blame command, and write the output
 to file

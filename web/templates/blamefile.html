@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-  {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/blame.css" .AssetHashes }}
   {{linkTag .Nonce "stylesheet" "/assets/css/header.css" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/helpmodal.css" .AssetHashes}}
   <title>Blame of file {{.path}} at {{.commitHash}}</title>
 </head>
 <body class="wide">
     <header class="header">
         <nav class="header-title">
             <a href="/view/{{$.repo.Name}}/" class="path-segment repo" title="Repository: {{$.repo.Name}}">{{.repo.Name}}</a>
-            <a href="/view/{{$.repo.Name}}/{{$.path}}" class="path-segment" title="View file: {{$.path}}@${{.commitHash}}">{{$.path}}@{{$.commitHash}}</a>
+            <a href="/view/{{$.repo.Name}}/{{$.path}}?commit={{$.commitHash}}" class="path-segment" title="View file: {{$.path}} at commit ${{.commitHash}}">{{$.path}}@{{$.commitHash}}</a>
         </nav>
         <ul class="header-actions without-selection">
             <li class="header-action">
             <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
             </li>,
             <li class="header-action">
-            <!-- <a id="external-link" data-action-name="" title="View at {{.externalDomain}}. Keyboard shortcut: v" href="#">view at {{.externalDomain}} [<span class='shortcut'>v</span>]</a> -->
+            <a id="external-link" data-action-name="" title="View at {{.externalDomain}}. Keyboard shortcut: v" href="#">view at {{.externalDomain}} [<span class='shortcut'>v</span>]</a>
             </li>,
             <li class="header-action">
             <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
@@ -37,19 +38,102 @@
             </li>
         </ul>                    
     </header>
-<div id="blamefile" class="blamefile whitespace-content"><div>                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping xvandish@ with comments</b>
+    <div class="blame-info-container">
+        <div class="links-container">
+            <a href="/view/{{$.repo.Name}}/{{$.path}}?commit={{$.commitHash}}"title="View file: {{$.path}} at commit {{.commitHash}}">{{$.path}}</a>
+            @
+            <a href="/diff?repoName={{.repo.Name}}&hash={{.commitHash}}"title="View commit {{.commitHash}}">{{$.commitHash}}</a>
+        </div>
+        {{with .blame}}
+            <div class="commit-info-container">
+                <p class="author">{{.Author}}</p>
+                <p class="date">{{.Date}}</p>
+                <p class="subject">{{.Subject}}</p>
+            </div>
+            <div class="commit-links-container">
+                <div class="commit-links-header">
+                    {{ if .PreviousCommit}}
+                        <span>«Previous Commit</span>
+                    {{ end }}
+                    {{ if .NextCommit }}
+                        <span>Next Commit»</span>
+                    {{ end }}
+                </div>
+                    {{ if .PreviousCommit}}
+                        <a href="/blame?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}&path={{$.path}}">{{.PreviousCommit}}</a>
+                    {{end}}   
+                    {{ if .NextCommit }}
+    <a href="/blame?repoName={{$.repo.Name}}&hash={{.NextCommit}}&path={{$.path}}">{{.NextCommit}}</a>
+                    {{end}}
+            </div>
+        {{end}}
+    </div>
+    <!-- <div class="experimental-table"> -->
+    <!-- {{with .blame}} -->
+    <!--   <table> -->
+    <!--     <tbody class="code-table"> -->
+    <!--         {{- range .Lines -}} -->
+    <!--             <tr> -->
+    <!--                 <td> -->
+    <!--                     {{if .PreviousCommit.Hash}} -->
+    <!--                     <a href="/blame?repoName={{$.repo.Name}}&hash={{.PreviousCommit.Hash}}&path={{$.path}}#{{.PreviousLineNumber}}">{{prettyCommit .PreviousCommit}}</a> -->
+    <!--                     {{else}} -->
+    <!--                     {{.PreviousCommit.Author}} -->
+    <!--                     {{end}} -->                   
+                        
+    <!--                 </td> -->
+    <!--                 <td> -->
+    <!--                     {{if .NextCommit.Hash}} -->
+    <!--                     <a href="/blame?repoName={{$.repo.Name}}&hash={{.NextCommit.Hash}}&path={{$.path}}#{{.NextLineNumber}}">{{prettyCommit .NextCommit}}</a> -->
+    <!--                     {{else}} -->
+    <!--                     {{.NextCommit.Author}} -->
+    <!--                     {{end}} -->
+    <!--                 </td> -->
+    <!--                 <td class="num"> -->
+    <!--                     {{if .OldLineNumber}} -->
+    <!--                     <a id="{{.OldLineNumber}}"> -->
+    <!--                         {{.OldLineNumber | printf "%4d"}} -->
+    <!--                     </a> -->
+    <!--                     {{end}} -->
+    <!--                 </td> -->
+    <!--                 <td class="code">{{.NewLineText}}</td> -->
+    <!--             </tr> -->
+    <!--         {{ end }} -->
+    <!--     </tbody> -->
+    <!--   </table> -->
+    <!--   {{end}} -->
+    <!-- </div> -->
+<div id="blamefile" class="blamefile whitespace-content"><div>                                        <b>THIS FEATURE IS IN ALPHA TESTING - ping @xvandish with comments</b>
 
-                                        commit <b><a href="/diff?repoName={{.repo.Name}}&hash={{.commitHash}}">{{.commitHash}}</a></b> file <b>{{.path}}</b> <a href="/view/{{.repo.Name}}/{{.path}}?commit={{.commitHash}}">View»</a>
 {{with .blame}}
-{{if .PreviousCommit}}«Previous commit{{else}}                {{end}}    {{if .NextCommit}}Next commit»{{else}}            {{end}}        Author: {{.Author}}
-{{if .PreviousCommit}}<a href="/blame?repoName={{$.repo.Name}}&hash={{.PreviousCommit}}&path={{$.path}}">{{.PreviousCommit}}</a>{{else}}                {{end}}    {{if .NextCommit}}<a href="/blame?repoName={{$.repo.Name}}&hash={{.NextCommit}}&path={{$.path}}">{{.NextCommit}}</a>{{else}}                {{end}}    Date: {{.Date}}
-                                        “{{.Subject}}”
 Line added by:      Line deleted by:</div><div class="rtl"><div id="content">{{$.content}}</div>&nbsp;&nbsp;<div id="hashes">
 {{- range .Lines -}}
-{{if .PreviousCommit.Hash}}<a href="{{.PreviousCommit.Hash}}.a{{.PreviousLineNumber}}">{{prettyCommit .PreviousCommit}}</a>{{else}}{{.PreviousCommit.Author}}{{end}} {{if .NextCommit.Hash}}<a href="{{.NextCommit.Hash}}.d{{.NextLineNumber}}">{{prettyCommit .NextCommit}}</a>{{else}}{{.NextCommit.Author}}{{end}}{{if .OldLineNumber}} <a id="{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}}
+{{if .PreviousCommit.Hash}}<a href="/blame?repoName={{$.repo.Name}}&hash={{.PreviousCommit.Hash}}&path={{$.path}}#{{.PreviousLineNumber}}">{{prettyCommit .PreviousCommit}}</a>{{else}}{{.PreviousCommit.Author}}{{end}} {{if .NextCommit.Hash}}<a href="/blame?repoName={{$.repo.Name}}&hash={{.NextCommit.Hash}}&path={{$.path}}#{{.NextLineNumber}}">{{prettyCommit .NextCommit}}</a>{{else}}{{.NextCommit.Author}}{{end}}{{if .OldLineNumber}} <a id="{{.OldLineNumber}}">{{.OldLineNumber | printf "%4d"}}</a>{{else}}     {{end}}
 {{end}}
 </div>{{end}}
 </div>
+</div>
+
+
+<section id="help-screen" class="help-screen u-modal-overlay hidden">
+    <div id="help-screen-card" class="help-screen-card u-modal-content">
+      <ul>
+        <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
+        <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {{.ExternalDomain}}</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">enter</kbd> to search for that text in a new tab</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">p</kbd> for the previous match for that text (on this page)</li>
+        <li>Select some text and press <kbd class="keyboard-shortcut">n</kbd> for the next match for that text (on this page)</li>
+      </ul>
+    </div>
+  </section>
+<script{{.Nonce}} src="/assets/raw-js/initialize-header.js"></script>
+<script>
+    var repoName = "{{$.repo.Name}}"
+    var path = "{{$.path}}"
+    var urlPattern = "{{$.repo.Metadata.url_pattern}}"
+    init(repoName, path, urlPattern)
+</script>
 <script{{.Nonce}} src="https://cdnjs.cloudflare.com/ajax/libs/js-cookie/2.1.4/js.cookie.min.js" integrity="sha256-NjbogQqosWgor0UBdCURR5dzcvAgHnfUZMcZ8RCwkk8=" crossorigin="anonymous"></script>
 <script{{.Nonce}} src="/assets/raw-js/blame.js"></script>
 </body>

@@ -15,6 +15,62 @@
   background-color: white;
 }
 
+.blame-info-container {
+  font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
+  font-size: 0.8rem;
+  padding: 10px;
+  margin-top: 5rem;
+}
+
+.blame-info-container .links-container {
+    margin-bottom: 1rem;
+}
+
+.blame-info-container .commit-info-container p {
+  margin: 0;
+}
+
+.blame-info-container .commit-info-container {
+    margin-bottom: 1rem;
+};
+
+
+.blame-info-container .commit-info-container .date {
+  /* font-size: 0 */
+  color: #57606a;
+}
+
+.blame-info-container .commit-info-container .subject {
+  color: #57606a;
+}
+
+.experimental-table .code-table .num {
+  width: 1%;
+  min-width: 50px;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 1rem;
+  line-height: 20px; 
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: top;
+  cursor: pointer;
+  user-select: none;
+}
+.experimental-table .code-table .code {
+  position: relative;
+  padding-right: 10px;
+  padding-left: 10px;
+  line-height: 20px;
+  vertical-align: top;
+
+  overflow: visible;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  word-wrap: normal;
+  white-space: pre;
+
+}
+
+
 /* Put the content div, that we deliver first, on the right; then
 position the blame div to its left. */
 .rtl {

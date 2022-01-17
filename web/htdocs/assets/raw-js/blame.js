@@ -21,7 +21,6 @@
 
   function highlightMatchingLines(event) {
     const { matchingLinks, charAfterDot } = getLinksWithSameCommitHash(event.target);
-      console.log({ matchingLinks });
     for (var idx = 0; idx < matchingLinks.length; idx++) {
       matchingLinks[idx].classList.add('highlight', charAfterDot);
     }
