@@ -56,6 +56,7 @@ type BlameLine struct {
 	OldLineNumber      int
 	NewLineNumber      int
 	Symbol             string
+	NewLineText        string
 }
 
 type LogLine struct {
@@ -234,16 +235,19 @@ func buildBlameData(
 		return err
 	}
 
+	textLines := splitLines(content)
+
 	for i, b := range result.BlameVector {
 		f := result.FutureVector[i]
 		lines = append(lines, BlameLine{
-			orBlank(b.Commit),
-			b.LineNumber,
-			orStillExists(f.Commit),
-			f.LineNumber,
-			i + 1,
-			0,
-			"",
+			PreviousCommit:     orBlank(b.Commit),
+			PreviousLineNumber: b.LineNumber,
+			NextCommit:         orStillExists(f.Commit),
+			NextLineNumber:     f.LineNumber,
+			OldLineNumber:      i + 1,
+			NewLineNumber:      0,
+			Symbol:             "",
+			NewLineText:        textLines[i],
 		})
 	}
 
@@ -474,13 +478,13 @@ func extendDiff(
 
 	both := func() {
 		lines = append(lines, BlameLine{
-			orBlank(blameVector[j].Commit),
-			blameVector[j].LineNumber,
-			orStillExists(futureVector[k].Commit),
-			futureVector[k].LineNumber,
-			j + 1,
-			k + 1,
-			"",
+			PreviousCommit:     orBlank(blameVector[j].Commit),
+			PreviousLineNumber: blameVector[j].LineNumber,
+			NextCommit:         orStillExists(futureVector[k].Commit),
+			NextLineNumber:     futureVector[k].LineNumber,
+			OldLineNumber:      j + 1,
+			NewLineNumber:      k + 1,
+			Symbol:             "",
 		})
 		content_lines = append(content_lines, old_lines[j])
 		j++
@@ -489,14 +493,14 @@ func extendDiff(
 	}
 	left := func() {
 		lines = append(lines, BlameLine{
-			orBlank(blameVector[j].Commit),
-			blameVector[j].LineNumber,
+			PreviousCommit:     orBlank(blameVector[j].Commit),
+			PreviousLineNumber: blameVector[j].LineNumber,
 			//"  (this commit) ",
-			&blankCommit,
-			0,
-			j + 1,
-			0,
-			"-",
+			NextCommit:     &blankCommit,
+			NextLineNumber: 0,
+			OldLineNumber:  j + 1,
+			NewLineNumber:  0,
+			Symbol:         "-",
 		})
 		content_lines = append(content_lines, old_lines[j])
 		j++
@@ -504,13 +508,13 @@ func extendDiff(
 	right := func() {
 		lines = append(lines, BlameLine{
 			//"  (this commit) ",
-			&blankCommit,
-			0,
-			orStillExists(futureVector[k].Commit),
-			futureVector[k].LineNumber,
-			0,
-			k + 1,
-			"+",
+			PreviousCommit:     &blankCommit,
+			PreviousLineNumber: 0,
+			NextCommit:         orStillExists(futureVector[k].Commit),
+			NextLineNumber:     futureVector[k].LineNumber,
+			OldLineNumber:      0,
+			NewLineNumber:      k + 1,
+			Symbol:             "+",
 		})
 		content_lines = append(content_lines, new_lines[k])
 		k++
@@ -685,24 +689,24 @@ func col(s string) string {
 var (
 	blankCommit = blameworthy.Commit{"", col(""), 0, nil}
 	blankLine   = BlameLine{
-		&blankCommit,
-		0,
-		&blankCommit,
-		0,
-		0,
-		0,
-		"",
+		PreviousCommit:     &blankCommit,
+		PreviousLineNumber: 0,
+		NextCommit:         &blankCommit,
+		NextLineNumber:     0,
+		OldLineNumber:      0,
+		NewLineNumber:      0,
+		Symbol:             "",
 	}
 	stillExistsCommit = blameworthy.Commit{"", col("(still exists)"), 0, nil}
 	ellipsisCommit    = blameworthy.Commit{"", col("    ."), 0, nil}
 	ellipsisLine      = BlameLine{
-		&ellipsisCommit,
-		0,
-		&ellipsisCommit,
-		0,
-		0,
-		0,
-		"",
+		PreviousCommit:     &ellipsisCommit,
+		PreviousLineNumber: 0,
+		NextCommit:         &ellipsisCommit,
+		NextLineNumber:     0,
+		OldLineNumber:      0,
+		NewLineNumber:      0,
+		Symbol:             "",
 	}
 )
 
