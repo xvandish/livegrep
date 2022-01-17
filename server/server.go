@@ -312,12 +312,14 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 		http.Error(w, err.Error(), 404)
 		return
 	}
+	externalDomain := getExternalDomain(repo.Metadata["url_pattern"])
 	s.renderPageCasual(ctx, w, r, "blamefile.html", map[string]interface{}{
-		"repo":       repo,
-		"path":       path,
-		"commitHash": hash,
-		"blame":      data,
-		"content":    data.Content,
+		"repo":           repo,
+		"path":           path,
+		"commitHash":     hash,
+		"blame":          data,
+		"content":        data.Content,
+		"externalDomain": externalDomain,
 	})
 }
 
