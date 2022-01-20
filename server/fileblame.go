@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/livegrep/livegrep/blameworthy"
@@ -115,36 +116,60 @@ func initBlame(cfg *config.Config) error {
 	log.Printf("Loading blame...")
 	start := time.Now()
 
+	concurrencyLimit := 2000
+	semaphores := make(chan bool, concurrencyLimit)
+	var wg sync.WaitGroup
+	var ops uint64
+	atomic.AddUint64(&ops, uint64(len(cfg.IndexConfig.Repositories)))
+
 	for _, r := range cfg.IndexConfig.Repositories {
-		path, ok := r.Metadata["blame"]
-		if !ok {
-			continue
-		}
-		var gitLogOutput io.ReadCloser
-		if path == "git" {
-			var err error
-			log.Print("Running git log on: ", r.Path)
-			gitLogOutput, err = blameworthy.RunGitLog(r.Path, "HEAD")
+		wg.Add(1)
+
+		go func(repoCfg config.RepoConfig, s chan bool, w *sync.WaitGroup) {
+			waitForSem := time.Now()
+			s <- true // aquire semaphore
+			defer w.Done()
+			timeWaiting := time.Since(waitForSem)
+
+			funcStart := time.Now()
+			path, ok := repoCfg.Metadata["blame"]
+			if !ok {
+				return
+			}
+			var gitLogOutput io.ReadCloser
+			if path == "git" {
+				var err error
+				log.Print("Running git log on: ", repoCfg.Path)
+				gitLogOutput, err = blameworthy.RunGitLog(repoCfg.Path, "HEAD")
+				if err != nil {
+					log.Print("Skipping blame: ", err)
+					return
+				}
+			} else {
+				var err error
+				log.Print("Reading git log file: ", path)
+				gitLogOutput, err = os.Open(path)
+				if err != nil {
+					log.Print("Skipping blame file: ", err)
+					return
+				}
+			}
+			gitHistory, err := blameworthy.ParseGitLog(gitLogOutput)
 			if err != nil {
 				log.Print("Skipping blame: ", err)
-				continue
+				return
 			}
-		} else {
-			var err error
-			log.Print("Reading git log file: ", path)
-			gitLogOutput, err = os.Open(path)
-			if err != nil {
-				log.Print("Skipping blame file: ", err)
-				continue
-			}
-		}
-		gitHistory, err := blameworthy.ParseGitLog(gitLogOutput)
-		if err != nil {
-			log.Print("Skipping blame: ", err)
-			continue
-		}
-		setHistory(r.Name, gitHistory)
+			setHistory(repoCfg.Name, gitHistory)
+			atomic.AddUint64(&ops, ^uint64(0)) // decrement by one
+			// percentRemaining := (len(cfg.IndexConfig.Repositories) - int(ops)) / len(cfg.IndexConfig.Repositories)
+			fmt.Printf("Finished git log on: %s. Waited %s for semaphore. Took %s total. %d remaining\n", repoCfg.Path, timeWaiting.String(), time.Since(funcStart).String(), int(ops))
+			<-s // release sempahore
+		}(r, semaphores, &wg)
 	}
+
+	wg.Wait()
+	close(semaphores)
+
 	elapsed := time.Since(start)
 	log.Printf("Blame loaded in %s", elapsed)
 
