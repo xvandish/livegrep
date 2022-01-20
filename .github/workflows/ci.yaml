@@ -51,7 +51,7 @@ jobs:
           else
             BAZEL_OPTIMIZATION="--remote_cache=https://storage.googleapis.com/livegrep-remote-cache --remote_upload_local_results=false"
           fi
-          bazel test --test_arg=-test.v //...
+          bazel test $BAZEL_OPTIMIZATION --test_arg=-test.v //...
           bazel build $BAZEL_OPTIMIZATION //...  
           echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
       - name: upload build output
@@ -80,14 +80,21 @@ jobs:
           docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:$VERSION
 
           # we add a "latest" tag if necessary
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "Tagging images as latest"
+          # if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "Tagging images as latest to test"
             docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:latest
             docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:latest
             docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:latest
-          fi
+          # fi
           
           docker push $NGINX_IMAGE_ID:$VERSION
           docker push $BASE_IMAGE_ID:$VERSION
           docker push $INDEXER_IMAGE_ID:$VERSION
+
+          # if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "Pushing latest images to test"
+            docker push $NGINX_IMAGE_ID:latest
+            docker push $BASE_IMAGE_ID:latest
+            docker push $INDEXER_IMAGE_ID:latest
+          # fi
           
