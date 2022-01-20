@@ -47,7 +47,6 @@ jobs:
         run: |
           printf '%s\n' "${GCP_CREDS}" >service_account_creds.json
             BAZEL_OPTIMIZATION="--remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache --remote_upload_local_results=true --google_credentials=service_account_creds.json"
-          fi
           bazel build $BAZEL_OPTIMIZATION //...  
           bazel test $BAZEL_OPTIMIZATION --test_arg=-test.v //...
           echo "build_output_file_name=$(./package.sh)" >> $GITHUB_ENV
