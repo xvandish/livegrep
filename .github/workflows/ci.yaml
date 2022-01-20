@@ -54,10 +54,9 @@ jobs:
       - name: Build images
         run: |
           # the first image is tagged because subsequent images build from it
-          VERSION=$(git rev-parse HEAD | head -c10)
-          docker build -t $BASE_IMAGE_NAME:$VERSION --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
-          docker build -t $INDEXER_IMAGE_NAME:$VERSION . --file docker/indexer/Dockerfile
-          docker build -t $NGINX_IMAGE_NAME:$VERSION . --file docker/nginx/Dockerfile
+          docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
+          docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
+          docker build -t $NGINX_IMAGE_NAME . --file docker/nginx/Dockerfile
       - name: Push images
         run: |
           echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -68,8 +67,10 @@ jobs:
 
           # same version as made by package.sh
           VERSION=$(git rev-parse HEAD | head -c10)
+          docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:$VERSION
+          docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:$VERSION
+          docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:$VERSION
 
-          # images are tagged with a specific version during the build, here
           # we add a "latest" tag if necessary
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "Tagging images as latest"
