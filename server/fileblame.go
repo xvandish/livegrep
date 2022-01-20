@@ -123,6 +123,11 @@ func initBlame(cfg *config.Config) error {
 	atomic.AddUint64(&ops, uint64(len(cfg.IndexConfig.Repositories)))
 
 	for _, r := range cfg.IndexConfig.Repositories {
+		_, ok := r.Metadata["blame"]
+		if !ok {
+			continue
+		}
+
 		wg.Add(1)
 
 		go func(repoCfg config.RepoConfig, s chan bool, w *sync.WaitGroup) {
@@ -131,11 +136,9 @@ func initBlame(cfg *config.Config) error {
 			defer w.Done()
 			timeWaiting := time.Since(waitForSem)
 
+			path, _ := repoCfg.Metadata["blame"]
+
 			funcStart := time.Now()
-			path, ok := repoCfg.Metadata["blame"]
-			if !ok {
-				return
-			}
 			var gitLogOutput io.ReadCloser
 			if path == "git" {
 				var err error
