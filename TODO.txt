@@ -14,6 +14,12 @@ to file
   sense, as well as offloading the computation work to a seperate process, so it
   can be done at the same time as the repos are updating/updated
 Customize the help to point to me on slack maybe?
+REDO THE WHOLE THING WITH GO-GIT. 
+  The current implementation takes ~14mins to init event with a concurrency of
+  ~2000repos, because a select few repos take up almost the entire time
+  Test new implementation on the slowest repos 
+  load repo information (blame,log,etc) only once someone does a fileview within
+  that repo (have to deal with the case when the repo info is being loaded....)
 
 ## for other branches
 Add memcache to the server
