@@ -142,6 +142,7 @@ func main() {
 	}
 	if *flagNoIndex {
 		log.Printf("Skipping indexing after writing config")
+		log.Printf("dumb change to trigger CI")
 		return
 	}
 
