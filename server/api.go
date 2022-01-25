@@ -1,11 +1,13 @@
 package server
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,9 +24,29 @@ import (
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
-func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj interface{}) {
+type ObjWithStatus struct {
+	Obj    interface{} `json:"obj"`
+	Status int         `json:"status"`
+}
+
+// I can have this function take a cache
+func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj interface{}, cacheKey string) {
+	// if cacheKey is present, we want to try to write to cache, so don't directly encode to w
+	objToCache := ObjWithStatus{Obj: obj, Status: status}
+
+	jData, err := json.Marshal(objToCache)
+
+	if err != nil {
+		log.Printf(ctx, "marshaling cache obj, data=%s err=%q",
+			asJSON{jData},
+			err.Error())
+		return
+	}
+
+	// I should store the status with the redis key
+
 	w.WriteHeader(status)
-	enc := json.NewEncoder(w)
+	enc := json.NewEncoder(w) // a double encode that I don't think we can get around
 	if err := enc.Encode(obj); err != nil {
 		log.Printf(ctx, "writing http response, data=%s err=%q",
 			asJSON{obj},
@@ -196,6 +218,45 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		for _, backend = range s.bk {
 			break
 		}
+	}
+
+	// it makes the most sense to cache at the very top level
+	// but, if I cache at the top level I can have several different
+	// result types
+	// a) error "bad_query"
+	// b) error talking to codesearch backend - should retry?
+	// c) *ApiReplySearch
+	// the cached result should have a shape of *ApiReplySearch
+
+	cacheParts := []string{backend.I.Name, strconv.Itoa(backend.I.IndexTime), r.URL.String()}
+	cacheKey := strings.Join(cacheParts, "-")
+	h := sha1.New()
+	h.Write([]byte(cacheKey))
+	cacheKey = string(h.Sum(nil))
+
+	// check the cache to see if this is available
+	// how should we store the cache key since it's possible it has multiple shapes
+
+	// if not, then -
+	// cache is always write safe if it's a bad query error
+	// const isCacheWriteSafe = params.indexIdentity &&
+	// 	data.indexName === params.indexIdentity.name &&
+	// 	parseInt(data.indexTime, 10) === params.indexIdentity.timestamp;
+
+	// p, err := c.Get(key)
+	// if err != nil {
+	// return err
+	// }
+	var cacheObj ObjWithStatus
+	err := json.Unmarshal(p, &cacheObj)
+
+	if err != nil {
+		log.Printf("error reading cache entry. Key=%s err=%s", cacheKey, err)
+	} else {
+		log.Printf("cache hit on key: %s", cacheKey)
+		w.WriteHeader(cacheObj.Status)
+		w.Write(cacheObj.Obj)
+		return
 	}
 
 	q, is_regex, err := extractQuery(ctx, r)
