@@ -56,6 +56,11 @@ func main() {
 			WriteKey: os.Getenv("HONEYCOMB_WRITE_KEY"),
 			Dataset:  os.Getenv("HONEYCOMB_DATASET"),
 		},
+		GoogleIAPConfig: config.GoogleIAPConfig{
+			ProjectNumber:    os.Getenv("GOOGLE_IAP_PROJECT_NUMBER"),
+			BackendServiceID: os.Getenv("GOOGLE_IAP_BACKEND_SERVICE_ID"),
+			ProjectID:        os.Getenv("GOOGLE_IAP_PROJECT_ID"),
+		},
 	}
 
 	if *indexConfig != "" {

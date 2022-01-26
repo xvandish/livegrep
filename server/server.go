@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"google.golang.org/api/idtoken"
 
 	"github.com/bmizerany/pat"
 	libhoney "github.com/honeycombio/libhoney-go"
@@ -190,6 +191,44 @@ func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "ok\n")
 }
 
+// GKE load balancers refuse to serve a page if the backing service livenessProbe fails
+// So, if using ServeHealthcheck there's a chance the deployment will serve a 404
+// event if the frontend/server is healthy, but the codesearch instance isn't healthy
+// So use the following function if you just need a 200 when the server is running
+func (s *server) ServeHealthZ(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.Background()
+
+		// GKE and GCE health checks don't use JWT headers, so skip validation
+		if r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		iapJWT := r.Header.Get("x-goog-iap-jwt-assertion")
+		var aud string
+		if cfg.BackendServiceID != "" { // GKE or GCE
+			aud = fmt.Sprintf("/projects/%s/global/backendServices/%s", cfg.ProjectNumber, cfg.BackendServiceID)
+		} else { // GAE
+			aud = fmt.Sprintf("/projects/%s/apps/%s", cfg.ProjectNumber, cfg.ProjectID)
+		}
+
+		_, err := idtoken.Validate(ctx, iapJWT, aud)
+
+		if err != nil {
+			fmt.Errorf("idtoken.Validate: %v", err)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 type stats struct {
 	IndexAge int64 `json:"index_age"`
 }
@@ -299,6 +338,25 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 	return handler(f)
 }
 
+func shouldEnableGoogleIAP(cfg config.GoogleIAPConfig) bool {
+	ctx := context.Background()
+	if cfg.ProjectNumber == "" {
+		return false
+	}
+
+	if cfg.BackendServiceID == "" && cfg.ProjectID == "" {
+		log.Printf(ctx, "GoogleIAPConfig: ProjectNumber provided but no BackendServiceID or ProjectID found. Not enabling.")
+		return false
+	}
+
+	if cfg.BackendServiceID != "" && cfg.ProjectID != "" {
+		log.Printf(ctx, "GoogleIAPConfig: BackendServiceID and ProjectID are mutually exclusive. Not enabling.")
+		return false
+	}
+
+	return true
+}
+
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
 		config: cfg,
@@ -338,6 +396,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.serveFilePathRegex = serveFilePathRegex
 
 	m := pat.New()
+	m.Add("GET", "/healthz", http.HandlerFunc(srv.ServeHealthZ))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
@@ -358,8 +417,17 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
-	mux.Handle("/", h)
+	fileServer := http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs")))
+
+	// Only wrap with middleware if auth is going to be used, avoids unecessary checks on each request
+	if shouldEnableGoogleIAP(cfg.GoogleIAPConfig) {
+		log.Printf(context.Background(), "Enabling IAPAuth Middleware")
+		mux.Handle("/assets/", iapAuth(fileServer, cfg.GoogleIAPConfig))
+		mux.Handle("/", iapAuth(h, cfg.GoogleIAPConfig))
+	} else {
+		mux.Handle("/assets/", fileServer)
+		mux.Handle("/", h)
+	}
 
 	srv.inner = mux
 
