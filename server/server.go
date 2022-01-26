@@ -17,6 +17,8 @@ import (
 	"github.com/bmizerany/pat"
 	libhoney "github.com/honeycombio/libhoney-go"
 
+	"google.golang.org/api/idtoken"
+
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
@@ -190,6 +192,23 @@ func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "ok\n")
 }
 
+// GKE load balancers refuse to serve a page if the backing service livenessProbe fails
+// So, if using ServeHealthcheck there's a chance the deployment will serve a 404
+// event if the frontend/server is healthy, but the codesearch instance isn't healthy
+// So use the following function if you just need a 200 when the server is running
+func (s *server) ServeHealthZ(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+
+	ctx := context.Background()
+	payload, err := idtoken.Validate(ctx, "string", "string")
+
+	if err != nil {
+		log.Printf(ctx, "whoops")
+	}
+
+	log.Printf(ctx, "%v\n", payload)
+}
+
 type stats struct {
 	IndexAge int64 `json:"index_age"`
 }
@@ -338,6 +357,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.serveFilePathRegex = serveFilePathRegex
 
 	m := pat.New()
+	m.Add("GET", "/healthz", http.HandlerFunc(srv.ServeHealthZ))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
