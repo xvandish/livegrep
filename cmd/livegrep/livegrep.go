@@ -59,6 +59,7 @@ func main() {
 		GoogleIAPConfig: config.GoogleIAPConfig{
 			ProjectNumber:    os.Getenv("GOOGLE_IAP_PROJECT_NUMBER"),
 			BackendServiceID: os.Getenv("GOOGLE_IAP_BACKEND_SERVICE_ID"),
+			ProjectID:        os.Getenv("GOOGLE_IAP_PROJECT_ID"),
 		},
 	}
 

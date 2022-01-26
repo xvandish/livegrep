@@ -15,8 +15,13 @@ type Honeycomb struct {
 }
 
 type GoogleIAPConfig struct {
-	ProjectNumber    string `json:"project_number"`
+	ProjectNumber string `json:"project_number"`
+
+	// Use BackendServiceID for GKE and GCE
 	BackendServiceID string `json:"backend_service_id"`
+
+	// Use ProjectID for GCE
+	ProjectID string `json:"project_id"`
 }
 
 type Config struct {

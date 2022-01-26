@@ -210,7 +210,13 @@ func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
 		}
 
 		iapJWT := r.Header.Get("x-goog-iap-jwt-assertion")
-		aud := fmt.Sprintf("/projects/%s/global/backendServices/%s", cfg.ProjectNumber, cfg.BackendServiceID)
+		var aud string
+		if cfg.BackendServiceID != "" { // GKE or GCE
+			aud = fmt.Sprintf("/projects/%s/global/backendServices/%s", cfg.ProjectNumber, cfg.BackendServiceID)
+		} else { // GAE
+			aud = fmt.Sprintf("/projects/%s/apps/%s", cfg.ProjectNumber, cfg.ProjectID)
+		}
+
 		_, err := idtoken.Validate(ctx, iapJWT, aud)
 
 		if err != nil {
@@ -332,6 +338,25 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 	return handler(f)
 }
 
+func shouldEnableGoogleIAP(cfg config.GoogleIAPConfig) bool {
+	ctx := context.Background()
+	if cfg.ProjectNumber == "" {
+		return false
+	}
+
+	if cfg.BackendServiceID == "" && cfg.ProjectID == "" {
+		log.Printf(ctx, "GoogleIAPConfig: ProjectNumber provided but no BackendServiceID or ProjectID found. Not enabling.")
+		return false
+	}
+
+	if cfg.BackendServiceID != "" && cfg.ProjectID != "" {
+		log.Printf(ctx, "GoogleIAPConfig: BackendServiceID and ProjectID are mutually exclusive. Not enabling.")
+		return false
+	}
+
+	return true
+}
+
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
 		config: cfg,
@@ -392,15 +417,15 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	mux := http.NewServeMux()
+	fileServer := http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs")))
 
 	// Only wrap with middleware if auth is going to be used, avoids unecessary checks on each request
-	if cfg.GoogleIAPConfig.ProjectNumber != "" && cfg.GoogleIAPConfig.BackendServiceID != "" {
+	if shouldEnableGoogleIAP(cfg.GoogleIAPConfig) {
 		log.Printf(context.Background(), "Enabling IAPAuth Middleware")
-		mux.Handle("/assets/",
-			iapAuth(http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))), cfg.GoogleIAPConfig))
+		mux.Handle("/assets/", iapAuth(fileServer, cfg.GoogleIAPConfig))
 		mux.Handle("/", iapAuth(h, cfg.GoogleIAPConfig))
 	} else {
-		mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
+		mux.Handle("/assets/", fileServer)
 		mux.Handle("/", h)
 	}
 
