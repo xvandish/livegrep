@@ -13,11 +13,10 @@ import (
 	"time"
 
 	"golang.org/x/net/context"
+	"google.golang.org/api/idtoken"
 
 	"github.com/bmizerany/pat"
 	libhoney "github.com/honeycombio/libhoney-go"
-
-	"google.golang.org/api/idtoken"
 
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -198,15 +197,30 @@ func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 // So use the following function if you just need a 200 when the server is running
 func (s *server) ServeHealthZ(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+}
 
-	ctx := context.Background()
-	payload, err := idtoken.Validate(ctx, "string", "string")
+func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.Background()
 
-	if err != nil {
-		log.Printf(ctx, "whoops")
-	}
+		// GKE and GCE health checks don't use JWT headers, so skip validation
+		if r.URL.Path == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
 
-	log.Printf(ctx, "%v\n", payload)
+		iapJWT := r.Header.Get("x-goog-iap-jwt-assertion")
+		aud := fmt.Sprintf("/projects/%s/global/backendServices/%s", cfg.ProjectNumber, cfg.BackendServiceID)
+		_, err := idtoken.Validate(ctx, iapJWT, aud)
+
+		if err != nil {
+			fmt.Errorf("idtoken.Validate: %v", err)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 type stats struct {
@@ -378,8 +392,17 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
-	mux.Handle("/", h)
+
+	// Only wrap with middleware if auth is going to be used, avoids unecessary checks on each request
+	if cfg.GoogleIAPConfig.ProjectNumber != "" && cfg.GoogleIAPConfig.BackendServiceID != "" {
+		log.Printf(context.Background(), "Enabling IAPAuth Middleware")
+		mux.Handle("/assets/",
+			iapAuth(http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))), cfg.GoogleIAPConfig))
+		mux.Handle("/", iapAuth(h, cfg.GoogleIAPConfig))
+	} else {
+		mux.Handle("/assets/", http.FileServer(http.Dir(path.Join(cfg.DocRoot, "htdocs"))))
+		mux.Handle("/", h)
+	}
 
 	srv.inner = mux
 

@@ -14,6 +14,11 @@ type Honeycomb struct {
 	Dataset  string `json:"dataset"`
 }
 
+type GoogleIAPConfig struct {
+	ProjectNumber    string `json:"project_number"`
+	BackendServiceID string `json:"backend_service_id"`
+}
+
 type Config struct {
 	// Location of the directory containing templates and static
 	// assets. This should point at the "web" directory of the
@@ -53,6 +58,10 @@ type Config struct {
 
 	// honeycomb API write key
 	Honeycomb Honeycomb `json:"honeycomb"`
+
+	// If configured, requests will have their headers
+	// validated to make sure they are coming from IAP
+	GoogleIAPConfig GoogleIAPConfig `json:"google_iap_config"`
 
 	DefaultMaxMatches int32 `json:"default_max_matches"`
 
