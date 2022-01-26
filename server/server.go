@@ -220,7 +220,8 @@ func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
 		_, err := idtoken.Validate(ctx, iapJWT, aud)
 
 		if err != nil {
-			fmt.Errorf("idtoken.Validate: %v", err)
+			log.Printf(ctx, "UNAUTHORIZED http request: remote=%q method=%q url=%q err:%v",
+				r.RemoteAddr, r.Method, r.URL, err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
