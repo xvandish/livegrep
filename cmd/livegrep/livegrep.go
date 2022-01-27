@@ -61,6 +61,13 @@ func main() {
 			BackendServiceID: os.Getenv("GOOGLE_IAP_BACKEND_SERVICE_ID"),
 			ProjectID:        os.Getenv("GOOGLE_IAP_PROJECT_ID"),
 		},
+		RedisCacheConfig: config.RedisCacheConfig{
+			Network:   os.Getenv("REDIS_NETWORK"),
+			Addr:      os.Getenv("REDIS_ADDR"),
+			Password:  os.Getenv("REDIS_PASSWORD"),
+			KeyPrefix: os.Getenv("REDIS_KEY_PREFIX"),
+			KeyTTL:    os.Getenv("REDIS_KEY_TTL"),
+		},
 	}
 
 	if *indexConfig != "" {

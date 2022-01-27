@@ -50,38 +50,58 @@ load(
 
 boost_deps()
 
+# http_archive(
+#     name = "io_bazel_rules_go",
+#     sha256 = "52d0a57ea12139d727883c2fef03597970b89f2cc2a05722c42d1d7d41ec065b",
+#     urls = [
+#         "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
+#         "https://github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
+#     ],
+# )
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "52d0a57ea12139d727883c2fef03597970b89f2cc2a05722c42d1d7d41ec065b",
+    sha256 = "8e968b5fcea1d2d64071872b12737bbb5514524ee5f0a4f54f5920266c261acb",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.24.13/rules_go-v0.24.13.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.28.0/rules_go-v0.28.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.28.0/rules_go-v0.28.0.zip",
     ],
 )
 
-git_repository(
+# git_repository(
+#     name = "bazel_gazelle",
+#     commit = "e443c54b396a236e0d3823f46c6a931e1c9939f2",  # 0.17.0
+#     remote = "https://github.com/bazelbuild/bazel-gazelle.git",
+#     shallow_since = "1551292640 -0800",
+# )
+http_archive(
     name = "bazel_gazelle",
-    commit = "e443c54b396a236e0d3823f46c6a931e1c9939f2",  # 0.17.0
-    remote = "https://github.com/bazelbuild/bazel-gazelle.git",
-    shallow_since = "1551292640 -0800",
+    sha256 = "62ca106be173579c0a167deb23358fdfe71ffa1e4cfdddf5582af26520f1c66f",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
+    ],
 )
 
+
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
-go_rules_dependencies()
-
-go_register_toolchains()
-
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
-gazelle_dependencies()
 
 load(
     "//tools/build_defs:go_externals.bzl",
     "go_externals",
+    "test_me",
 )
 
 go_externals()
+test_me()
+
+
+go_rules_dependencies()
+
+go_register_toolchains("1.17.1")
+
+gazelle_dependencies()
+
 
 http_archive(
     name = "com_github_libgit2",

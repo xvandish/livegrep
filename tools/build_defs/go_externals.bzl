@@ -62,11 +62,6 @@ _externals = [
         importpath = "google.golang.org/grpc",
     ),
     struct(
-        name = "org_golang_google_api",
-        importpath = "google.golang.org/api",
-        commit = "32bf29c2e17105d5f285adac4531846c57847f11", # v0.50.0
-    ),
-    struct(
         name = "com_google_cloud_go",
         importpath = "cloud.google.com/go",
         commit = "2a43d6d30d7041eb6ed0b305c81dc32c8c42ebc1", # v0.87.0
@@ -81,6 +76,12 @@ _externals = [
         importpath = "github.com/golang/groupcache",
         commit = "41bb18bfe9da5321badc438f91158cd790a33aa3",
     ),
+    # struct(
+    #     name = "com_github_go_redis_redis_v8",
+    #     importpath = "github.com/go-redis/redis/v8",
+    #     commit = "fa515240d4a060c0fe72e7c41f1416627ca3e29f",
+    # ),
+    # _github("go-redis/redis/v8", "fa515240d4a060c0fe72e7c41f1416627ca3e29f"),
 ]
 
 def go_externals():
@@ -99,3 +100,34 @@ def go_externals():
                 commit = ext.commit,
                 importpath = ext.importpath,
             )
+
+def test_me():
+    go_repository(
+        name = "org_golang_google_api",
+        importpath = "google.golang.org/api",
+        commit = "32bf29c2e17105d5f285adac4531846c57847f11", # v0.50.0
+    )
+    go_repository(
+        name = "com_github_go_redis_redis_v8",
+        importpath = "github.com/go-redis/redis/v8",
+        sum = "h1:GCjoYp8c+yQTJfc0n69iwSiHjvuAdruxl7elnZCxgt8=",
+        version = "v8.11.3",
+    )
+    go_repository(
+        name = "com_github_cespare_xxhash_v2",
+        importpath = "github.com/cespare/xxhash/v2",
+        sum = "h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=",
+        version = "v2.1.2",
+    )
+    go_repository(
+        name = "com_github_dgryski_go_rendezvous",
+        importpath = "github.com/dgryski/go-rendezvous",
+        sum = "h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=",
+        version = "v0.0.0-20200823014737-9f7001d12a5f",
+    )
+    go_repository(
+        name = "com_google_cloud_go_compute",
+        importpath = "cloud.google.com/go/compute",
+        sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
+        version = "v0.1.0",
+    )

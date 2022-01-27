@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/go-redis/redis/v8"
 	"golang.org/x/net/context"
 
 	"github.com/livegrep/livegrep/server/api"
@@ -24,48 +24,112 @@ import (
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
-type ObjWithStatus struct {
-	Obj    interface{} `json:"obj"`
-	Status int         `json:"status"`
+type CachedResponse struct {
+	ResBytes []byte `json:"res_bytes"`
+	Status   int    `json:"status"`
+}
+
+func isRedisCacheEnabled(s *server) bool {
+	return s.redis != nil
+}
+
+func getCacheKeyForSearch(s *server, bk *Backend, url string) string {
+	if !isRedisCacheEnabled(s) {
+		return ""
+	}
+
+	cacheParts := []string{s.config.RedisCacheConfig.KeyPrefix, bk.I.Name, bk.I.IndexTime.String(), url}
+	cacheKey := strings.Join(cacheParts, "-")
+	h := sha1.New()
+	h.Write([]byte(cacheKey))
+	return string(h.Sum(nil))
+}
+
+func checkCacheForSearchResult(ctx context.Context, s *server, cacheKey string) (result *CachedResponse) {
+	if !isRedisCacheEnabled(s) {
+		return nil
+	}
+
+	val, redisErr := s.redis.Get(ctx, cacheKey).Result()
+
+	if redisErr == redis.Nil {
+		log.Printf(ctx, "cache miss")
+	} else if redisErr != nil {
+		log.Printf(ctx, "error reading cache entry. Key=%s err=%s", cacheKey, redisErr)
+	} else {
+		log.Printf(ctx, "cache hit")
+		var cacheObj CachedResponse
+		err := json.Unmarshal([]byte(val), &cacheObj)
+
+		if err != nil {
+			log.Printf(ctx, "error unmarshaling cache response: %v\n", err)
+		}
+
+		return &cacheObj
+	}
+
+	return nil
+}
+
+func writeToCache(ctx context.Context, s *server, status int, cacheKey string, resBytes []byte) {
+	if cacheKey != "" && s.redis != nil {
+		objToCache := CachedResponse{ResBytes: resBytes, Status: status}
+		jData, err := json.Marshal(objToCache)
+
+		if err != nil {
+			log.Printf(ctx, "marshaling cache obj, data=%s err=%q",
+				asJSON{jData},
+				err.Error())
+		} else {
+			log.Printf(ctx, "keyTTL: %v\n", s.config.RedisCacheConfig)
+			redisErr := s.redis.Set(ctx, cacheKey, jData, s.config.RedisCacheConfig.KeyTTLD).Err()
+			if redisErr != nil {
+				log.Printf(ctx, "failed to write to redis cache: %v", redisErr)
+			} else {
+				log.Printf(ctx, "cache write succeeded")
+			}
+		}
+	}
+
 }
 
 // I can have this function take a cache
-func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj interface{}, cacheKey string) {
+func replyJSON(ctx context.Context, w http.ResponseWriter, status int, obj interface{}, cacheKey string, s *server) {
 	// if cacheKey is present, we want to try to write to cache, so don't directly encode to w
-	objToCache := ObjWithStatus{Obj: obj, Status: status}
-
-	jData, err := json.Marshal(objToCache)
+	objBytes, err := json.Marshal(obj)
 
 	if err != nil {
-		log.Printf(ctx, "marshaling cache obj, data=%s err=%q",
-			asJSON{jData},
+		log.Printf(ctx, "marshaling http response, data=%s err=%q",
+			asJSON{obj},
 			err.Error())
 		return
 	}
 
-	// I should store the status with the redis key
+	writeToCache(ctx, s, status, cacheKey, objBytes)
 
 	w.WriteHeader(status)
-	enc := json.NewEncoder(w) // a double encode that I don't think we can get around
-	if err := enc.Encode(obj); err != nil {
+	w.Header().Set("Content-Type", "application/json") // otherwise Go looks at first 512 bytes of w.Write contents
+	_, err = w.Write(objBytes)
+
+	if err != nil {
 		log.Printf(ctx, "writing http response, data=%s err=%q",
 			asJSON{obj},
 			err.Error())
 	}
 }
 
-func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
+func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string, cacheKey string, s *server) {
 	log.Printf(ctx, "error status=%d code=%s message=%q",
 		status, code, message)
-	replyJSON(ctx, w, status, &api.ReplyError{Err: api.InnerError{Code: code, Message: message}})
+	replyJSON(ctx, w, status, &api.ReplyError{Err: api.InnerError{Code: code, Message: message}}, cacheKey, s)
 }
 
-func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
+func writeQueryError(ctx context.Context, w http.ResponseWriter, err error, cacheKey string, s *server) {
 	if code := grpc.Code(err); code == codes.InvalidArgument {
-		writeError(ctx, w, 400, "query", grpc.ErrorDesc(err))
+		writeError(ctx, w, 400, "query", grpc.ErrorDesc(err), cacheKey, s)
 	} else {
 		writeError(ctx, w, 500, "internal_error",
-			fmt.Sprintf("Talking to backend: %s", err.Error()))
+			fmt.Sprintf("Talking to backend: %s", err.Error()), "", s)
 	}
 }
 
@@ -211,7 +275,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		backend = s.bk[backendName]
 		if backend == nil {
 			writeError(ctx, w, 400, "bad_backend",
-				fmt.Sprintf("Unknown backend: %s", backendName))
+				fmt.Sprintf("Unknown backend: %s", backendName), "", s)
 			return
 		}
 	} else {
@@ -220,49 +284,17 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	// it makes the most sense to cache at the very top level
-	// but, if I cache at the top level I can have several different
-	// result types
-	// a) error "bad_query"
-	// b) error talking to codesearch backend - should retry?
-	// c) *ApiReplySearch
-	// the cached result should have a shape of *ApiReplySearch
-
-	cacheParts := []string{backend.I.Name, strconv.Itoa(backend.I.IndexTime), r.URL.String()}
-	cacheKey := strings.Join(cacheParts, "-")
-	h := sha1.New()
-	h.Write([]byte(cacheKey))
-	cacheKey = string(h.Sum(nil))
-
-	// check the cache to see if this is available
-	// how should we store the cache key since it's possible it has multiple shapes
-
-	// if not, then -
-	// cache is always write safe if it's a bad query error
-	// const isCacheWriteSafe = params.indexIdentity &&
-	// 	data.indexName === params.indexIdentity.name &&
-	// 	parseInt(data.indexTime, 10) === params.indexIdentity.timestamp;
-
-	// p, err := c.Get(key)
-	// if err != nil {
-	// return err
-	// }
-	var cacheObj ObjWithStatus
-	err := json.Unmarshal(p, &cacheObj)
-
-	if err != nil {
-		log.Printf("error reading cache entry. Key=%s err=%s", cacheKey, err)
-	} else {
-		log.Printf("cache hit on key: %s", cacheKey)
-		w.WriteHeader(cacheObj.Status)
-		w.Write(cacheObj.Obj)
+	cacheKey := getCacheKeyForSearch(s, backend, r.URL.String())
+	if cachedRes := checkCacheForSearchResult(ctx, s, cacheKey); cachedRes != nil {
+		w.WriteHeader(cachedRes.Status)
+		w.Write(cachedRes.ResBytes)
 		return
 	}
 
 	q, is_regex, err := extractQuery(ctx, r)
 
 	if err != nil {
-		writeError(ctx, w, 400, "bad_query", err.Error())
+		writeError(ctx, w, 400, "bad_query", err.Error(), cacheKey, s)
 		return
 	}
 
@@ -272,7 +304,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 			kind = "regex"
 		}
 		msg := fmt.Sprintf("You must specify a %s to match", kind)
-		writeError(ctx, w, 400, "bad_query", msg)
+		writeError(ctx, w, 400, "bad_query", msg, cacheKey, s)
 		return
 	}
 
@@ -284,7 +316,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 
 	if err != nil {
 		log.Printf(ctx, "error in search err=%s", err)
-		writeQueryError(ctx, w, err)
+		writeQueryError(ctx, w, err, cacheKey, s)
 		return
 	}
 
@@ -320,5 +352,5 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		reply.Info.ExitReason,
 		asJSON{reply.Info})
 
-	replyJSON(ctx, w, 200, reply)
+	replyJSON(ctx, w, 200, reply, cacheKey, s)
 }

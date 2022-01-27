@@ -2,6 +2,7 @@ package config
 
 import (
 	"html/template"
+	"time"
 )
 
 type Backend struct {
@@ -22,6 +23,17 @@ type GoogleIAPConfig struct {
 
 	// Use ProjectID for GCE
 	ProjectID string `json:"project_id"`
+}
+
+// Single cache support only atm
+// https://pkg.go.dev/github.com/go-redis/redis/v8#Options
+type RedisCacheConfig struct {
+	Network   string        `json:"network"` // tcp|unix
+	Addr      string        `json:"addr"`    // host:port
+	Password  string        `json:"password"`
+	KeyTTL    string        `json:"key_ttl"`
+	KeyTTLD   time.Duration `json:"key_ttl_d"` // value of time.Duration.Parse(KeyTTL)
+	KeyPrefix string        `json:"key_prefix"`
 }
 
 type Config struct {
@@ -77,6 +89,8 @@ type Config struct {
 	DefaultSearchRepos []string `json:"default_search_repos"`
 
 	LinkConfigs []LinkConfig `json:"file_links"`
+
+	RedisCacheConfig RedisCacheConfig `json:"redis_cache_config"`
 }
 
 type IndexConfig struct {
