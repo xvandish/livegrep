@@ -395,6 +395,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 			Addr:     addr,
 			Password: cfg.RedisCacheConfig.Password,
 		})
+		pong, err := srv.redis.Ping(ctx).Result()
+		log.Printf(ctx, "%s, %v", pong, err)
 	}
 
 	for _, bk := range srv.config.Backends {

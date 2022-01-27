@@ -45,7 +45,13 @@ func getCacheKeyForSearch(s *server, bk *Backend, url string) string {
 	return string(h.Sum(nil))
 }
 
+func timeTrack(ctx context.Context, start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf(ctx, "%s took %s", name, elapsed)
+}
+
 func checkCacheForSearchResult(ctx context.Context, s *server, cacheKey string) (result *CachedResponse) {
+	defer timeTrack(ctx, time.Now(), "checkCacheForSearchResult")
 	if !isRedisCacheEnabled(s) {
 		return nil
 	}
@@ -72,6 +78,7 @@ func checkCacheForSearchResult(ctx context.Context, s *server, cacheKey string) 
 }
 
 func writeToCache(ctx context.Context, s *server, status int, cacheKey string, resBytes []byte) {
+	defer timeTrack(ctx, time.Now(), "writeToCache")
 	if cacheKey != "" && s.redis != nil {
 		objToCache := CachedResponse{ResBytes: resBytes, Status: status}
 		jData, err := json.Marshal(objToCache)
@@ -81,7 +88,7 @@ func writeToCache(ctx context.Context, s *server, status int, cacheKey string, r
 				asJSON{jData},
 				err.Error())
 		} else {
-			log.Printf(ctx, "keyTTL: %v\n", s.config.RedisCacheConfig)
+			log.Printf(ctx, "keyTTL: %v", s.config.RedisCacheConfig)
 			redisErr := s.redis.Set(ctx, cacheKey, jData, s.config.RedisCacheConfig.KeyTTLD).Err()
 			if redisErr != nil {
 				log.Printf(ctx, "failed to write to redis cache: %v", redisErr)
@@ -287,6 +294,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 	cacheKey := getCacheKeyForSearch(s, backend, r.URL.String())
 	if cachedRes := checkCacheForSearchResult(ctx, s, cacheKey); cachedRes != nil {
 		w.WriteHeader(cachedRes.Status)
+		w.Header().Set("Content-Type", "application/json") // otherwise Go looks at first 512 bytes of w.Write contents
 		w.Write(cachedRes.ResBytes)
 		return
 	}
