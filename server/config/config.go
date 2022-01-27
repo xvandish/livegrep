@@ -23,6 +23,9 @@ type GoogleIAPConfig struct {
 
 	// Use ProjectID for GCE
 	ProjectID string `json:"project_id"`
+
+	// Server will set this
+	Aud string
 }
 
 // Single cache support only atm

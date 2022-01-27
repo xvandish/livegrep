@@ -204,7 +204,7 @@ func (s *server) ServeHealthZ(w http.ResponseWriter, r *http.Request) {
 func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
-
+		defer timeTrack(ctx, time.Now(), "iapAuth wrapper + children (if any)")
 		// GKE and GCE health checks don't use JWT headers, so skip validation
 		if r.URL.Path == "/healthz" {
 			next.ServeHTTP(w, r)
@@ -212,14 +212,8 @@ func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
 		}
 
 		iapJWT := r.Header.Get("x-goog-iap-jwt-assertion")
-		var aud string
-		if cfg.BackendServiceID != "" { // GKE or GCE
-			aud = fmt.Sprintf("/projects/%s/global/backendServices/%s", cfg.ProjectNumber, cfg.BackendServiceID)
-		} else { // GAE
-			aud = fmt.Sprintf("/projects/%s/apps/%s", cfg.ProjectNumber, cfg.ProjectID)
-		}
 
-		_, err := idtoken.Validate(ctx, iapJWT, aud)
+		_, err := idtoken.Validate(ctx, iapJWT, cfg.Aud)
 
 		if err != nil {
 			log.Printf(ctx, "UNAUTHORIZED http request: remote=%q method=%q url=%q err:%v",
@@ -360,6 +354,14 @@ func shouldEnableGoogleIAP(cfg config.GoogleIAPConfig) bool {
 	return true
 }
 
+func initializeGoogleIAPAud(cfg config.GoogleIAPConfig) {
+	if cfg.BackendServiceID != "" { // GKE or GCE
+		cfg.Aud = fmt.Sprintf("/projects/%s/global/backendServices/%s", cfg.ProjectNumber, cfg.BackendServiceID)
+	} else { // GAE
+		cfg.Aud = fmt.Sprintf("/projects/%s/apps/%s", cfg.ProjectNumber, cfg.ProjectID)
+	}
+}
+
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
 		config: cfg,
@@ -397,6 +399,10 @@ func New(cfg *config.Config) (http.Handler, error) {
 		})
 		pong, err := srv.redis.Ping(ctx).Result()
 		log.Printf(ctx, "%s, %v", pong, err)
+	}
+
+	if shouldEnableGoogleIAP(cfg.GoogleIAPConfig) {
+		initializeGoogleIAPAud(cfg.GoogleIAPConfig)
 	}
 
 	for _, bk := range srv.config.Backends {

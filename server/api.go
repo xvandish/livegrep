@@ -293,6 +293,7 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 
 	cacheKey := getCacheKeyForSearch(s, backend, r.URL.String())
 	if cachedRes := checkCacheForSearchResult(ctx, s, cacheKey); cachedRes != nil {
+		defer timeTrack(ctx, time.Now(), "writeCacheRes")
 		w.WriteHeader(cachedRes.Status)
 		w.Header().Set("Content-Type", "application/json") // otherwise Go looks at first 512 bytes of w.Write contents
 		w.Write(cachedRes.ResBytes)
