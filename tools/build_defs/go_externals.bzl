@@ -123,6 +123,7 @@ def go_externals():
     )
     go_repository(
         name = "org_golang_google_grpc",
+        build_file_proto_mode = "disable",
         importpath = "google.golang.org/grpc",
         sum = "h1:pnP7OclFFFgFi4VHQDQDaoXUVauOFyktqTsqqgzFKbc=",
         version = "v1.40.1",
