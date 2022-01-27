@@ -16,6 +16,7 @@ import (
 	"google.golang.org/api/idtoken"
 
 	"github.com/bmizerany/pat"
+	"github.com/go-redis/redis/v8"
 	libhoney "github.com/honeycombio/libhoney-go"
 
 	"github.com/livegrep/livegrep/server/config"
@@ -49,6 +50,7 @@ type server struct {
 	Layout      *template.Template
 
 	honey *libhoney.Builder
+	redis *redis.Client
 
 	serveFilePathRegex *regexp.Regexp
 }
@@ -250,7 +252,7 @@ func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	replyJSON(ctx, w, 200, &stats{
 		IndexAge: int64(maxBkAge / time.Second),
-	})
+	}, "", s)
 }
 
 func (s *server) requestProtocol(r *http.Request) string {
@@ -365,13 +367,34 @@ func New(cfg *config.Config) (http.Handler, error) {
 		repos:  make(map[string]config.RepoConfig),
 	}
 	srv.loadTemplates()
+	ctx := context.Background()
 
 	if cfg.Honeycomb.WriteKey != "" {
-		log.Printf(context.Background(),
+		log.Printf(ctx,
 			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
 		srv.honey = libhoney.NewBuilder()
 		srv.honey.WriteKey = cfg.Honeycomb.WriteKey
 		srv.honey.Dataset = cfg.Honeycomb.Dataset
+	}
+
+	if cfg.RedisCacheConfig.Addr != "" {
+		addr := cfg.RedisCacheConfig.Addr
+		log.Printf(ctx, "Connecting to Redis cache at addr: %s", addr)
+
+		if cfg.RedisCacheConfig.KeyTTL != "" {
+			p, err := time.ParseDuration(cfg.RedisCacheConfig.KeyTTL)
+			if err != nil {
+				log.Printf(ctx, "error parsing redis ttl: %v\n", err)
+				cfg.RedisCacheConfig.KeyTTLD = 0
+			} else {
+				cfg.RedisCacheConfig.KeyTTLD = p
+			}
+		}
+
+		srv.redis = redis.NewClient(&redis.Options{
+			Addr:     addr,
+			Password: cfg.RedisCacheConfig.Password,
+		})
 	}
 
 	for _, bk := range srv.config.Backends {

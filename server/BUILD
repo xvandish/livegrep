@@ -28,6 +28,7 @@ go_library(
         "//src/proto:go_proto",
         "@com_github_bmizerany_pat//:go_default_library",
         "@com_github_honeycombio_libhoney_go//:go_default_library",
+        "@com_github_go_redis_redis_v8//:redis",
         "@org_golang_google_grpc//:go_default_library",
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//metadata:go_default_library",

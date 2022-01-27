@@ -39,13 +39,6 @@ _externals = [
     _golang_x("oauth2", "d3ed0bb246c8d3c75b63937d9a5eecff9c74d7fe"),
     _golang_x("sys", "da31bd327af904dd4721b4eefa7c505bb3afd214"),
     _golang_x("crypto", "5e0467b6c7cee3ce8969a8b584d9e6ab01d074f7"),
-    struct(
-        name = "org_golang_google_appengine",
-        commit = "170382fa85b10b94728989dfcf6cc818b335c952",
-        importpath = "google.golang.org/appengine/",
-        remote = "https://github.com/golang/appengine",
-        vcs = "git",
-    ),
     _github("google/go-github", "e0066688b631702f66e0435ee1633f9d0091e4b9"),
     _github("honeycombio/libhoney-go", "a8716c5861ae19c1e2baaad52dd59ba64b902bde"),
     _github("nelhage/go.cli", "2aeb96ef8025f3646befae8353b90f95e9e79bdc"),
@@ -56,31 +49,6 @@ _externals = [
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
-    struct(
-        name = "org_golang_google_grpc",
-        commit = "f74f0337644653eba7923908a4d7f79a4f3a267b",
-        importpath = "google.golang.org/grpc",
-    ),
-    struct(
-        name = "org_golang_google_api",
-        importpath = "google.golang.org/api",
-        commit = "32bf29c2e17105d5f285adac4531846c57847f11", # v0.50.0
-    ),
-    struct(
-        name = "com_google_cloud_go",
-        importpath = "cloud.google.com/go",
-        commit = "2a43d6d30d7041eb6ed0b305c81dc32c8c42ebc1", # v0.87.0
-    ),
-    struct(
-        name = "io_opencensus_go",
-        importpath = "go.opencensus.io",
-        commit = "49838f207d61097fc0ebb8aeef306913388376ca", #v0.23.0
-    ),
-    struct(
-        name = "com_github_golang_groupcache",
-        importpath = "github.com/golang/groupcache",
-        commit = "41bb18bfe9da5321badc438f91158cd790a33aa3",
-    ),
 ]
 
 def go_externals():
@@ -99,3 +67,65 @@ def go_externals():
                 commit = ext.commit,
                 importpath = ext.importpath,
             )
+    go_repository(
+        name = "org_golang_google_api",
+        importpath = "google.golang.org/api",
+        sum = "h1:MTW9c+LIBAbwoS1Gb+YV7NjFBt2f7GtAS5hIzh2NjgQ=",
+        version = "v0.65.0",
+    )
+    go_repository(
+        name = "org_golang_google_appengine",
+        importpath = "google.golang.org/appengine",
+        sum = "h1:FZR1q0exgwxzPzp/aF+VccGrSfxfPpkBqjIIEq3ru6c=",
+        version = "v1.6.7",
+    )
+    go_repository(
+        name = "com_google_cloud_go",
+        importpath = "cloud.google.com/go",
+        sum = "h1:t9Iw5QH5v4XtlEQaCtUY7x6sCABps8sW0acw7e2WQ6Y=",
+        version = "v0.100.2",
+    )
+    go_repository(
+        name = "com_google_cloud_go_compute",
+        importpath = "cloud.google.com/go/compute",
+        sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
+        version = "v0.1.0",
+    )
+    go_repository(
+        name = "io_opencensus_go",
+        importpath = "go.opencensus.io",
+        sum = "h1:gqCw0LfLxScz8irSi8exQc7fyQ0fKQU/qnC/X8+V/1M=",
+        version = "v0.23.0",
+    )
+    go_repository(
+        name = "com_github_golang_groupcache",
+        importpath = "github.com/golang/groupcache",
+        sum = "h1:1r7pUrabqp18hOBcwBwiTsbnFeTZHV9eER/QT5JVZxY=",
+        version = "v0.0.0-20200121045136-8c9f03a8e57e",
+    )
+    go_repository(
+        name = "com_github_go_redis_redis_v8",
+        importpath = "github.com/go-redis/redis/v8",
+        sum = "h1:GCjoYp8c+yQTJfc0n69iwSiHjvuAdruxl7elnZCxgt8=",
+        version = "v8.11.3",
+    )
+    go_repository(
+        name = "com_github_cespare_xxhash_v2",
+        importpath = "github.com/cespare/xxhash/v2",
+        sum = "h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cbYE=",
+        version = "v2.1.2",
+    )
+    go_repository(
+        name = "com_github_dgryski_go_rendezvous",
+        importpath = "github.com/dgryski/go-rendezvous",
+        sum = "h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=",
+        version = "v0.0.0-20200823014737-9f7001d12a5f",
+    )
+    go_repository(
+        name = "org_golang_google_grpc",
+        build_file_proto_mode = "disable",
+        importpath = "google.golang.org/grpc",
+        sum = "h1:pnP7OclFFFgFi4VHQDQDaoXUVauOFyktqTsqqgzFKbc=",
+        version = "v1.40.1",
+    )
+
