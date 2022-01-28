@@ -276,6 +276,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 }
 
 func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	defer timeTrack(ctx, time.Now(), "ServeAPISearch")
 	backendName := r.URL.Query().Get(":backend")
 	var backend *Backend
 	if backendName != "" {

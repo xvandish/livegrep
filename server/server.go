@@ -204,13 +204,13 @@ func (s *server) ServeHealthZ(w http.ResponseWriter, r *http.Request) {
 func iapAuth(next http.Handler, cfg config.GoogleIAPConfig) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
-		defer timeTrack(ctx, time.Now(), "iapAuth wrapper + children (if any)")
 		// GKE and GCE health checks don't use JWT headers, so skip validation
 		if r.URL.Path == "/healthz" {
 			next.ServeHTTP(w, r)
 			return
 		}
 
+		defer timeTrack(ctx, time.Now(), "iapAuth wrapper + children (if any)")
 		iapJWT := r.Header.Get("x-goog-iap-jwt-assertion")
 
 		_, err := idtoken.Validate(ctx, iapJWT, cfg.Aud)
@@ -326,6 +326,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 	ctx = reqid.NewContext(ctx, reqid.New())
+	defer timeTrack(ctx, time.Now(), "ServeHTTP")
 	log.Printf(ctx, "http request: remote=%q method=%q url=%q",
 		r.RemoteAddr, r.Method, r.URL)
 	h(ctx, w, r)
