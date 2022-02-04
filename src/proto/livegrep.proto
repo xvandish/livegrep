@@ -82,6 +82,43 @@ message InfoRequest {
 message Empty {
 }
 
+message ErrorResponse {
+    string code = 1;
+    string message = 2;
+}
+
+
+/* message Query { */
+/*     string line = 1; */
+/*     string file = 2; */
+/*     string repo = 3; */
+/*     string tags = 4; */
+/*     bool fold_case = 5; */
+/*     string not_file = 6; */
+/*     string not_repo = 7; */
+/*     string not_tags = 8; */
+/*     int32 max_matches = 9; */
+/*     bool filename_only = 10; */
+/*     int32 context_lines = 11; */
+/* } */
+
+message SearchAPIV2Request {
+    string query = 1;
+    bool   regex = 2;
+    bool   fold_case = 3;
+    int32 max_matches = 4;
+    repeated string repos = 5;
+    string backend = 6;
+}
+
+// This is returned to api/v2/search
+message SearchAPIV2Response {
+    oneof response {
+        CodeSearchResult search_result = 1;
+        ErrorResponse error_response = 2;
+    }
+}
+
 service CodeSearch {
     rpc Info(InfoRequest) returns (ServerInfo);
     rpc Search(Query) returns (CodeSearchResult);
