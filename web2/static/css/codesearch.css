@@ -189,6 +189,10 @@ a:hover {
     outline: none; /* despite 'tabindex' that lets it receive keystrokes */
 }
 
+#results #file-results {
+    margin-bottom: 3rem;
+}
+
 .file-extensions, .path-results {
     margin-bottom: 15px;
 }
@@ -365,7 +369,7 @@ a:hover {
 }
 
 #resultarea {
-    display: none;
+    /* display: none; */
 }
 
 /* File viewer */
@@ -707,4 +711,96 @@ div.example {
 .token.function,
 .token.bold {
     font-weight: bold;
+}
+
+.code-result {
+    /* padding: 10px; */
+    margin-bottom: 30px;
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    font-family: ui-monospace,"Cascadia Mono","Segoe UI Mono","Liberation Mono",Menlo,Monaco,Consolas,monospace;
+}
+
+.code-result .cr-header {
+    margin-bottom: 24px;
+    background-color: aliceblue;
+    padding: 10px;
+}
+
+.code-result .cr-header .matches {
+    color: #888;
+    font-size: 0.7rem;
+}
+
+.cr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.cr-header .links {
+    display: inline-flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    /* max-width: 80%; */
+    /* overflow: hidden; */
+    /* white-space: nowrap; */
+}
+
+.cr-header .links a {
+    /* text-overflow: ellipsis; */
+    /* overflow: hidden; */
+}
+
+.cr-header .links .repo-link {
+    color: rgba(0, 0, 0, 0.5); 
+    white-space: nowrap;
+}
+
+.cr-header .links .path-link {
+    color: #3d464d;
+    font-weight: bold;
+}
+
+.cr-header .links .path-link .highlighted {
+    background-color: rgba(255, 234, 170, 0.75);
+}
+
+.code-result .cr-lines {
+    padding: 10px;
+}
+
+/* svelete rewrite stuff */
+.code-line {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  padding: 1px 4px;
+  border-radius: 5px;
+}
+
+.code-line:hover {
+    background-color: #FAFAFA;
+}
+
+.code-line .num-link {
+  min-width: 40px;
+  user-select: text;
+  text-decoration: none;
+  color: #3d464d;
+}
+
+.code-line .num-link .num.bold {
+    font-weight: bold;
+}
+
+.code-line .line {
+    white-space: pre-wrap;
+    /* font-family: "Menlo", "Consolas", "Monaco", monospace; */
+    font-size: 12px;
+}
+
+.code-line .line .highlighted {
+    background-color: rgba(255, 234, 170, 0.75);
 }

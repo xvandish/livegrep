@@ -4,15 +4,16 @@
 
 <script lang="ts">
 	import Counter from '$lib/Counter.svelte';
+        import CodeResult from '$lib/CodeResult/index.svelte';
+        import FileHeader from '$lib/CodeResult/header.svelte';
     import { onMount } from 'svelte'
 
     let indexName = "testing"
     let backends = [{ id: "id", indexName: "testing" }]
     let sampleRepo = "xvandish/go-photo-thing"
-    let repoUrls = {} // keyed by backendId
-    let internalViewRepos = {} // these are the repos that we can view with 
-    let defaultSearchRepos = [] // these are the repos taht will be used for the help
-    let linkConfigs = [] // or a mapped version
+
+    let serverInfo = {};
+    let sampleRes = { code: [], files: []};
 
     // TODO:
     // 1. Load Controls state based on the URL search params
@@ -26,6 +27,11 @@
     // 5. Inline the SearchControls into the Search line
     // 6. Add back the repo selector + add an API endpoint that lets us know what repos are possible,
     //    since the data won't be available to use at render time anymore
+
+    // TODO: Add a (show more) button under the file results if there are more than 10
+    // TODO: Inline most of the query controls into the search bar
+    // TODO: See what we can do about the fact that case has 3 possible states - 
+    //      maybe reduce down to two? although I hate to lose the functionality
 
 
     // -------------- Functions --------------------
@@ -92,6 +98,125 @@
 
     /* function doSearch() {} */
 
+    onMount(async () => {
+      console.log('whats going on');
+      const res = await fetch("http://localhost:8910/api/v2/search/getInitInfo");
+      const initInfo = await res.json();
+      serverInfo = initInfo;
+      console.log({ serverInfo });
+    });
+
+    // at the moment super simple
+    let query = ''
+    $: query && doSearch(query);
+    
+    // getting mixed results here
+    async function doSearch(query) {
+      console.log('making new query');
+      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=auto&regex=false`);
+      const inf = await res.json();
+      let shaped = reshapeResults(inf);
+      sampleRes.code = [...shaped.code]
+      sampleRes.files = [...shaped.files]
+
+      console.log(dedupeCodeResults(inf));
+
+      console.log({shaped});
+    }
+
+    
+    // https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
+    // THIS IS A COPY PASTE OF THE DEDUPING FUNCTION THAT WEBGREP BY KEVIN LIN USES - 
+    // ALL CREDIT TO ABOVE. I'll eventually port this to server side work, but for this
+    // initial start this will remain client side
+    /**
+    * Massage the response from livegrep into a form that can be more easily interpreted by the
+    * webgrep frontend.
+    *
+    * @param {Object} data Raw response payload from livegrep.
+    * @return {Object} Object of code and file results, and search stats.
+    * @private
+    */
+   function reshapeResults(data) {  // eslint-disable-line class-methods-use-this
+     const code = Object.values(data.results
+       // Aggregate lines by repo and path, so that each unique (repo, path) combination is
+       // described by an array of all matching lines and the left/right bounds for each line.
+       .reduce((aggregated, result) => {
+         // Aggregation key: combine all results for the same file in the same repo
+         const key = `${result.tree}-${result.path}`;
+         // Line number of the matching line
+         const lineNumber = parseInt(result.lno, 10);
+         // The existing entry for this repo/path combination, if it exists
+         const existing = aggregated[key] || {};
+ 
+         // Create a map of line numbers -> { bounds description, line }, being careful not to
+         // override the bounds if they have already been specified. Since context lines are
+         // overlapping, it's possible that a context line does not have a bounds description,
+         // but it has one from an earlier result.
+         const contextLines = [
+           ...result.context_before.reverse(),
+           result.line,
+           ...result.context_after,
+         ].reduce((lines, line, idx) => {
+          /* console.log({ lines, line, idx }); */
+           const contextLno = idx + lineNumber - result.context_before.length;
+           /* console.log({ contextLno }); */
+           const bounds = (() => {
+             // Examining the matching line, for which bounds information is available
+             if (contextLno === lineNumber) {
+              /* console.log('matching line'); */
+               return [result.bounds[0], result.bounds[1]];
+             }
+ 
+             // Defer to existing bounds information
+             return existing.lines &&
+               existing.lines[contextLno] &&
+               existing.lines[contextLno].bounds;
+           })();
+ 
+           return {
+             ...lines,
+             [contextLno]: { bounds, line },
+           };
+         }, {});
+ 
+         return {
+           ...aggregated,
+           [key]: {
+             repo: result.tree,
+             version: result.version,
+             path: result.path,
+             lines: {
+               ...existing.lines || {},
+               ...contextLines,
+             },
+           },
+         };
+       }, {}))
+       .map((resultGroup) => ({
+         ...resultGroup,
+         lines: Object.entries(resultGroup.lines)
+           .map(([number, details]) => ({
+             ...details,
+             number: parseInt(number, 10),
+           }))
+           .sort((a, b) => a.number - b.number),
+       }));
+ 
+     const files = Object.values(data.file_results.reduce((acc, file) => ({
+       ...acc,
+       // Deduplicate results keyed by its repository and file path
+       [`${file.tree}-${file.path}`]: {
+         repo: file.tree,
+         version: file.version,
+         path: file.path,
+         bounds: [file.bounds[0], file.bounds[1]],
+       },
+     }), {}));
+ 
+     return { code, files };
+   }
+
 </script>
 
 
@@ -104,7 +229,7 @@
   <div class="search-inputs">
     <div class="prefixed-input filter-code">
       <label class="prefix-label" for="searchbox">Query:</label>
-      <input type="text" id='searchbox' tabindex="1" required="required" />
+      <input type="text" bind:value={query} id='searchbox' tabindex="1" required="required" />
     </div>
     <div id='regex-error'>
       <span id='errortext'></span>
@@ -170,7 +295,7 @@
 </div>
 
 <div id='resultbox'>
-    <div id='helparea'>
+    <div class:hidden={query !== ''} id='helparea'>
     <div class='helpsection'><h5>Special query terms</h5></div>
     <table>
         <tr>
@@ -221,7 +346,19 @@
       </span>
     </span>
   </div>
-  <div id='results' tabindex='-1'>
+  <div class:hidden={query === ''} id='results' tabindex='-1'>
+  <div id="file-results">
+    {#each sampleRes.files.slice(0,10) as f (f)}
+      <FileHeader path={f.path} repo={f.repo} numMatches={-1} bounds={f.bounds} />
+    {/each}
+  </div>
+  <!-- keying by the entire object is unfortunate, maybe we want to create an id -->
+  <!-- but if we don't do this, then lines get-reused and so have bad highlighting -->
+  <div id="code-results">
+    {#each sampleRes.code as cr (cr)}
+      <CodeResult {...cr} />
+    {/each}
+  </div>
   </div>
 </div>
 <p class='credit'>

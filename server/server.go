@@ -82,6 +82,38 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, "/search", 303)
 }
 
+// a ws api will
+func (s *server) ServeInitSearchInfo(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	urls := make(map[string]map[string]string, len(s.bk))
+	backends := make([]*Backend, 0, len(s.bk))
+	sampleRepo := ""
+	for _, bkId := range s.bkOrder {
+		bk := s.bk[bkId]
+		backends = append(backends, bk)
+		bk.I.Lock()
+		m := make(map[string]string, len(bk.I.Trees))
+		urls[bk.Id] = m
+		for _, r := range bk.I.Trees {
+			if sampleRepo == "" {
+				sampleRepo = r.Name
+			}
+			m[r.Name] = r.Url
+		}
+		bk.I.Unlock()
+	}
+
+	script_data := &struct {
+		RepoUrls           map[string]map[string]string `json:"repo_urls"`
+		InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
+		DefaultSearchRepos []string                     `json:"default_search_repos"`
+		LinkConfigs        []config.LinkConfig          `json:"link_configs"`
+		Backends           []*Backend                   `json:"backends"`
+		SampleRepo         string                       `json:"sample_repo"`
+	}{urls, s.repos, s.config.DefaultSearchRepos, s.config.LinkConfigs, backends, sampleRepo}
+
+	replyJSON(ctx, w, 200, &script_data, "", s)
+}
+
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
@@ -440,6 +472,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 
+	m.Add("GET", "/api/v2/search/getInitInfo", srv.Handler(srv.ServeInitSearchInfo))
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 
