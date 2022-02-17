@@ -6,7 +6,7 @@
   export let bounds = []
 
 let repoUrl = ""
-	  let pathUrl = `/view?repo=${encodeURIComponent(repo)}&filePath=${encodeURIComponent(path)}`
+	  let pathUrl = `/view/${repo}/${encodeURIComponent(path)}`
 
   let prefixPart = ""
   let highlightedPart = ""	  
@@ -27,7 +27,7 @@ let repoUrl = ""
 	<div class="links">
 		<a class="repo-link" href={repoUrl}>{repo}</a>
 		<span>/</span>
-		<a class="path-link" href={pathUrl}>
+		<a sveltekit:prefetch class="path-link" href={pathUrl}>
 	{#if isHighlighted}
 		<span>{prefixPart}</span><span class="highlighted">{highlightedPart}</span><span>{suffixPart}</span>
 	{:else}
