@@ -119,8 +119,6 @@
       sampleRes.code = [...shaped.code]
       sampleRes.files = [...shaped.files]
 
-      console.log(dedupeCodeResults(inf));
-
       console.log({shaped});
     }
 

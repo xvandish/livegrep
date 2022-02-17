@@ -155,6 +155,52 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	})
 }
 
+func (s *server) ServeFileInfo(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing not enabled", 404)
+		return
+	}
+
+	params := r.URL.Query()
+	log.Printf(ctx, "params: %v", params)
+
+	repoName := params.Get("repo")
+	path := params.Get("path")
+
+	// if the path is empty, we're rendering a tree view
+	if repoName == "" {
+		http.Error(w, "repo search param must not be empty", 500)
+		return
+	}
+
+	commit := params.Get("commit")
+	if commit == "" {
+		commit = "HEAD"
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := buildFileData(path, repo, commit)
+	if err != nil {
+		http.Error(w, "Error reading file", 500)
+		return
+	}
+
+	script_data := &struct {
+		RepoInfo config.RepoConfig `json:"repo_info"`
+		FilePath string            `json:"file_path"`
+		Commit   string            `json:"commit"`
+		Data     interface{}       `json:"data"`
+	}{repo, path, commit, data}
+
+	replyJSON(ctx, w, 200, &script_data, "", s)
+}
+
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path)
 	if err != nil {
@@ -473,6 +519,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 
 	m.Add("GET", "/api/v2/search/getInitInfo", srv.Handler(srv.ServeInitSearchInfo))
+	m.Add("GET", "/api/v2/getFileInfo", srv.Handler(srv.ServeFileInfo))
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 

@@ -722,7 +722,6 @@ div.example {
 }
 
 .code-result .cr-header {
-    margin-bottom: 24px;
     background-color: aliceblue;
     padding: 10px;
 }
@@ -784,11 +783,21 @@ div.example {
     background-color: #FAFAFA;
 }
 
+.code-line:hover .num-link {
+    transform: scale(1.07);
+    transition: 0.1s ease-in-out;
+}
+
 .code-line .num-link {
   min-width: 40px;
   user-select: text;
   text-decoration: none;
   color: #3d464d;
+}
+
+.code-line .num-link:hover {
+    transform: scale(1.05);
+    transition: 0.1s ease-in-out;
 }
 
 .code-line .num-link .num.bold {

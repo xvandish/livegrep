@@ -5,8 +5,8 @@
   export let numMatches
   export let bounds = []
 
-	let repoUrl = ""
-	let pathUrl = ""
+let repoUrl = ""
+	  let pathUrl = `/view?repo=${encodeURIComponent(repo)}&filePath=${encodeURIComponent(path)}`
 
   let prefixPart = ""
   let highlightedPart = ""	  
@@ -25,7 +25,8 @@
 
 <div class="cr-header">
 	<div class="links">
-		<a class="repo-link" href={repoUrl}>{repo}</a>:
+		<a class="repo-link" href={repoUrl}>{repo}</a>
+		<span>/</span>
 		<a class="path-link" href={pathUrl}>
 	{#if isHighlighted}
 		<span>{prefixPart}</span><span class="highlighted">{highlightedPart}</span><span>{suffixPart}</span>
