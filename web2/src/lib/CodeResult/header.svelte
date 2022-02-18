@@ -5,8 +5,9 @@
   export let numMatches
   export let bounds = []
 
-let repoUrl = ""
-	  let pathUrl = `/view/${repo}/${encodeURIComponent(path)}`
+	  let repoUrl = ""
+  // repo will always be of the form org/repoName (or user/repoName)
+  let pathUrl = `/view/${repo}/${path}`
 
   let prefixPart = ""
   let highlightedPart = ""	  

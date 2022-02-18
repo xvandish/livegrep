@@ -2,7 +2,9 @@
   export let number 
   export let line
   export let bounds = [] 
-  export let href = ""
+  export let repo 
+  export let path
+  export let urlPattern = ''
 
   let prefixPart = ""
   let highlightedPart = ""	  
@@ -17,13 +19,15 @@
     highlightedPart = line.substring(start, end);
     suffixPart = line.substring(end);
   }
+
+  const lineLink = `/view/${repo}/${path}#L${number}`
 </script>
 
 <div class="code-line">
 <a
+	sveltekit:prefetch
 	rel="noreferrer noopener"
-	target="_blank"
-	href={href}
+	href={lineLink}
 	class="num-link"
 >
 <span class="num" class:bold={bounds.length > 0}>{number}</span>

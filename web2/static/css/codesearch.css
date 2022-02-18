@@ -798,6 +798,7 @@ div.example {
 .code-line .num-link:hover {
     transform: scale(1.05);
     transition: 0.1s ease-in-out;
+    text-decoration: underline;
 }
 
 .code-line .num-link .num.bold {

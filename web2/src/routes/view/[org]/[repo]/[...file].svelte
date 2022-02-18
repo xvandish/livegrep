@@ -6,6 +6,9 @@
 
     /** @type {import('@sveltejs/kit').Load} */
     export async function load({ params, fetch, session, stuff }) {
+        // TODO: Switch to using the `url` prop so that we don't have to worry about slashes in
+        // repoName and [org]/[repo]/[...path] doesn't get busted by a repo with a slash in the name
+        // TODO: https://kit.svelte.dev/docs/loading
         console.log({ params, session, stuff });
 
         console.log('killing me smalls');
@@ -17,7 +20,7 @@
         console.log({ path });
         const res = await fetch(`http://localhost:8910/api/v2/getFileInfo?repo=${repo}&path=${filePath}`);
 
-
+        
         /* const awaited = await res.json(); */
         /* console.log({ awaited }); */
         /* return { */
@@ -40,8 +43,13 @@
 </script>
 
 <svelte:head>
-	<title>File View</title>
-    <link rel="stylesheet" href="../../../../../static/css/codesearch.css" />
+    <title>File View</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/prism.min.js" integrity="sha384-55dGHwJ+p8K+4zJGgJR7q7Fl9FuG++oKmlhKuS+dWjEMj6rBCp7AFYw55b0E5/K8" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/plugins/autoloader/prism-autoloader.min.js" integrity="sha384-S+UYfywCk42UjE2CVTgW2zT3c/X5Uw25LTU93Pn5HmyD5D31yHRu6I5VadHu3Qf5" crossorigin="anonymous"></script>
+<script>
+  Prism.plugins.autoloader.languages_path = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/components/';
+      console.log('set prism path');
+</script>
 </svelte:head>
 
     <section class="file-viewer">
@@ -98,7 +106,7 @@
             {/if}
             {#if fileInfo.data.FileContent}
                 <div class="file-content">
-                    <code id="source-code" class="code-pane language={fileInfo.data.FileContent.Language}">{fileInfo.data.FileContent.Content}</code>
+                    <code id="source-code" class="code-pane language-{fileInfo.data.FileContent.Language}">{fileInfo.data.FileContent.Content}</code>
                     <div id="line-numbers" class="line-numbers hide-links">
                         {#each {length: fileInfo.data.FileContent.LineCount +1} as _, lno}
                             <a id="L{lno+1}" href="#L{lno+1}">{lno+1}</a>

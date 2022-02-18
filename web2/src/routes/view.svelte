@@ -1,42 +1,35 @@
-<script lang="ts">
+<script lang="ts" context="module">
 
     // get the repoName and path from query parameters
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
 
-    // page.url.searchParams is a readable store, don't write to it
-    const repo = $page.url.searchParams.get('repo')
-    const filePath = $page.url.searchParams.get('filePath')
-    // then query /getFileInfo
-    // then display the result. Straightforward enough
-    let fileInfo;
-    let isLoading = true;
+    /** @type {import('@sveltejs/kit').Load} */
+    export async function load({ params, fetch, url, session, stuff }) {
+	const repo = url.searchParams.get("repo");
+	const filePath = url.searchParams.get("path");
 
-    onMount(async () => {
-        console.log('on mount file fetch');
+        const path = `http://localhost:8910/api/v2/getFileInfo?repo=${repo}&path=${filePath}`
         const res = await fetch(`http://localhost:8910/api/v2/getFileInfo?repo=${repo}&path=${filePath}`);
-        const initInfo = await res.json();
-        console.log({ initInfo });
-        fileInfo = initInfo
-        isLoading = false;
 
-        /* console.log(initInfo.data.FileContent.Content.split('\n').length) */
-    });
+        return {
+            status: res.status,
+            props: {
+                fileInfo: res.ok && (await res.json())
+            }
+        };
+    }
 </script>
 
+<script>
+    export let fileInfo;
+</script>
 
 <svelte:head>
-	<title>File View</title>
-    <link rel="stylesheet" href="../../static/css/codesearch.css" />
+    <title>File View</title>
 </svelte:head>
 
-{#if isLoading}
-    <div>
-        <p>Loading...</p>
-    </div>
-{/if}
 
-{#if !isLoading}
     <section class="file-viewer">
         <header class="header">
             <nav class="header-title">
@@ -101,5 +94,4 @@
             {/if}
         </div>
     </section>
-{/if}
 

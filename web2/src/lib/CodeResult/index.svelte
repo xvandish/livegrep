@@ -16,7 +16,7 @@
 	<div class="cr-actions" />
 	<div class="cr-lines">
 		{#each lines as line}
-			<CodeLine {...line} />
+			<CodeLine {...line} {repo} {path} {urlPattern} />
 		{/each}
 	</div>
 </div>

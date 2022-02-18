@@ -219,8 +219,7 @@
 
 
 <svelte:head>
-	<title>Home</title>
-    <link rel="stylesheet" href="../../static/css/codesearch.css" />
+    <title>Home</title>
 </svelte:head>
 
 <div id='searcharea'>
