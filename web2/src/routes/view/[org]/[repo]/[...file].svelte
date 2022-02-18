@@ -6,13 +6,6 @@
 
     /** @type {import('@sveltejs/kit').Load} */
     export async function load({ params, fetch, session, stuff }) {
-        // TODO: Switch to using the `url` prop so that we don't have to worry about slashes in
-        // repoName and [org]/[repo]/[...path] doesn't get busted by a repo with a slash in the name
-        // TODO: https://kit.svelte.dev/docs/loading
-        console.log({ params, session, stuff });
-
-        console.log('killing me smalls');
-	
 	const repo = `${params.org}/${params.repo}`;
 	const filePath = params.file;
 

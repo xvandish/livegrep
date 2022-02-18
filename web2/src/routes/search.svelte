@@ -108,10 +108,20 @@
 
     // at the moment super simple
     let query = ''
-    $: query && doSearch(query);
+    $: query && updateSearchParamState(query), doSearch(query);
     
+
+    function updateSearchParamState(query) {
+      var url = new URL(window.location);
+
+      url.searchParams.set("q", query);
+      window.history.pushState({}, '', url);
+      /* window.location.search = searchParams.toString(); */
+    }
+
     // getting mixed results here
     async function doSearch(query) {
+      if (query === '') return;
       console.log('making new query');
       const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=auto&regex=false`);
       const inf = await res.json();
