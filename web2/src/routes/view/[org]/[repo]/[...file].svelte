@@ -100,9 +100,16 @@
             {#if fileInfo.data.DirContent}
                 <ul class="file-list">
                     {#each fileInfo.data.DirContent.Entries as dirEntry}
+                        <li class="file-list-entry {dirEntry.IsDir && 'is-directory'} {dirEntry.SymlinkTarget && 'is-symlink'}">
+                            {#if dirEntry.Path}
+                                <a href={dirEntry.Path}>{dirEntry.Name}{#if dirEntry.IsDir}/{/if}</a>
+                            {/if}
+                            {#if dirEntry.SymlinkTarget}
+                                &rarr; (<span class="symlink-target">{dirEntry.SymlinkTarget}</span>)
+                            {/if}
+                        </li>
                     {/each}
                 </ul>
-                Not supported yet
             {/if}
             {#if fileInfo.data.FileContent}
                 <div class="file-content">
