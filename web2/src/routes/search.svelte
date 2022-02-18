@@ -106,24 +106,41 @@
       console.log({ serverInfo });
     });
 
+    let isRegexSearch = false;
+    let isContextEnabled = false;
+    function toggleRegex() {
+      isRegexSearch = !isRegexSearch;
+      updateSearchParamState();
+    }
+
+    function toggleContext() {
+      isContextEnabled = !isContextEnabled;
+      updateSearchParamState();
+    }
+
     // at the moment super simple
     let query = ''
-    $: query && updateSearchParamState(query), doSearch(query);
+    $: query && updateSearchParamState();
     
 
-    function updateSearchParamState(query) {
+    function updateSearchParamState() {
+    console.log('updateSearchParamState called');
+      /* if (query === '') return; */
       var url = new URL(window.location);
 
       url.searchParams.set("q", query);
+      url.searchParams.set("regex", isRegexSearch);
+      url.searchParams.set("context", isContextEnabled);
       window.history.pushState({}, '', url);
+      doSearch();
       /* window.location.search = searchParams.toString(); */
     }
 
     // getting mixed results here
-    async function doSearch(query) {
+    async function doSearch() {
       if (query === '') return;
       console.log('making new query');
-      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=auto&regex=false`);
+      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=auto&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
       let shaped = reshapeResults(inf);
       sampleRes.code = [...shaped.code]
@@ -234,10 +251,31 @@
 
 <div id='searcharea'>
   <div class="search-inputs">
-    <div class="prefixed-input filter-code">
-      <label class="prefix-label" for="searchbox">Query:</label>
-      <input type="text" bind:value={query} id='searchbox' tabindex="1" required="required" />
+    <div class="input-line">
+      <div class="inline-search-options left">
+        <label for="searchbox">Query:</label>
+      </div>
+      <div class="inline-search-options">
+        <button type="button" class="regex-toggle" on:click={toggleRegex} data-selected={isRegexSearch} title="{isRegexSearch ? "Don't use" : "Use"} Regex">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <g id="regular-expression">
+                    <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"/>
+                    <path id="dot" d="M10 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                    <path id="star" d="M14.25 7.013l-.24 2.156 2.187-.61.193 1.47-1.992.14 1.307 1.74-1.33.71-.914-1.833-.8 1.822-1.38-.698 1.296-1.74-1.98-.152.23-1.464 2.14.61-.24-2.158h1.534"/>
+                    <path id="right-bracket" d="M21 12.045c0 .982-.152 1.896-.457 2.744A6.51 6.51 0 0 1 19.236 17h-1.453a8.017 8.017 0 0 0 1.225-2.31c.29-.855.434-1.74.434-2.66 0-.91-.14-1.797-.422-2.66a7.913 7.913 0 0 0-1.248-2.374h1.465a6.764 6.764 0 0 1 1.313 2.28c.3.86.45 1.782.45 2.764"/>
+            </g>
+          </svg>
+        </button>
+        <button type="button" class="regex-toggle" on:click={toggleContext} data-selected={isContextEnabled}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-align-center"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
+        </button>
+
+      </div>
+      <div class="query-input-wrapper">
+        <input type="text" bind:value={query} id='searchbox' tabindex="1" required="required" />
+      </div>
     </div>
+  </div>
     <div id='regex-error'>
       <span id='errortext'></span>
     </div>
@@ -250,7 +288,6 @@
       <code>-repo:</code>
       <code>max_matches:</code>
     </div>
-  </div>
 
   <div class="search-options">
     <div class="search-option">
@@ -264,12 +301,6 @@
       </div></span>]
       <input type='radio' name='fold_case' value='true' id='case-ignore' tabindex="5" />
       <label for='case-ignore'>ignore</label>
-    </div>
-
-    <div class="search-option">
-      <span class="label">Regex:</span>
-      <input type='checkbox' name='regex' id='regex' tabindex="6" />
-      <label for='regex'>on</label>
     </div>
 
     {#if backends.length > 1}
@@ -292,12 +323,6 @@
           </div>
         {/if}
     {/if}
-
-    <div class="search-option">
-      <span class="label">Context:</span>
-      <input type='checkbox' name='context' id='context' tabindex="8" checked="CHECKED" />
-      <label for='context'>on</label>
-    </div>
   </div>
 </div>
 
