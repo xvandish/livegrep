@@ -20,15 +20,6 @@
         console.log({ path });
         const res = await fetch(`http://localhost:8910/api/v2/getFileInfo?repo=${repo}&path=${filePath}`);
 
-        
-        /* const awaited = await res.json(); */
-        /* console.log({ awaited }); */
-        /* return { */
-        /*     status: res.status, */
-        /*     props: { */
-        /*         fileInfo: res.ok && (await res.json()) */
-        /*     } */
-        /* }; */
         return {
             status: res.status,
             props: {
@@ -55,7 +46,7 @@
     <section class="file-viewer">
         <header class="header">
             <nav class="header-title">
-                <a href="/view?repo={fileInfo["repo_info"].name}" class="path-segment repo" title="Repository: {fileInfo["repo_info"].name}">{fileInfo.repo_info.name}</a>:
+                <a href="/view/{fileInfo["repo_info"].name}" class="path-segment repo" title="Repository: {fileInfo["repo_info"].name}">{fileInfo.repo_info.name}</a>:
                 {#each fileInfo.data.PathSegments as pSeg, idx}
                     {#if idx > 0}/{/if}<a href={pSeg.Path} class="path-segment">{pSeg.Name}</a>
                 {/each}
