@@ -1,5 +1,18 @@
 <script context="module" lang="ts">
 	export const prerender = true;
+
+        export async function load() {
+          
+          console.log('whats going on');
+          const res = await fetch("http://localhost:8910/api/v2/search/getInitInfo");
+
+          return {
+            status: res.status,
+            props: {
+              serverInfo: res.ok && (await res.json())
+            }
+          }
+        }
 </script>
 
 <script lang="ts">
@@ -12,7 +25,7 @@
     let backends = [{ id: "id", indexName: "testing" }]
     let sampleRepo = "xvandish/go-photo-thing"
 
-    let serverInfo = {};
+    export let serverInfo = {};
     let sampleRes = { code: [], files: []};
 
     // TODO:
@@ -93,18 +106,6 @@
 
     // while I'm here I can implement this using websockets maybe?
     // can detect browser functionality.
-
-    /* function getInitialInfo() {} */
-
-    /* function doSearch() {} */
-
-    onMount(async () => {
-      console.log('whats going on');
-      const res = await fetch("http://localhost:8910/api/v2/search/getInitInfo");
-      const initInfo = await res.json();
-      serverInfo = initInfo;
-      console.log({ serverInfo });
-    });
 
     let isRegexSearch = false;
     let isContextEnabled = false;

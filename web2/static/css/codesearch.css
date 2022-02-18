@@ -46,8 +46,13 @@ a:hover {
     transition: all ease-in-out 100ms;
 }
 
+.input-line .query-input-wrapper #searchbox:hover {
+    border-color: rgba(0, 126, 229, 0.25);
+
+}
+
 .input-line .query-input-wrapper #searchbox:focus-visible {
-    border: 1px solid rgba(0, 126, 229, 0.25);
+    border-color: #0761D1;
     outline: none;
     background-color: white;
 }
