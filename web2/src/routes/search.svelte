@@ -1,7 +1,7 @@
 <script context="module" lang="ts">
 	export const prerender = true;
 
-        export async function load() {
+        export async function load({ url }) {
           
           console.log('whats going on');
           const res = await fetch("http://localhost:8910/api/v2/search/getInitInfo");
@@ -9,7 +9,10 @@
           return {
             status: res.status,
             props: {
-              serverInfo: res.ok && (await res.json())
+              serverInfo: res.ok && (await res.json()),
+              query: url.searchParams.get('q'),
+              isRegexSearch: url.searchParams.get('regex') === 'true',
+              isContextEnabled: url.searchParams.get('context') === 'true', 
             }
           }
         }
@@ -107,8 +110,8 @@
     // while I'm here I can implement this using websockets maybe?
     // can detect browser functionality.
 
-    let isRegexSearch = false;
-    let isContextEnabled = false;
+    export let isRegexSearch = false;
+    export let isContextEnabled = false;
     function toggleRegex() {
       isRegexSearch = !isRegexSearch;
       updateSearchParamState();
@@ -119,17 +122,23 @@
       updateSearchParamState();
     }
 
+
     // at the moment super simple
-    let query = ''
+    export let query;
     $: query && updateSearchParamState();
     
+    function clearQuery() {
+      query = '';
+      updateSearchParamState();
+    }
 
     function updateSearchParamState() {
-    console.log('updateSearchParamState called');
+      if (typeof window === 'undefined') return;
+      console.log('updateSearchParamState called');
       /* if (query === '') return; */
       var url = new URL(window.location);
 
-      url.searchParams.set("q", query);
+      url.searchParams.set("q", encodeURIComponent(query));
       url.searchParams.set("regex", isRegexSearch);
       url.searchParams.set("context", isContextEnabled);
       window.history.pushState({}, '', url);
@@ -271,6 +280,9 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-align-center"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
         </button>
 
+        <button type="button" class="clear-input" on:click={clearQuery}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="query-input-wrapper">
         <input type="text" bind:value={query} id='searchbox' tabindex="1" required="required" />

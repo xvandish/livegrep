@@ -27,10 +27,6 @@ a:hover {
     box-sizing: border-box;
 }
 
-#searcharea > div {
-    /* flex: 1 1 auto; */
-}
-
 .input-line {
     position: relative;
 }
@@ -890,4 +886,21 @@ div.example {
 
 .regex-toggle[data-selected="false"]:hover {
     background-color: #D3E5FF;
+}
+
+.clear-input {
+    background-color: transparent;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 1px;
+}
+
+.clear-input:hover {
+    background-color: #eaeaea;
 }
