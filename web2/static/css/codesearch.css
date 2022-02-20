@@ -38,7 +38,10 @@ a:hover {
     border: 1px solid #eaeaea;
     border-radius: 5px;
     /* background: #FAFAFA; */
-    padding: 12px 77px;
+    padding-right: 150px;
+    padding-left: 60px;
+    padding-top: 12px;
+    padding-bottom: 12px;
     transition: all ease-in-out 100ms;
 }
 

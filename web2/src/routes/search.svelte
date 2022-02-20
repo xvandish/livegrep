@@ -10,9 +10,10 @@
             status: res.status,
             props: {
               serverInfo: res.ok && (await res.json()),
-              query: url.searchParams.get('q'),
+              query: url.searchParams.get('q') || '',
               isRegexSearch: url.searchParams.get('regex') === 'true',
               isContextEnabled: url.searchParams.get('context') === 'true', 
+              isCaseSensitive: url.searchParams.get('fold_case') === 'true',
             }
           }
         }
@@ -112,6 +113,19 @@
 
     export let isRegexSearch = false;
     export let isContextEnabled = false;
+    export let isCaseSensitive = false;
+    export let searchOptions = {
+      q: '',
+      regex: false,
+      context: false,
+      case: false,
+    };
+
+    function toggleOption(option) {
+      searchOptions[option] = !searchOptions[option];
+      updateSearchParamState();
+    }
+
     function toggleRegex() {
       isRegexSearch = !isRegexSearch;
       updateSearchParamState();
@@ -122,17 +136,31 @@
       updateSearchParamState();
     }
 
+    function toggleCaseSensitivity() {
+      console.log('toggle func called');
+      isCaseSensitive = !isCaseSensitive;
+      updateSearchParamState();
+    }
+
 
     // at the moment super simple
     export let query;
-    $: query && updateSearchParamState();
     
     function clearQuery() {
       query = '';
       updateSearchParamState();
     }
 
+    function updateQuery(inputEvnt) {
+      query = inputEvnt.target.value;
+      console.log('updateQuery: ', inputEvnt.target.value);
+      updateSearchParamState();
+    }
+      
+
     function updateSearchParamState() {
+      // TODO: this is run on initial page load, which it probably shouldn't be
+      // it might mess up links, and it also pollutes the browser history
       if (typeof window === 'undefined') return;
       console.log('updateSearchParamState called');
       /* if (query === '') return; */
@@ -141,6 +169,7 @@
       url.searchParams.set("q", encodeURIComponent(query));
       url.searchParams.set("regex", isRegexSearch);
       url.searchParams.set("context", isContextEnabled);
+      url.searchParams.set("fold_case", isCaseSensitive);
       window.history.pushState({}, '', url);
       doSearch();
       /* window.location.search = searchParams.toString(); */
@@ -150,7 +179,7 @@
     async function doSearch() {
       if (query === '') return;
       console.log('making new query');
-      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=auto&regex=${isRegexSearch}&context=${isContextEnabled}`);
+      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${!isCaseSensitive}&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
       let shaped = reshapeResults(inf);
       sampleRes.code = [...shaped.code]
@@ -159,7 +188,12 @@
       console.log({shaped});
     }
 
+    // run a search when we initially mount in case we need to. if we don't, doSearch
+    // will short circuit anyways
+    onMount(() => doSearch());
+
     
+    // TODO: move this reshaping of results into the server
     // https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
     // THIS IS A COPY PASTE OF THE DEDUPING FUNCTION THAT WEBGREP BY KEVIN LIN USES - 
     // ALL CREDIT TO ABOVE. I'll eventually port this to server side work, but for this
@@ -252,6 +286,7 @@
      return { code, files };
    }
 
+  // TODO: Move the auto "case" option into a dropdown that clicking the button will trigger
 </script>
 
 
@@ -266,6 +301,14 @@
         <label for="searchbox">Query:</label>
       </div>
       <div class="inline-search-options">
+        <button type="button" class="regex-toggle" on:click={toggleCaseSensitivity} data-selected={isCaseSensitive}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <g id="regular-expression">
+                    <path id="upper-case" d="M7.53 7L4 17h2.063l.72-2.406h3.624l.72 2.406h2.062L9.65 7h-2.12zm1.064 1.53L9.938 13H7.25l1.344-4.47z"/>
+                    <path id="lower-case" d="M18.55 17l-.184-1.035h-.055c-.35.44-.71.747-1.08.92-.37.167-.85.25-1.44.25-.564 0-.955-.208-1.377-.625-.42-.418-.627-1.012-.627-1.784 0-.808.283-1.403.846-1.784.568-.386 1.193-.607 2.208-.64l1.322-.04v-.335c0-.772-.396-1.158-1.187-1.158-.61 0-1.325.18-2.147.55l-.688-1.4c.877-.46 1.85-.69 2.916-.69 1.024 0 1.59.22 2.134.662.545.445.818 1.12.818 2.03V17h-1.45m-.394-3.527l-.802.027c-.604.018-1.054.127-1.35.327-.294.2-.442.504-.442.912 0 .58.336.87 1.008.87.48 0 .865-.137 1.152-.414.29-.277.436-.645.436-1.103v-.627"/>
+            </g>
+          </svg>
+        </button>
         <button type="button" class="regex-toggle" on:click={toggleRegex} data-selected={isRegexSearch} title="{isRegexSearch ? "Don't use" : "Use"} Regex">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
             <g id="regular-expression">
@@ -285,7 +328,7 @@
         </button>
       </div>
       <div class="query-input-wrapper">
-        <input type="text" bind:value={query} id='searchbox' tabindex="1" required="required" />
+        <input type="text" bind:value={query} on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
       </div>
     </div>
   </div>
@@ -303,19 +346,6 @@
     </div>
 
   <div class="search-options">
-    <div class="search-option">
-      <span class="label">Case:</span>
-      <input type='radio' name='fold_case' value='false' id='case-match' tabindex="3" />
-      <label for='case-match'>match</label>
-      <input type='radio' name='fold_case' value='auto' id='case-auto' tabindex="4" />
-      <label for='case-auto'>auto</label>
-      [<span class="tooltip-target">?<div class="tooltip">
-        Case-sensitive if the query contains capital letters
-      </div></span>]
-      <input type='radio' name='fold_case' value='true' id='case-ignore' tabindex="5" />
-      <label for='case-ignore'>ignore</label>
-    </div>
-
     {#if backends.length > 1}
       <div class="search-option">
         <span class="label">Search:</span>
