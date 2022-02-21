@@ -3,7 +3,6 @@
 
         export async function load({ url }) {
           
-          console.log('whats going on');
           const res = await fetch("http://localhost:8910/api/v2/search/getInitInfo");
 
           return {
@@ -30,7 +29,7 @@
     let sampleRepo = "xvandish/go-photo-thing"
 
     export let serverInfo = {};
-    let sampleRes = { code: [], files: []};
+    let sampleRes = { code: [], files: [], stats: { totalTime: -1, }};
 
     // TODO:
     // 1. Load Controls state based on the URL search params
@@ -177,15 +176,20 @@
 
     // getting mixed results here
     async function doSearch() {
-      if (query === '') return;
+      if (query === '') {
+        // clear the previous results
+        sampleRes = { code: [], files: [], stats: { totalTime: -1, }};
+        console.log('resetting sample_res');
+        console.log(sampleRes.stats.totalTime);
+        return;
+      };
       console.log('making new query');
       const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${!isCaseSensitive}&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
       let shaped = reshapeResults(inf);
-      sampleRes.code = [...shaped.code]
-      sampleRes.files = [...shaped.files]
-
-      console.log({shaped});
+      sampleRes.code = [...shaped.code];
+      sampleRes.files = [...shaped.files];
+      sampleRes.stats = {...shaped.stats};
     }
 
     // run a search when we initially mount in case we need to. if we don't, doSearch
@@ -194,6 +198,9 @@
 
     
     // TODO: move this reshaping of results into the server
+    // TODO: also add something that counts + tells us the number of results,
+    //       see codesearch_ui.js#L755 for reference
+    //
     // https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
     // THIS IS A COPY PASTE OF THE DEDUPING FUNCTION THAT WEBGREP BY KEVIN LIN USES - 
     // ALL CREDIT TO ABOVE. I'll eventually port this to server side work, but for this
@@ -207,6 +214,8 @@
     * @private
     */
    function reshapeResults(data) {  // eslint-disable-line class-methods-use-this
+     let codeMatches = 0;
+     let fileMatches = data.file_results.length;
      const code = Object.values(data.results
        // Aggregate lines by repo and path, so that each unique (repo, path) combination is
        // described by an array of all matching lines and the left/right bounds for each line.
@@ -233,6 +242,7 @@
            const bounds = (() => {
              // Examining the matching line, for which bounds information is available
              if (contextLno === lineNumber) {
+              codeMatches += 1;
               /* console.log('matching line'); */
                return [result.bounds[0], result.bounds[1]];
              }
@@ -282,8 +292,14 @@
          bounds: [file.bounds[0], file.bounds[1]],
        },
      }), {}));
+
+    const stats = {
+      exitReason: data.info.why,
+      totalTime: parseInt(data.info.total_time, 10),
+      totalMatches: data.search_type === 'filename_only' ? fileMatches : codeMatches
+    }
  
-     return { code, files };
+     return { code, files, stats };
    }
 
   // TODO: Move the auto "case" option into a dropdown that clicking the button will trigger
@@ -410,14 +426,15 @@
         documentation</a> for a complete listing of supported regex syntax.
     </p>
 </div>
-<div id='resultarea'>
+<div id='resultarea' class:hidden={sampleRes.stats.totalTime === -1}>
   <div id='countarea'>
-    <span id='numresults'>0</span> matches found
+    <span id='numresults'>{sampleRes.stats.totalMatches}{sampleRes.stats.exitReason !== 'NONE' && "+"}</span> matches found
     <span id='searchtimebox'>
       <span class='label'>
         /
       </span>
       <span id='searchtime'>
+        {sampleRes.stats.totalTime / 1000}s
       </span>
     </span>
   </div>

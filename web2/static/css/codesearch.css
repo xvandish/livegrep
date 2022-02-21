@@ -10,6 +10,7 @@
 
 body {
     min-height: 100vh;
+    font-size: 14px;
     margin: 0;
     font-family: sans-serif;
 }
@@ -217,9 +218,9 @@ a:hover {
     display: block;
 }
 
-#searchtimebox {
-    display: none
-}
+/* #searchtimebox { */
+/*     display: none */
+/* } */
 
 #resultbox {
     padding: 1em 3em;
