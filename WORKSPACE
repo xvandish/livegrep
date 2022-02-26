@@ -84,11 +84,26 @@ http_archive(
     url = "https://github.com/libgit2/libgit2/archive/v0.27.9.tar.gz",
 )
 
+# http_archive(
+#     name = "com_grail_bazel_compdb",
+#     strip_prefix = "bazel-compilation-database-0.5.2",
+#     urls = ["https://github.com/grailbio/bazel-compilation-database/archive/0.5.2.tar.gz"],
+# )
+# load("@com_grail_bazel_compdb//:deps.bzl", "bazel_compdb_deps")
+# bazel_compdb_deps()
+
+# git_repository(
+#     name = "com_grail_bazel_compdb",
+#     commit = "2cd8ed39ef726645615ba94fcd265d54b0f0de33",
+#     remote = "https://github.com/grailbio/bazel-compilation-database.git",
+# )
+
 git_repository(
     name = "com_github_grpc_grpc",
-    commit = "591d56e1300b6d11948e1b821efac785a295989c",  # 1.44.0
+    # commit = "591d56e1300b6d11948e1b821efac785a295989c",  # 1.44.0
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1644573434 +0100"
+    tag = "v1.44.0"
+    # shallow_since = "1644573434 +0100"
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
@@ -114,11 +129,6 @@ load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
 
 node_repositories()
 
-git_repository(
-    name = "com_grail_bazel_compdb",
-    commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
-    remote = "https://github.com/grailbio/bazel-compilation-database.git",
-)
 
 git_repository(
     name = "com_google_googletest",
