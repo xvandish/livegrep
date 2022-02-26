@@ -9,6 +9,6 @@ go_library(
         "//server/log:go_default_library",
         "//server/config:go_default_library",
         "@org_golang_x_net//context:go_default_library",
-        # "@org_golang_google_api//idtoken:go_default_library",
+        "@org_golang_google_api//idtoken:go_default_library",
     ],
 )

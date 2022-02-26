@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"golang.org/x/net/context"
-	// "google.golang.org/api/idtoken"
+	"google.golang.org/api/idtoken"
 
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -52,14 +52,13 @@ func (h *iapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		aud = fmt.Sprintf("/projects/%s/apps/%s", h.cfg.ProjectNumber, h.cfg.ProjectID)
 	}
 
-	// _, err := idtoken.Validate(ctx, iapJWT, aud)
-	log.Printf(ctx, "got aud: %s and iapJWT: %s\n", aud, iapJWT)
+	_, err := idtoken.Validate(ctx, iapJWT, aud)
 
-	// if err != nil {
-	// 	log.Errorf("idtoken.Validate: %v", err)
-	// 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	// 	return
-	// }
+	if err != nil {
+		log.Printf(ctx, "Unauthorized: idtoken.Validate: %v", err)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	h.inner.ServeHTTP(w, r)
 }

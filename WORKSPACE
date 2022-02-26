@@ -61,6 +61,13 @@ git_repository(
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
+load(
+    "//tools/build_defs:go_externals.bzl",
+    "go_externals",
+)
+
+go_externals()
+
 go_rules_dependencies()
 
 go_register_toolchains(version = "1.17.6")
@@ -69,12 +76,6 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
 
-load(
-    "//tools/build_defs:go_externals.bzl",
-    "go_externals",
-)
-
-go_externals()
 
 http_archive(
     name = "com_github_libgit2",
