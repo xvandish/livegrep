@@ -34,12 +34,11 @@ def _gopkg(repo, commit):
     )
 
 _externals = [
-    _golang_x("net", "d212a1ef2de2f5d441c327b8f26cf3ea3ea9f265"),
-    _golang_x("text", "a9a820217f98f7c8a207ec1e45a874e1fe12c478"),
-    _golang_x("oauth2", "a6bd8cefa1811bd24b86f8902872e4e8225f74c4"),
-    _golang_x("sys", "33540a1f603772f9d4b761f416f5c10dade23e96"),
-    _golang_x("crypto", "4b2356b1ed79e6be3deca3737a3db3d132d2847a"),
-    _golang_x("sync", "0de741cfad7ff3874b219dfbc1b9195b58c7c490"),
+    _golang_x("net", "e204ce36a2ba698f7e949cbd2b13458cf51a8042"),
+    _golang_x("text", "d1c84af989ab0f62cd853b5ae33b1b4db4f1e88b"),
+    _golang_x("oauth2", "d3ed0bb246c8d3c75b63937d9a5eecff9c74d7fe"),
+    _golang_x("sys", "da31bd327af904dd4721b4eefa7c505bb3afd214"),
+    _golang_x("crypto", "5e0467b6c7cee3ce8969a8b584d9e6ab01d074f7"),
     struct(
         name = "org_golang_google_appengine",
         commit = "170382fa85b10b94728989dfcf6cc818b335c952",
@@ -62,9 +61,36 @@ _externals = [
         commit = "f74f0337644653eba7923908a4d7f79a4f3a267b",
         importpath = "google.golang.org/grpc",
     ),
+
+    struct(
+        name = "org_golang_google_api",
+        importpath = "google.golang.org/api",
+        commit = "32bf29c2e17105d5f285adac4531846c57847f11", # v0.50.0
+    ),
+    struct(
+        name = "com_google_cloud_go",
+        importpath = "cloud.google.com/go",
+        commit = "2a43d6d30d7041eb6ed0b305c81dc32c8c42ebc1", # v0.87.0
+    ),
+    struct(
+        name = "io_opencensus_go",
+        importpath = "go.opencensus.io",
+        commit = "49838f207d61097fc0ebb8aeef306913388376ca", #v0.23.0
+    ),
+    struct(
+        name = "com_github_golang_groupcache",
+        importpath = "github.com/golang/groupcache",
+        commit = "41bb18bfe9da5321badc438f91158cd790a33aa3",
+    ),
 ]
 
 def go_externals():
+    go_repository(
+        name = "com_google_cloud_go_compute",
+        importpath = "cloud.google.com/go/compute",
+        sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
+        version = "v0.1.0",
+    )
     for ext in _externals:
         if hasattr(ext, "vcs"):
             go_repository(
