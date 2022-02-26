@@ -61,6 +61,13 @@ git_repository(
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
+load(
+    "//tools/build_defs:go_externals.bzl",
+    "go_externals",
+)
+
+go_externals()
+
 go_rules_dependencies()
 
 go_register_toolchains(version = "1.17.6")
@@ -69,12 +76,6 @@ load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
 
-load(
-    "//tools/build_defs:go_externals.bzl",
-    "go_externals",
-)
-
-go_externals()
 
 http_archive(
     name = "com_github_libgit2",
@@ -114,11 +115,11 @@ load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
 
 node_repositories()
 
-git_repository(
-    name = "com_grail_bazel_compdb",
-    commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
-    remote = "https://github.com/grailbio/bazel-compilation-database.git",
-)
+# git_repository(
+#     name = "com_grail_bazel_compdb",
+#     commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
+#     remote = "https://github.com/grailbio/bazel-compilation-database.git",
+# )
 
 git_repository(
     name = "com_google_googletest",

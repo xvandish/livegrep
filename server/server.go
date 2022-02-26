@@ -176,6 +176,14 @@ func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, "/search", 303)
 }
 
+// GKE load balancers refuse to serve a page if the backing service livenessProbe fails
+// So, if using ServeHealthcheck there's a chance the deployment will serve a 404
+// even if the frontend/server is healthy, but the codesearch instance isn't healthy
+// Use the following function if you just need a 200 when the server is running
+func (s *server) ServeHealthZ(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
 func (s *server) ServeHealthcheck(w http.ResponseWriter, r *http.Request) {
 	// All backends must have (at some point) reported an index age for us to
 	// report as healthy.
@@ -338,6 +346,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.serveFilePathRegex = serveFilePathRegex
 
 	m := pat.New()
+	m.Add("GET", "/healthz", http.HandlerFunc(srv.ServeHealthZ))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
 	m.Add("GET", "/debug/stats", srv.Handler(srv.ServeStats))
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
