@@ -428,7 +428,7 @@
 </div>
 <div id='resultarea' class:hidden={sampleRes.stats.totalTime === -1}>
   <div id='countarea'>
-    <span id='numresults'>{sampleRes.stats.totalMatches}{sampleRes.stats.exitReason !== 'NONE' && "+"}</span> matches found
+    <span id='numresults'>{sampleRes.stats.totalMatches}{sampleRes.stats.exitReason !== 'NONE' ? "+" : ""}</span> matches found
     <span id='searchtimebox'>
       <span class='label'>
         /

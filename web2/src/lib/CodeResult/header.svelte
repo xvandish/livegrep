@@ -5,7 +5,7 @@
   export let numMatches
   export let bounds = []
 
-	  let repoUrl = ""
+  let repoUrl = `/view/${repo}`
   // repo will always be of the form org/repoName (or user/repoName)
   let pathUrl = `/view/${repo}/${path}`
 
