@@ -1,4 +1,4 @@
-@import '@fontsource/fira-mono';
+/* @import '@fontsource/fira-mono'; */
 
 :root {
 	font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
@@ -14,6 +14,7 @@
 	--background-without-opacity: rgba(255, 255, 255, 0.7);
 	--column-width: 42rem;
 	--column-margin-top: 4rem;
+	margin: 0;
 }
 
 #svelte {

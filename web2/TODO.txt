@@ -1,0 +1,56 @@
+1. Switch the Case toggle button to be a dropdown menu / select so we don't lose
+   the "Auto" functionality that is really nice
+2. Look into https://github.com/livegrep/livegrep/issues/135 - make which
+   repo(s) you're searching in more ovbious
+3. Add support for commit hash in the fileviewer
+4. Look into that buggy, sometimes works prism.js implementation (specifically
+   with Golang)
+5. Add a "Show all" link/button to the FileResults when there are more than
+   "default limit"
+6. General style and typography updates
+7. A visual repo selector
+8. Debounce/throttle search requests. Right now we fire one for every keystroke
+9. Add a visual "isLoading" indicator, so user's know when there is an inflight
+   request
+10. Style the search bar to look like google search (curved corners at 5px
+    I believe)
+11. Style the searchbar based on the validation status of the term
+12. Move the updated logic for sending results to the server (or maybe not, so
+    this doesn't affect the CLI!)
+13. Maybe? Change the link colors to the default Bootstrap one
+14. Add a recent queries dropdown (maybe also recent files?)
+15. Make it possible to add a custom header & custom footer
+16. Explore running an (optional) node server so that we can server render
+17. Add back in the help/dynamic functioanlity (/ for new search, n when text is
+    selected to go next, etc) for the fileviewer
+18. Fix links in fileviwer for permalink and line numbers
+19. Explore rendering the README of a repo next to the directory viewer when no
+    file is selected
+20. Revist the horizontal scroll on long lines in search page
+21. Make sure long lines are wrapped in the file viewer
+22. Make '/' on the search page jump the search input. 
+23. See how a sticky search bar (position: sticky; top: 0; box-shadow:
+    something) feels. Google search now does this!
+    https://searchengineland.com/google-officially-rolling-out-new-search-bar-with-sticky-header-rounded-search-bar-308943.
+    Maybe we can add this (and some other settings) under a settings icon so
+    that it can be configured. 
+24. Explore adding links that show on hover that let you copy a file name or
+    path in search results
+25. Revist how line numbers are rendered to see if we can find a more performant
+    way
+26. I'd really like to make the entire line in a search result clickable, but
+    also retain the ability for users to select text in it... this currently
+    seems impossible...
+27. Strip out all the initial SvelteKit stuff, plus update to newest
+28. Make use of the new @const declaration - https://svelte.dev/blog/whats-new-in-svelte-february-2022
+29. Add a dropdown that shows recent queries when you click on the search input
+    (should be configurable)
+30. Add a "/new global search" option along with "/new search" in the fileviewer
+    for when you don't want to search within the same repo again
+31. Add a backend selector. Possibly integrated with the repo selector from 7
+32. Add a css-normalizer 
+32. Check if css-minifcation is done by default
+33. Check if the build-process generates hashed-filename files by default
+34. Add an inline "View on GitHub" link/icon to file results to reduce a click
+35. Explore options for syntax highlighting on the search results page (super
+    low priority)
