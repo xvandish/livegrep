@@ -1,7 +1,7 @@
 {{template "layout" .}}
 
 {{define "body"}}
-<div class='textarea'>
+<div class='about-text'>
   <p>
     This livegrep project was an experiment in scaling real-time
     regex search, inspired in part by the death of <a
@@ -18,6 +18,13 @@
     livegrep is written and run by <a
     href="https://nelhage.com/">Nelson Elhage</a> and is <a
     href="https://github.com/livegrep/livegrep">open source</a>.
+  </p>
+  <p>
+    livegrep is deployed/maintained for the New York Times by
+    Rodrigo Silva Mendoza. Code for our fork is public and can be 
+    found <a href="https://github.com/xvandish/livegrep">here</a>.
+    Code for the backing GKE deployment, as well as detailed architecture descriptions
+    can be found internally, at <a href="https://github.com/nytimes/livegrep-instance">nytimes/livegrep-instance</a>.
   </p>
 </div>
 {{end}}

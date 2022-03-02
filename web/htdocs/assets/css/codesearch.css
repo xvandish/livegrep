@@ -606,6 +606,13 @@ a:hover {
 }
 /* END */
 
+.about-text {
+    width: 40em;
+    margin: auto;
+    margin-bottom: 1em;
+    margin-top: 3rem;
+}
+
 .textarea {
     width: 40em;
     margin: auto;
