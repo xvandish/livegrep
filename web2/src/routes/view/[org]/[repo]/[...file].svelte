@@ -324,7 +324,7 @@
   }
 
   var showSelectionReminder = function () {
-    document.getElementsByClassName('without-selection')[0].style.display = 'none'
+    document.getElementsByClassName('without-selection')[0].style.display = 'none';
     document.getElementsByClassName('with-selection')[0].style.display = 'block';
   }
 
@@ -429,6 +429,9 @@
             <ul class="header-actions with-selection" style="display:none">
             <li class="header-action">
                 search for selected text [/]
+            </li>,
+            <li class="header-action">
+                <a id="external-link" data-action-name="" title="View at {fileInfo.data.ExternalDomain}. Keyboard shortcut: v" href="#">view at {fileInfo.data.ExternalDomain} [<span class='shortcut'>v</span>]</a>
             </li>,
             <li class="header-action">
                 previous match [p]
