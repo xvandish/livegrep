@@ -194,7 +194,32 @@
 
     // run a search when we initially mount in case we need to. if we don't, doSearch
     // will short circuit anyways
-    onMount(() => doSearch());
+    onMount(() => { 
+      doSearch();
+
+
+      // When "/" is pressed, either focus the input or focus the input
+      // and search for the selected text
+      const searchBox = document.getElementById("searchbox")
+      document.addEventListener("keyup", function (event) {
+        if (event.key !== "/") return;
+      
+        if (searchBox === document.activeElement) {
+          return;
+        };
+
+        // if there is some selected text, then start a new search for it
+        // I don't really care where the search is. If people complain then we can tune this to check whether the selection is within the fileResults
+          const selectedText = document.getSelection().toString();
+          if (selectedText !== "") {
+            searchBox.value = selectedText;
+          }
+
+        event.preventDefault(); // don't register the / key
+        searchBox.focus();
+        document.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
 
     
     // TODO: move this reshaping of results into the server
@@ -303,6 +328,7 @@
    }
 
   // TODO: Move the auto "case" option into a dropdown that clicking the button will trigger
+
 </script>
 
 
