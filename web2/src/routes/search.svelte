@@ -186,6 +186,8 @@
       console.log('making new query');
       const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${!isCaseSensitive}&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
+
+      // TODO: handle errors (404, 500 etc)
       let shaped = reshapeResults(inf);
       sampleRes.code = [...shaped.code];
       sampleRes.files = [...shaped.files];
@@ -217,7 +219,7 @@
 
         event.preventDefault(); // don't register the / key
         searchBox.focus();
-        document.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
 
@@ -329,6 +331,21 @@
 
   // TODO: Move the auto "case" option into a dropdown that clicking the button will trigger
 
+  // TODO: this should be re-usable, but we only have one input. Maybe inline it in onMount?
+  function blurOnEscape(node) {
+    function handleKey(event) {
+      if (event.key === 'Escape' && node && typeof node.blur === 'function') node.blur()
+    }
+
+    node.addEventListener('keydown', handleKey)
+
+    return {
+      destroy() {
+        node.removeEventListener('keydown', handleKey)
+      }
+    }
+  }
+
 </script>
 
 
@@ -370,7 +387,7 @@
         </button>
       </div>
       <div class="query-input-wrapper">
-        <input type="text" bind:value={query} on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
+        <input type="text" bind:value={query} use:blurOnEscape on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
       </div>
     </div>
   </div>
