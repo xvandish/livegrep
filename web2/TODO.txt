@@ -29,11 +29,15 @@
 20. Revist the horizontal scroll on long lines in search page
 21. Make sure long lines are wrapped in the file viewer
 X - 22. Make '/' on the search page jump the search input. 
-23. See how a sticky search bar (position: sticky; top: 0; box-shadow:
+X - 23. See how a sticky search bar (position: sticky; top: 0; box-shadow:
     something) feels. Google search now does this!
-    https://searchengineland.com/google-officially-rolling-out-new-search-bar-with-sticky-header-rounded-search-bar-308943.
+    https://searchengineland.com/google-officially-rolling-out-new-search-bar-with-sticky-header-rounded-search-bar-308943. 
     Maybe we can add this (and some other settings) under a settings icon so
     that it can be configured. 
+    WONT DO. It looks and feels ok, until you start typing. Then, because we
+    don't update the scroll position, users see the results at the current
+    scroll position. To resolve this, we would scroll to top, and at that point
+    what's the point of the sticky header.
 24. Explore adding links that show on hover that let you copy a file name or
     path in search results
 25. Revist how line numbers are rendered to see if we can find a more performant
