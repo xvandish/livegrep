@@ -34,7 +34,6 @@
     export let commit;
 
     import { onMount } from 'svelte';
-
     
     var root;
     var lineNumberContainer; 
@@ -368,7 +367,8 @@
     });
 
     window.document.addEventListener('click', function(event) {
-      if (!helpScreen.classList.contains('hidden') && !event.target.closest("#help-screen-card")) { // check against card, not overlay
+      const helpScreenCard = document.querySelector('.help-screen-card');
+      if (!helpScreen.classList.contains('hidden') && !helpScreenCard.contains(event.target)) { // check against card, not overlay
         hideHelp();
       }
     });
@@ -478,9 +478,7 @@
                 <li>Click on a line number to highlight it</li>
                 <li>Shift + click a second line number to highlight a range</li>
                 <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
-                <li>Press <kbd class="keyboard-shortcut">b</kbd> to see which authors wrote which lines</li>
-                <li>Press <kbd class="keyboard-shortcut">l</kbd> to see the commit log for this file</li>
-                <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at ExternalDomain</li>
+                <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {fileInfo.data.ExternalDomain}</li>
                 <li>Press <kbd class="keyboard-shortcut">y</kbd> to create a permalink to this version of this file</li>
                 <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>
                 <li>Select some text and press <kbd class="keyboard-shortcut">enter</kbd> to search for that text in a new tab</li>
