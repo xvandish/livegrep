@@ -161,7 +161,7 @@
 
     function doSearch(event, query, newTab) {
         var url;
-        if (query !== undefined) {
+        if (query && query !== '') {
             url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(fullRepoName);
         } else {
             url = '/search';
