@@ -522,6 +522,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/getFileInfo", srv.Handler(srv.ServeFileInfo))
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	// Temp, clumsy. if ServeAPISearch sees /v2, it'll call doSearchV2
+	m.Add("GET", "/api/v2/search/", srv.Handler(srv.ServeAPISearch))
 
 	var h http.Handler = m
 

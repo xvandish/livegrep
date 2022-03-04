@@ -12,10 +12,12 @@ type ReplyError struct {
 
 // ReplySearch is returned to /api/v1/search/:backend
 type ReplySearch struct {
-	Info        *Stats        `json:"info"`
-	Results     []*Result     `json:"results"`
-	FileResults []*FileResult `json:"file_results"`
-	SearchType  string        `json:"search_type"`
+	Info               *Stats               `json:"info"`
+	Results            []*Result            `json:"results"`
+	DedupedResults     []*DedupedResult     `json:"dedupedResult"`
+	DedupedFileResults []*DedupedFileResult `json:"dedupedFileResults"`
+	FileResults        []*FileResult        `json:"file_results"`
+	SearchType         string               `json:"search_type"`
 }
 
 type Stats struct {
@@ -39,8 +41,32 @@ type Result struct {
 	Line          string   `json:"line"`
 }
 
+type ResultLine struct {
+	LineNumber int `json:"lno"`
+	// Bounds may or may not be defined. If they are,
+	// then this line is a match. Otherwise it's contex
+	Bounds []int  `json:"bounds"`
+	Line   string `json:"line"`
+}
+
+type DedupedResult struct {
+	Tree    string        `json:"repo"` // tree -> repo
+	Version string        `json:"version"`
+	Path    string        `json:"path"`
+	Lines   []*ResultLine `json:"lines"`
+	// Will never be sent over wire, used to deduplicate
+	LinesByContext map[int]*ResultLine `json:"linesByContext"`
+}
+
 type FileResult struct {
 	Tree    string `json:"tree"`
+	Version string `json:"version"`
+	Path    string `json:"path"`
+	Bounds  [2]int `json:"bounds"`
+}
+
+type DedupedFileResult struct {
+	Tree    string `json:"repo"`
 	Version string `json:"version"`
 	Path    string `json:"path"`
 	Bounds  [2]int `json:"bounds"`

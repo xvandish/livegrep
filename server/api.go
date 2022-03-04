@@ -209,6 +209,172 @@ func stringSlice(ss []string) []string {
 	return []string{}
 }
 
+func reverse(strings []string) []string {
+	newSstrings := make([]string, 0, len(strings))
+	for i := len(strings) - 1; i >= 0; i-- {
+		newSstrings = append(newSstrings, strings[i])
+	}
+	return newSstrings
+}
+
+func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
+	var search *pb.CodeSearchResult
+	var err error
+
+	start := time.Now()
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if id, ok := reqid.FromContext(ctx); ok {
+		ctx = metadata.AppendToOutgoingContext(ctx, "Request-Id", string(id))
+	}
+
+	search, err = backend.Codesearch.Search(
+		ctx, q,
+		grpc.FailFast(false),
+	)
+	if err != nil {
+		log.Printf(ctx, "error talking to backend err=%s", err)
+		return nil, err
+	}
+
+	reply := &api.ReplySearch{
+		Results:     make([]*api.Result, 0),
+		FileResults: make([]*api.FileResult, 0),
+		SearchType:  "normal",
+	}
+
+	if q.FilenameOnly {
+		reply.SearchType = "filename_only"
+	}
+
+	// Now need to dedup code-results per repo-path
+	// Now need to deup file-results per repo-path
+
+	dedupedResults := make(map[string]*api.DedupedResult)
+	codeMatches := 0
+	for _, r := range search.Results {
+		key := fmt.Sprintf("%s-%s", r.Tree, r.Path)
+		lineNumber := int(r.LineNumber)
+
+		existingResult, present := dedupedResults[key]
+		if !present {
+			existingResult = &api.DedupedResult{
+				Tree:    r.Tree,
+				Version: r.Version,
+				Path:    r.Path,
+				// Lines: make([]*api.ResultLine),
+				LinesByContext: make(map[int]*api.ResultLine),
+			}
+		}
+
+		var contextLinesInit []string
+		// There has to be a better way?
+		contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
+		contextLinesInit = append(contextLinesInit, r.Line)
+		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
+
+		// Now for every contextLine, transform it into a resultLines
+		// var resultLines []*api.ResultLines
+		for idx, line := range contextLinesInit {
+			contextLno := idx + lineNumber - len(r.ContextBefore)
+			var bounds []int
+
+			if contextLno == lineNumber {
+				codeMatches += 1
+				bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
+				// bounds[0] = int(r.Bounds.Left)
+				// bounds[1] = int(r.Bounds.Right)
+			}
+
+			// Defer to the existing bounds information
+			if present {
+				if existingContextLine, exist := existingResult.LinesByContext[contextLno]; exist {
+					if len(existingContextLine.Bounds) == 2 {
+						log.Printf(ctx, "bounds line exists, replacing - [%d,%d]", existingContextLine.Bounds[0], existingContextLine.Bounds[1])
+						copy(existingContextLine.Bounds, bounds)
+						// bounds = append(existingContextLine.Bounds...)
+
+						// 						bounds[0] = existingContextLine.Bounds[0]
+						// 						bounds[1] = existingContextLine.Bounds[1]
+
+					}
+				}
+			}
+			existingResult.LinesByContext[contextLno] = &api.ResultLine{
+				LineNumber: contextLno,
+				Bounds:     bounds,
+				Line:       line}
+		}
+
+		if !present {
+			dedupedResults[key] = existingResult
+		}
+
+		// reply.Results = append(reply.Results, &api.Result{
+		// 	Tree:          r.Tree,
+		// 	Version:       r.Version,
+		// 	Path:          r.Path,
+		// 	LineNumber:    int(r.LineNumber),
+		// 	ContextBefore: stringSlice(r.ContextBefore),
+		// 	ContextAfter:  stringSlice(r.ContextAfter),
+		// 	Bounds:        [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+		// 	Line:          r.Line,
+		// })
+	}
+
+	for _, dededupedResult := range dedupedResults {
+		reply.DedupedResults = append(reply.DedupedResults, dededupedResult)
+	}
+
+	// Take every LinesByContext and turn it into Lines
+	// for key, dedupedResult := range dedupedResults {
+	// }
+
+	// TODO
+	dedupedFileResults := make(map[string]*api.DedupedFileResult)
+	for _, r := range search.FileResults {
+		fileKey := fmt.Sprintf("%s-%s", r.Tree, r.Path)
+
+		existingFile, present := dedupedFileResults[fileKey]
+
+		if !present {
+			existingFile = &api.DedupedFileResult{
+				Tree:    r.Tree,
+				Version: r.Version,
+				Path:    r.Path,
+				Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+			}
+			dedupedFileResults[fileKey] = existingFile
+		} else {
+			log.Printf(ctx, "file with key: %s already exists, overwritting", fileKey)
+			existingFile.Bounds = [2]int{int(r.Bounds.Left), int(r.Bounds.Right)}
+		}
+		// reply.FileResults = append(reply.FileResults, &api.FileResult{
+		// 	Tree:    r.Tree,
+		// 	Version: r.Version,
+		// 	Path:    r.Path,
+		// 	Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+		// })
+	}
+	for _, dedupedFile := range dedupedFileResults {
+		reply.DedupedFileResults = append(reply.DedupedFileResults, dedupedFile)
+	}
+
+	reply.Info = &api.Stats{
+		RE2Time:     search.Stats.Re2Time,
+		GitTime:     search.Stats.GitTime,
+		SortTime:    search.Stats.SortTime,
+		IndexTime:   search.Stats.IndexTime,
+		AnalyzeTime: search.Stats.AnalyzeTime,
+		TotalTime:   int64(time.Since(start) / time.Millisecond),
+		ExitReason:  search.Stats.ExitReason.String(),
+	}
+	return reply, nil
+
+}
+
 func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
 	var search *pb.CodeSearchResult
 	var err error
@@ -322,7 +488,12 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		q.MaxMatches = s.config.DefaultMaxMatches
 	}
 
-	reply, err := s.doSearch(ctx, backend, &q)
+	var reply *api.ReplySearch
+	if r.URL.Query().Get("v2") == "true" {
+		reply, err = s.doSearchV2(ctx, backend, &q)
+	} else {
+		reply, err = s.doSearch(ctx, backend, &q)
+	}
 
 	if err != nil {
 		log.Printf(ctx, "error in search err=%s", err)
