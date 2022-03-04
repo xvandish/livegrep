@@ -240,9 +240,11 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	}
 
 	reply := &api.ReplySearch{
-		Results:     make([]*api.Result, 0),
-		FileResults: make([]*api.FileResult, 0),
-		SearchType:  "normal",
+		Results:            make([]*api.Result, 0),
+		FileResults:        make([]*api.FileResult, 0),
+		DedupedFileResults: make([]*api.DedupedFileResult, 0),
+		DedupedResults:     make([]*api.DedupedResult, 0),
+		SearchType:         "normal",
 	}
 
 	if q.FilenameOnly {
@@ -265,7 +267,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 				Version: r.Version,
 				Path:    r.Path,
 				// Lines: make([]*api.ResultLine),
-				LinesByContext: make(map[int]*api.ResultLine),
+				Lines: make(map[int]*api.ResultLine),
 			}
 		}
 
@@ -290,7 +292,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 			// Defer to the existing bounds information
 			if present {
-				if existingContextLine, exist := existingResult.LinesByContext[contextLno]; exist {
+				if existingContextLine, exist := existingResult.Lines[contextLno]; exist {
 					if len(existingContextLine.Bounds) == 2 {
 						log.Printf(ctx, "bounds line exists, replacing - [%d,%d]", existingContextLine.Bounds[0], existingContextLine.Bounds[1])
 						copy(existingContextLine.Bounds, bounds)
@@ -302,7 +304,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 					}
 				}
 			}
-			existingResult.LinesByContext[contextLno] = &api.ResultLine{
+			existingResult.Lines[contextLno] = &api.ResultLine{
 				LineNumber: contextLno,
 				Bounds:     bounds,
 				Line:       line}
@@ -323,6 +325,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		// 	Line:          r.Line,
 		// })
 	}
+	reply.CodeMatches = codeMatches
 
 	for _, dededupedResult := range dedupedResults {
 		reply.DedupedResults = append(reply.DedupedResults, dededupedResult)

@@ -18,6 +18,7 @@ type ReplySearch struct {
 	DedupedFileResults []*DedupedFileResult `json:"dedupedFileResults"`
 	FileResults        []*FileResult        `json:"file_results"`
 	SearchType         string               `json:"search_type"`
+	CodeMatches        int                  `json:"code_matches"`
 }
 
 type Stats struct {
@@ -50,12 +51,12 @@ type ResultLine struct {
 }
 
 type DedupedResult struct {
-	Tree    string        `json:"repo"` // tree -> repo
-	Version string        `json:"version"`
-	Path    string        `json:"path"`
-	Lines   []*ResultLine `json:"lines"`
+	Tree    string `json:"repo"` // tree -> repo
+	Version string `json:"version"`
+	Path    string `json:"path"`
+	// Lines   []*ResultLine `json:"lines"`
 	// Will never be sent over wire, used to deduplicate
-	LinesByContext map[int]*ResultLine `json:"linesByContext"`
+	Lines map[int]*ResultLine `json:"lines"`
 }
 
 type FileResult struct {

@@ -1,5 +1,5 @@
 <script>
-  export let number 
+  export let lno 
   export let line
   export let bounds = [] 
   export let repo 
@@ -12,7 +12,7 @@
   let isHighlighted = false
 
 
-  if (bounds.length > 0) {
+  if (bounds && bounds.length > 0) {
     isHighlighted = true
     let [start, end] = bounds
     prefixPart = line.substring(0, start);
@@ -20,7 +20,7 @@
     suffixPart = line.substring(end);
   }
 
-  const lineLink = `/view/${repo}/${path}#L${number}`
+  const lineLink = `/view/${repo}/${path}#L${lno}`
 </script>
 
 <div class="code-line">
@@ -30,7 +30,7 @@
 	href={lineLink}
 	class="num-link"
 >
-<span class="num" class:bold={bounds.length > 0}>{number}</span>
+<span class="num" class:bold={bounds && bounds.length > 0}>{lno}</span>
 </a>
 	<div class="line">
 	{#if isHighlighted}

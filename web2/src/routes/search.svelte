@@ -9,7 +9,7 @@
             status: res.status,
             props: {
               serverInfo: res.ok && (await res.json()),
-              query: decodeURIComponent(url.searchParams.get('q')) || '',
+              query: decodeURIComponent(url.searchParams.get('q') || ''),
               isRegexSearch: url.searchParams.get('regex') === 'true',
               isContextEnabled: url.searchParams.get('context') === 'true', 
               caseSensitivity: url.searchParams.get('fold_case') || 'auto',
@@ -29,7 +29,7 @@
     let sampleRepo = "xvandish/go-photo-thing"
 
     export let serverInfo = {};
-    let sampleRes = { code: [], files: [], stats: { totalTime: -1, }};
+    let sampleRes = { dedupedResult: [], dedupedFileResults: [], stats: { totalTime: -1, }};
 
     // TODO:
     // 1. Load Controls state based on the URL search params
@@ -172,23 +172,27 @@
     async function doSearch() {
       if (query === '') {
         // clear the previous results
-        sampleRes = { code: [], files: [], stats: { totalTime: -1, }};
+        sampleRes = { dedupedResult: [], dedupedFileResults: [], stats: { totalTime: -1, }};
         console.log('resetting sample_res');
         console.log(sampleRes.stats.totalTime);
         return;
       };
       console.time('query');
-      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}`);
+      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}&v2=true`);
       const inf = await res.json();
       console.timeEnd('query');
 
       // TODO: handle errors (404, 500 etc)
-      console.time('reshape');
-      let shaped = reshapeResults(inf);
-      console.timeEnd('reshape');
-      sampleRes.code = [...shaped.code];
-      sampleRes.files = [...shaped.files];
-      sampleRes.stats = {...shaped.stats};
+      /* console.time('reshape'); */
+      /* let shaped = reshapeResults(inf); */
+      /* console.timeEnd('reshape'); */
+      sampleRes.dedupedResult = [...inf.dedupedResult];
+      sampleRes.dedupedFileResults = [...inf.dedupedFileResults];
+      sampleRes.stats = {
+        exitReason: inf.info.why,
+        totalTime: parseInt(inf.info.total_time, 10),
+        totalMatches: inf.search_type === 'filename_only' ? inf.dedupedFileResults.length : inf.code_matches 
+      }
     }
 
     // run a search when we initially mount in case we need to. if we don't, doSearch
@@ -493,14 +497,14 @@
   </div>
   <div class:hidden={query === ''} id='results' tabindex='-1'>
   <div id="file-results">
-    {#each sampleRes.files.slice(0,10) as f (f)}
+    {#each sampleRes.dedupedFileResults.slice(0,10) as f (f)}
       <FileHeader path={f.path} repo={f.repo} numMatches={-1} bounds={f.bounds} />
     {/each}
   </div>
   <!-- keying by the entire object is unfortunate, maybe we want to create an id -->
   <!-- but if we don't do this, then lines get-reused and so have bad highlighting -->
   <div id="code-results">
-    {#each sampleRes.code as cr (cr)}
+    {#each sampleRes.dedupedResult as cr (cr)}
       <CodeResult {...cr} />
     {/each}
   </div>
