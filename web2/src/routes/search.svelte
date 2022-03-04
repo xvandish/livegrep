@@ -12,7 +12,7 @@
               query: url.searchParams.get('q') || '',
               isRegexSearch: url.searchParams.get('regex') === 'true',
               isContextEnabled: url.searchParams.get('context') === 'true', 
-              isCaseSensitive: url.searchParams.get('fold_case') === 'true',
+              caseSensitivity: url.searchParams.get('fold_case'),
             }
           }
         }
@@ -112,7 +112,7 @@
 
     export let isRegexSearch = false;
     export let isContextEnabled = false;
-    export let isCaseSensitive = false;
+    export let caseSensitivity = 'auto';
     export let searchOptions = {
       q: '',
       regex: false,
@@ -134,13 +134,6 @@
       isContextEnabled = !isContextEnabled;
       updateSearchParamState();
     }
-
-    function toggleCaseSensitivity() {
-      console.log('toggle func called');
-      isCaseSensitive = !isCaseSensitive;
-      updateSearchParamState();
-    }
-
 
     // at the moment super simple
     export let query;
@@ -168,7 +161,7 @@
       url.searchParams.set("q", encodeURIComponent(query));
       url.searchParams.set("regex", isRegexSearch);
       url.searchParams.set("context", isContextEnabled);
-      url.searchParams.set("fold_case", isCaseSensitive);
+      url.searchParams.set("fold_case", caseSensitivity);
       window.history.pushState({}, '', url);
       doSearch();
       /* window.location.search = searchParams.toString(); */
@@ -184,7 +177,7 @@
         return;
       };
       console.log('making new query');
-      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${!isCaseSensitive}&regex=${isRegexSearch}&context=${isContextEnabled}`);
+      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
 
       // TODO: handle errors (404, 500 etc)
@@ -360,14 +353,21 @@
         <label for="searchbox">Query:</label>
       </div>
       <div class="inline-search-options">
-        <button type="button" class="regex-toggle" on:click={toggleCaseSensitivity} data-selected={isCaseSensitive}>
+        <div class="select-with-icon-container">
+          <div class="icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
             <g id="regular-expression">
                     <path id="upper-case" d="M7.53 7L4 17h2.063l.72-2.406h3.624l.72 2.406h2.062L9.65 7h-2.12zm1.064 1.53L9.938 13H7.25l1.344-4.47z"/>
                     <path id="lower-case" d="M18.55 17l-.184-1.035h-.055c-.35.44-.71.747-1.08.92-.37.167-.85.25-1.44.25-.564 0-.955-.208-1.377-.625-.42-.418-.627-1.012-.627-1.784 0-.808.283-1.403.846-1.784.568-.386 1.193-.607 2.208-.64l1.322-.04v-.335c0-.772-.396-1.158-1.187-1.158-.61 0-1.325.18-2.147.55l-.688-1.4c.877-.46 1.85-.69 2.916-.69 1.024 0 1.59.22 2.134.662.545.445.818 1.12.818 2.03V17h-1.45m-.394-3.527l-.802.027c-.604.018-1.054.127-1.35.327-.294.2-.442.504-.442.912 0 .58.336.87 1.008.87.48 0 .865-.137 1.152-.414.29-.277.436-.645.436-1.103v-.627"/>
             </g>
           </svg>
-        </button>
+          </div>
+        <select id="case-sensitivity-toggle" bind:value={caseSensitivity} on:change={updateSearchParamState}>
+          <option value="auto">auto</option>
+          <option value="false">match</option>
+          <option value="true">ignore</option>
+        </select>
+        </div>
         <button type="button" class="regex-toggle" on:click={toggleRegex} data-selected={isRegexSearch} title="{isRegexSearch ? "Don't use" : "Use"} Regex">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
             <g id="regular-expression">

@@ -81,7 +81,7 @@ a:hover {
 .input-line .inline-search-options.left {
     left: 0px;
     right: unset;
-    margin-left: 10px;
+    margin-left: 15px;
     margin-right: 0px;
 }
 
@@ -919,3 +919,25 @@ div.example {
 .clear-input:hover {
     background-color: #eaeaea;
 }
+
+/* float the icon over the select, padd the select text
+ * so it all looks like the same element */
+.select-with-icon-container {
+    position: relative;
+    display: flex;
+    align-items: end;
+}
+
+.select-with-icon-container .icon {
+    position: absolute;
+    left: 2px;
+}
+
+.select-with-icon-container select {
+    padding: 5px;
+    padding-left: 25px;
+    /* border-radius: 5px; */
+    border: none;
+    border-bottom: 1px solid lightgray;
+}
+
