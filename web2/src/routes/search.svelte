@@ -9,10 +9,10 @@
             status: res.status,
             props: {
               serverInfo: res.ok && (await res.json()),
-              query: url.searchParams.get('q') || '',
+              query: decodeURIComponent(url.searchParams.get('q')) || '',
               isRegexSearch: url.searchParams.get('regex') === 'true',
               isContextEnabled: url.searchParams.get('context') === 'true', 
-              caseSensitivity: url.searchParams.get('fold_case'),
+              caseSensitivity: url.searchParams.get('fold_case') || 'auto',
             }
           }
         }
@@ -113,6 +113,7 @@
     export let isRegexSearch = false;
     export let isContextEnabled = false;
     export let caseSensitivity = 'auto';
+    console.log({ caseSensitivity }); 
     export let searchOptions = {
       q: '',
       regex: false,
@@ -176,12 +177,15 @@
         console.log(sampleRes.stats.totalTime);
         return;
       };
-      console.log('making new query');
+      console.time('query');
       const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
+      console.timeEnd('query');
 
       // TODO: handle errors (404, 500 etc)
+      console.time('reshape');
       let shaped = reshapeResults(inf);
+      console.timeEnd('reshape');
       sampleRes.code = [...shaped.code];
       sampleRes.files = [...shaped.files];
       sampleRes.stats = {...shaped.stats};
@@ -217,6 +221,7 @@
     });
 
     
+    // TODO: reshape is taking ~1s for 2000 results. 
     // TODO: move this reshaping of results into the server
     // TODO: also add something that counts + tells us the number of results,
     //       see codesearch_ui.js#L755 for reference
@@ -236,6 +241,7 @@
    function reshapeResults(data) {  // eslint-disable-line class-methods-use-this
      let codeMatches = 0;
      let fileMatches = data.file_results.length;
+     console.time('code');
      const code = Object.values(data.results
        // Aggregate lines by repo and path, so that each unique (repo, path) combination is
        // described by an array of all matching lines and the left/right bounds for each line.
@@ -301,7 +307,9 @@
            }))
            .sort((a, b) => a.number - b.number),
        }));
+    console.timeEnd('code');
  
+    console.time('files');
      const files = Object.values(data.file_results.reduce((acc, file) => ({
        ...acc,
        // Deduplicate results keyed by its repository and file path
@@ -312,12 +320,14 @@
          bounds: [file.bounds[0], file.bounds[1]],
        },
      }), {}));
+     console.timeEnd('files');
 
     const stats = {
       exitReason: data.info.why,
       totalTime: parseInt(data.info.total_time, 10),
       totalMatches: data.search_type === 'filename_only' ? fileMatches : codeMatches
     }
+    console.log({ code, files });
  
      return { code, files, stats };
    }
