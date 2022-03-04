@@ -148,12 +148,12 @@
     function expandRangeToElement(element) {
         var range = parseHashForLineRange(document.location.hash);
         if(range) {
-            var elementLine = parseInt(element.attr('id').replace('L', ''), 10);
+            var elementLine = parseInt(element.getAttribute('id').replace('L', ''), 10);
             if(elementLine < range.start) {
-            range.end = range.start;
-            range.start = elementLine;
+                range.end = range.start;
+                range.start = elementLine;
             } else {
-            range.end = elementLine;
+                range.end = elementLine;
             }
             setHash("#L" + range.start + "-" + range.end);
         }
@@ -192,7 +192,7 @@
 
         // Update the external-browse link
         document.getElementById('external-link').setAttribute('href', getExternalLink(range));
-        // updateFragments(range, $('#permalink, #back-to-head'));
+        updateFragments(range, document.querySelectorAll('#permalink, #backToHead'));
     }
 
     function getLineNumber(range) {
@@ -238,14 +238,13 @@
     }
 
     function updateFragments(range, anchors) {
-        // $anchors.each(function() {
-        //     var $a = $(this);
-        //     var href = $a.attr('href').split('#')[0];
-        //     if (range !== null) {
-        //         href += '#L' + getLineNumber(range);
-        //     }
-        //     $a.attr('href', href);
-        // });
+        anchors.forEach(function (anchor) {
+            var href = anchor.getAttribute('href').split('#')[0];
+             if (range !== null) {
+                 href += '#L' + getLineNumber(range);
+             }
+             anchor.setAttribute('href', href);
+        });
   }
 
   var KeyCodes = {
@@ -337,20 +336,25 @@
     handleHashChange(false);
 
     // Allow shift clicking links to expand the highlight range
-    // lineNumberContainer.on('click', 'a', function(event) {
-    //   event.preventDefault();
-    //   if(event.shiftKey) {
-    //     expandRangeToElement($(event.target), lineNumberContainer);
-    //   } else {
-    //     setHash($(event.target).attr('href'));
-    //   }
-    //   handleHashChange(false);
-    // });
-    // $(window).on('hashchange', function(event) {
-    //   event.preventDefault();
-    //   // The url was updated with a new range
-    //   handleHashChange();
-    // });
+    // rather than adding an event handler to all links, we just 
+    // add a handler to the container, then check if the target
+    // is a link
+    lineNumberContainer.addEventListener('click', ((event) => {
+        if(event.target.tagName.toLowerCase() !== 'a') {
+            return;
+        }
+        event.preventDefault();
+        if (event.shiftKey) {
+                expandRangeToElement(event.target);
+        } else {
+            setHash(event.target.getAttribute('href'));
+        }
+        handleHashChange(false);
+    }));
+    window.addEventListener('hashchange', function(event) {
+        event.preventDefault();
+        handleHashChange(true);
+    });
 
     window.document.addEventListener('keydown', (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
