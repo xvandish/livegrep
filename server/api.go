@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -217,7 +218,7 @@ func reverse(strings []string) []string {
 	return newSstrings
 }
 
-func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
+func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearchV2, error) {
 	var search *pb.CodeSearchResult
 	var err error
 
@@ -239,12 +240,10 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		return nil, err
 	}
 
-	reply := &api.ReplySearch{
-		Results:            make([]*api.Result, 0),
-		FileResults:        make([]*api.FileResult, 0),
-		DedupedFileResults: make([]*api.DedupedFileResult, 0),
-		DedupedResults:     make([]*api.DedupedResult, 0),
-		SearchType:         "normal",
+	reply := &api.ReplySearchV2{
+		Results:     make([]*api.ResultV2, 0),
+		FileResults: make([]*api.FileResult, 0),
+		SearchType:  "normal",
 	}
 
 	if q.FilenameOnly {
@@ -254,7 +253,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// Now need to dedup code-results per repo-path
 	// Now need to deup file-results per repo-path
 
-	dedupedResults := make(map[string]*api.DedupedResult)
+	dedupedResults := make(map[string]*api.ResultV2)
 	codeMatches := 0
 	for _, r := range search.Results {
 		key := fmt.Sprintf("%s-%s", r.Tree, r.Path)
@@ -262,12 +261,11 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 		existingResult, present := dedupedResults[key]
 		if !present {
-			existingResult = &api.DedupedResult{
-				Tree:    r.Tree,
-				Version: r.Version,
-				Path:    r.Path,
-				// Lines: make([]*api.ResultLine),
-				Lines: make(map[int]*api.ResultLine),
+			existingResult = &api.ResultV2{
+				Tree:         r.Tree,
+				Version:      r.Version,
+				Path:         r.Path,
+				ContextLines: make(map[int]*api.ResultLine),
 			}
 		}
 
@@ -278,7 +276,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
 
 		// Now for every contextLine, transform it into a resultLines
-		// var resultLines []*api.ResultLines
 		for idx, line := range contextLinesInit {
 			contextLno := idx + lineNumber - len(r.ContextBefore)
 			var bounds []int
@@ -292,19 +289,14 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 			// Defer to the existing bounds information
 			if present {
-				if existingContextLine, exist := existingResult.Lines[contextLno]; exist {
+				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
 					if len(existingContextLine.Bounds) == 2 {
 						log.Printf(ctx, "bounds line exists, replacing - [%d,%d]", existingContextLine.Bounds[0], existingContextLine.Bounds[1])
 						copy(existingContextLine.Bounds, bounds)
-						// bounds = append(existingContextLine.Bounds...)
-
-						// 						bounds[0] = existingContextLine.Bounds[0]
-						// 						bounds[1] = existingContextLine.Bounds[1]
-
 					}
 				}
 			}
-			existingResult.Lines[contextLno] = &api.ResultLine{
+			existingResult.ContextLines[contextLno] = &api.ResultLine{
 				LineNumber: contextLno,
 				Bounds:     bounds,
 				Line:       line}
@@ -314,55 +306,36 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			dedupedResults[key] = existingResult
 		}
 
-		// reply.Results = append(reply.Results, &api.Result{
-		// 	Tree:          r.Tree,
-		// 	Version:       r.Version,
-		// 	Path:          r.Path,
-		// 	LineNumber:    int(r.LineNumber),
-		// 	ContextBefore: stringSlice(r.ContextBefore),
-		// 	ContextAfter:  stringSlice(r.ContextAfter),
-		// 	Bounds:        [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
-		// 	Line:          r.Line,
-		// })
 	}
+
+	// Set the number of matches we've found
 	reply.CodeMatches = codeMatches
 
 	for _, dededupedResult := range dedupedResults {
-		reply.DedupedResults = append(reply.DedupedResults, dededupedResult)
-	}
-
-	// Take every LinesByContext and turn it into Lines
-	// for key, dedupedResult := range dedupedResults {
-	// }
-
-	// TODO
-	dedupedFileResults := make(map[string]*api.DedupedFileResult)
-	for _, r := range search.FileResults {
-		fileKey := fmt.Sprintf("%s-%s", r.Tree, r.Path)
-
-		existingFile, present := dedupedFileResults[fileKey]
-
-		if !present {
-			existingFile = &api.DedupedFileResult{
-				Tree:    r.Tree,
-				Version: r.Version,
-				Path:    r.Path,
-				Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
-			}
-			dedupedFileResults[fileKey] = existingFile
-		} else {
-			log.Printf(ctx, "file with key: %s already exists, overwritting", fileKey)
-			existingFile.Bounds = [2]int{int(r.Bounds.Left), int(r.Bounds.Right)}
+		// Change the lines over to an array then sort by LineNumber
+		dededupedResult.Lines = make([]*api.ResultLine, 0)
+		for _, line := range dededupedResult.ContextLines {
+			dededupedResult.Lines = append(dededupedResult.Lines, line)
 		}
-		// reply.FileResults = append(reply.FileResults, &api.FileResult{
-		// 	Tree:    r.Tree,
-		// 	Version: r.Version,
-		// 	Path:    r.Path,
-		// 	Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
-		// })
+		// It's faster to sort after the fact than trying to maintain sort
+		// order I believe
+		sort.Slice(dededupedResult.Lines, func(i, j int) bool {
+			lines := dededupedResult.Lines
+			return lines[i].LineNumber < lines[j].LineNumber
+		})
+
+		reply.Results = append(reply.Results, dededupedResult)
 	}
-	for _, dedupedFile := range dedupedFileResults {
-		reply.DedupedFileResults = append(reply.DedupedFileResults, dedupedFile)
+
+	// We don't need to de-duplicate fileResults, there is already
+	// code that checks for that
+	for _, r := range search.FileResults {
+		reply.FileResults = append(reply.FileResults, &api.FileResult{
+			Tree:    r.Tree,
+			Version: r.Version,
+			Path:    r.Path,
+			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+		})
 	}
 
 	reply.Info = &api.Stats{
@@ -491,12 +464,98 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		q.MaxMatches = s.config.DefaultMaxMatches
 	}
 
-	var reply *api.ReplySearch
-	if r.URL.Query().Get("v2") == "true" {
-		reply, err = s.doSearchV2(ctx, backend, &q)
-	} else {
-		reply, err = s.doSearch(ctx, backend, &q)
+	reply, err := s.doSearch(ctx, backend, &q)
+
+	if err != nil {
+		log.Printf(ctx, "error in search err=%s", err)
+		writeQueryError(ctx, w, err, cacheKey, s)
+		return
 	}
+
+	if s.honey != nil {
+		e := s.honey.NewEvent()
+		reqid, ok := reqid.FromContext(ctx)
+		if ok {
+			e.AddField("request_id", reqid)
+		}
+		e.AddField("backend", backend.Id)
+		e.AddField("query_line", q.Line)
+		e.AddField("query_file", q.File)
+		e.AddField("query_repo", q.Repo)
+		e.AddField("query_foldcase", q.FoldCase)
+		e.AddField("query_not_file", q.NotFile)
+		e.AddField("query_not_repo", q.NotRepo)
+		e.AddField("max_matches", q.MaxMatches)
+
+		e.AddField("result_count", len(reply.Results))
+		e.AddField("re2_time", reply.Info.RE2Time)
+		e.AddField("git_time", reply.Info.GitTime)
+		e.AddField("sort_time", reply.Info.SortTime)
+		e.AddField("index_time", reply.Info.IndexTime)
+		e.AddField("analyze_time", reply.Info.AnalyzeTime)
+
+		e.AddField("exit_reason", reply.Info.ExitReason)
+		e.Send()
+	}
+
+	log.Printf(ctx,
+		"responding success results=%d why=%s stats=%s",
+		len(reply.Results),
+		reply.Info.ExitReason,
+		asJSON{reply.Info})
+
+	replyJSON(ctx, w, 200, reply, cacheKey, s)
+}
+
+// Maybe later we can abstract out common parts of this?
+func (s *server) ServeAPISearchV2(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	defer timeTrack(ctx, time.Now(), "ServeAPISearch")
+	backendName := r.URL.Query().Get(":backend")
+	var backend *Backend
+	if backendName != "" {
+		backend = s.bk[backendName]
+		if backend == nil {
+			writeError(ctx, w, 400, "bad_backend",
+				fmt.Sprintf("Unknown backend: %s", backendName), "", s)
+			return
+		}
+	} else {
+		for _, backend = range s.bk {
+			break
+		}
+	}
+
+	cacheKey := getCacheKeyForSearch(s, backend, r.URL.String())
+	if cachedRes := checkCacheForSearchResult(ctx, s, cacheKey); cachedRes != nil {
+		defer timeTrack(ctx, time.Now(), "writeCacheRes")
+		w.WriteHeader(cachedRes.Status)
+		w.Header().Set("Content-Type", "application/json") // otherwise Go looks at first 512 bytes of w.Write contents
+		w.Write(cachedRes.ResBytes)
+		return
+	}
+
+	q, is_regex, err := extractQuery(ctx, r)
+
+	if err != nil {
+		writeError(ctx, w, 400, "bad_query", err.Error(), cacheKey, s)
+		return
+	}
+
+	if q.Line == "" {
+		kind := "string"
+		if is_regex {
+			kind = "regex"
+		}
+		msg := fmt.Sprintf("You must specify a %s to match", kind)
+		writeError(ctx, w, 400, "bad_query", msg, cacheKey, s)
+		return
+	}
+
+	if q.MaxMatches == 0 {
+		q.MaxMatches = s.config.DefaultMaxMatches
+	}
+
+	reply, err := s.doSearchV2(ctx, backend, &q)
 
 	if err != nil {
 		log.Printf(ctx, "error in search err=%s", err)

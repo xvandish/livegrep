@@ -518,12 +518,13 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 
-	m.Add("GET", "/api/v2/search/getInitInfo", srv.Handler(srv.ServeInitSearchInfo))
-	m.Add("GET", "/api/v2/getFileInfo", srv.Handler(srv.ServeFileInfo))
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	// Temp, clumsy. if ServeAPISearch sees /v2, it'll call doSearchV2
-	m.Add("GET", "/api/v2/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v2/search/", srv.Handler(srv.ServeAPISearchV2))
+	m.Add("GET", "/api/v2/search/:backend", srv.Handler(srv.ServeAPISearchV2))
+	m.Add("GET", "/api/v2/getServerInfo", srv.Handler(srv.ServeInitSearchInfo))
+	m.Add("GET", "/api/v2/getFileInfo", srv.Handler(srv.ServeFileInfo))
 
 	var h http.Handler = m
 

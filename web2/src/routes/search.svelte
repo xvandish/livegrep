@@ -3,7 +3,7 @@
 
         export async function load({ url }) {
           
-          const res = await fetch("http://localhost:8910/api/v2/search/getInitInfo");
+          const res = await fetch("http://localhost:8910/api/v2/getServerInfo");
 
           return {
             status: res.status,
@@ -23,13 +23,14 @@
         import CodeResult from '$lib/CodeResult/index.svelte';
         import FileHeader from '$lib/CodeResult/header.svelte';
     import { onMount } from 'svelte'
+    import { beforeUpdate, afterUpdate } from 'svelte';
 
     let indexName = "testing"
     let backends = [{ id: "id", indexName: "testing" }]
     let sampleRepo = "xvandish/go-photo-thing"
 
     export let serverInfo = {};
-    let sampleRes = { dedupedResult: [], dedupedFileResults: [], stats: { totalTime: -1, }};
+    let sampleRes = { results: [], fileResults: [], stats: { totalTime: -1, }};
 
     // TODO:
     // 1. Load Controls state based on the URL search params
@@ -149,7 +150,20 @@
       console.log('updateQuery: ', inputEvnt.target.value);
       updateSearchParamState();
     }
+
+    let startTimer;
+    let endTimer;
+    beforeUpdate(() => {
+      // start a timer. 
+      startTimer = performance.now();
+    });
       
+    afterUpdate(() => {
+      // ...the DOM is now in sync with the data
+      // finish the timer
+      endTimer = performance.now();
+      console.log(`DOM updated. Took: ${endTimer - startTimer}ms`);
+    });
 
     function updateSearchParamState() {
       // TODO: this is run on initial page load, which it probably shouldn't be
@@ -172,13 +186,13 @@
     async function doSearch() {
       if (query === '') {
         // clear the previous results
-        sampleRes = { dedupedResult: [], dedupedFileResults: [], stats: { totalTime: -1, }};
+        sampleRes = { results: [], fileResults: [], stats: { totalTime: -1, }};
         console.log('resetting sample_res');
         console.log(sampleRes.stats.totalTime);
         return;
       };
       console.time('query');
-      const res = await fetch(`http://localhost:8910/api/v1/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}&v2=true`);
+      const res = await fetch(`http://localhost:8910/api/v2/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}`);
       const inf = await res.json();
       console.timeEnd('query');
 
@@ -186,8 +200,8 @@
       /* console.time('reshape'); */
       /* let shaped = reshapeResults(inf); */
       /* console.timeEnd('reshape'); */
-      sampleRes.dedupedResult = [...inf.dedupedResult];
-      sampleRes.dedupedFileResults = [...inf.dedupedFileResults];
+      sampleRes.results = [...inf.results];
+      sampleRes.fileResults = [...inf.file_results];
       sampleRes.stats = {
         exitReason: inf.info.why,
         totalTime: parseInt(inf.info.total_time, 10),
@@ -497,14 +511,14 @@
   </div>
   <div class:hidden={query === ''} id='results' tabindex='-1'>
   <div id="file-results">
-    {#each sampleRes.dedupedFileResults.slice(0,10) as f (f)}
+    {#each sampleRes.fileResults.slice(0,10) as f (f)}
       <FileHeader path={f.path} repo={f.repo} numMatches={-1} bounds={f.bounds} />
     {/each}
   </div>
   <!-- keying by the entire object is unfortunate, maybe we want to create an id -->
   <!-- but if we don't do this, then lines get-reused and so have bad highlighting -->
   <div id="code-results">
-    {#each sampleRes.dedupedResult as cr (cr)}
+    {#each sampleRes.results as cr (cr)}
       <CodeResult {...cr} />
     {/each}
   </div>
