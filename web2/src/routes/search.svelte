@@ -197,9 +197,6 @@
       console.timeEnd('query');
 
       // TODO: handle errors (404, 500 etc)
-      /* console.time('reshape'); */
-      /* let shaped = reshapeResults(inf); */
-      /* console.timeEnd('reshape'); */
       sampleRes.results = [...inf.results];
       sampleRes.fileResults = [...inf.file_results];
       sampleRes.stats = {
@@ -237,118 +234,6 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
-
-    
-    // TODO: reshape is taking ~1s for 2000 results. 
-    // TODO: move this reshaping of results into the server
-    // TODO: also add something that counts + tells us the number of results,
-    //       see codesearch_ui.js#L755 for reference
-    //
-    // https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
-    // THIS IS A COPY PASTE OF THE DEDUPING FUNCTION THAT WEBGREP BY KEVIN LIN USES - 
-    // ALL CREDIT TO ABOVE. I'll eventually port this to server side work, but for this
-    // initial start this will remain client side
-    /**
-    * Massage the response from livegrep into a form that can be more easily interpreted by the
-    * webgrep frontend.
-    *
-    * @param {Object} data Raw response payload from livegrep.
-    * @return {Object} Object of code and file results, and search stats.
-    * @private
-    */
-   function reshapeResults(data) {  // eslint-disable-line class-methods-use-this
-     let codeMatches = 0;
-     let fileMatches = data.file_results.length;
-     console.time('code');
-     const code = Object.values(data.results
-       // Aggregate lines by repo and path, so that each unique (repo, path) combination is
-       // described by an array of all matching lines and the left/right bounds for each line.
-       .reduce((aggregated, result) => {
-         // Aggregation key: combine all results for the same file in the same repo
-         const key = `${result.tree}-${result.path}`;
-         // Line number of the matching line
-         const lineNumber = parseInt(result.lno, 10);
-         // The existing entry for this repo/path combination, if it exists
-         const existing = aggregated[key] || {};
- 
-         // Create a map of line numbers -> { bounds description, line }, being careful not to
-         // override the bounds if they have already been specified. Since context lines are
-         // overlapping, it's possible that a context line does not have a bounds description,
-         // but it has one from an earlier result.
-         const contextLines = [
-           ...result.context_before.reverse(),
-           result.line,
-           ...result.context_after,
-         ].reduce((lines, line, idx) => {
-          /* console.log({ lines, line, idx }); */
-           const contextLno = idx + lineNumber - result.context_before.length;
-           /* console.log({ contextLno }); */
-           const bounds = (() => {
-             // Examining the matching line, for which bounds information is available
-             if (contextLno === lineNumber) {
-              codeMatches += 1;
-              /* console.log('matching line'); */
-               return [result.bounds[0], result.bounds[1]];
-             }
- 
-             // Defer to existing bounds information
-             return existing.lines &&
-               existing.lines[contextLno] &&
-               existing.lines[contextLno].bounds;
-           })();
- 
-           return {
-             ...lines,
-             [contextLno]: { bounds, line },
-           };
-         }, {});
- 
-         return {
-           ...aggregated,
-           [key]: {
-             repo: result.tree,
-             version: result.version,
-             path: result.path,
-             lines: {
-               ...existing.lines || {},
-               ...contextLines,
-             },
-           },
-         };
-       }, {}))
-       .map((resultGroup) => ({
-         ...resultGroup,
-         lines: Object.entries(resultGroup.lines)
-           .map(([number, details]) => ({
-             ...details,
-             number: parseInt(number, 10),
-           }))
-           .sort((a, b) => a.number - b.number),
-       }));
-    console.timeEnd('code');
- 
-    console.time('files');
-     const files = Object.values(data.file_results.reduce((acc, file) => ({
-       ...acc,
-       // Deduplicate results keyed by its repository and file path
-       [`${file.tree}-${file.path}`]: {
-         repo: file.tree,
-         version: file.version,
-         path: file.path,
-         bounds: [file.bounds[0], file.bounds[1]],
-       },
-     }), {}));
-     console.timeEnd('files');
-
-    const stats = {
-      exitReason: data.info.why,
-      totalTime: parseInt(data.info.total_time, 10),
-      totalMatches: data.search_type === 'filename_only' ? fileMatches : codeMatches
-    }
-    console.log({ code, files });
- 
-     return { code, files, stats };
-   }
 
   // TODO: Move the auto "case" option into a dropdown that clicking the button will trigger
 

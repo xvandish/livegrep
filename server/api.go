@@ -250,6 +250,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		reply.SearchType = "filename_only"
 	}
 
+	// https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
+	// the following logic is mostly the same as the function linked above, and should be attributed to Kevin Lin
 	dedupedResults := make(map[string]*api.ResultV2)
 	codeMatches := 0
 	dedupStart := time.Now()
