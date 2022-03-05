@@ -511,14 +511,14 @@
   </div>
   <div class:hidden={query === ''} id='results' tabindex='-1'>
   <div id="file-results">
-    {#each sampleRes.fileResults.slice(0,10) as f (f)}
+    {#each sampleRes.fileResults.slice(0,10) as f (`${f.repo}-${f.path}-${f.bounds}`)}
       <FileHeader path={f.path} repo={f.repo} numMatches={-1} bounds={f.bounds} />
     {/each}
   </div>
   <!-- keying by the entire object is unfortunate, maybe we want to create an id -->
   <!-- but if we don't do this, then lines get-reused and so have bad highlighting -->
   <div id="code-results">
-    {#each sampleRes.results as cr (cr)}
+    {#each sampleRes.results as cr (`${cr.repo}-${cr.path}-${cr.version}`)}
       <CodeResult {...cr} />
     {/each}
   </div>

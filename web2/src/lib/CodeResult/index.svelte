@@ -13,9 +13,8 @@
 
 <div class="code-result">
 	<Header {repo} {path} {urlPattern} {numMatches} />
-	<div class="cr-actions" />
 	<div class="cr-lines">
-		{#each lines as line (line)}
+		{#each lines as line (`${line.lno}-${line.bounds}-${line.line}`)}
 			<CodeLine {...line} {repo} {path} {urlPattern} />
 		{/each}
 	</div>
