@@ -242,7 +242,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 	reply := &api.ReplySearchV2{
 		Results:     make([]*api.ResultV2, 0),
-		FileResults: make([]*api.FileResult, 0),
+		FileResults: make([]*api.FileResultV2, 0),
 		SearchType:  "normal",
 	}
 
@@ -250,11 +250,9 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		reply.SearchType = "filename_only"
 	}
 
-	// Now need to dedup code-results per repo-path
-	// Now need to deup file-results per repo-path
-
 	dedupedResults := make(map[string]*api.ResultV2)
 	codeMatches := 0
+	dedupStart := time.Now()
 	for _, r := range search.Results {
 		key := fmt.Sprintf("%s-%s", r.Tree, r.Path)
 		lineNumber := int(r.LineNumber)
@@ -283,15 +281,12 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			if contextLno == lineNumber {
 				codeMatches += 1
 				bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
-				// bounds[0] = int(r.Bounds.Left)
-				// bounds[1] = int(r.Bounds.Right)
 			}
 
 			// Defer to the existing bounds information
 			if present {
 				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
 					if len(existingContextLine.Bounds) == 2 {
-						log.Printf(ctx, "bounds line exists, replacing - [%d,%d]", existingContextLine.Bounds[0], existingContextLine.Bounds[1])
 						copy(existingContextLine.Bounds, bounds)
 					}
 				}
@@ -307,6 +302,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		}
 
 	}
+
+	log.Printf(ctx, "dedup took %s", time.Since(dedupStart))
 
 	// Set the number of matches we've found
 	reply.CodeMatches = codeMatches
@@ -330,7 +327,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// We don't need to de-duplicate fileResults, there is already
 	// code that checks for that
 	for _, r := range search.FileResults {
-		reply.FileResults = append(reply.FileResults, &api.FileResult{
+		reply.FileResults = append(reply.FileResults, &api.FileResultV2{
 			Tree:    r.Tree,
 			Version: r.Version,
 			Path:    r.Path,

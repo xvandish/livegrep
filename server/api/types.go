@@ -20,11 +20,11 @@ type ReplySearch struct {
 }
 
 type ReplySearchV2 struct {
-	Info        *Stats        `json:"info"`
-	Results     []*ResultV2   `json:"results"`
-	FileResults []*FileResult `json:"file_results"`
-	SearchType  string        `json:"search_type"`
-	CodeMatches int           `json:"code_matches"`
+	Info        *Stats          `json:"info"`
+	Results     []*ResultV2     `json:"results"`
+	FileResults []*FileResultV2 `json:"file_results"`
+	SearchType  string          `json:"search_type"`
+	CodeMatches int             `json:"code_matches"`
 }
 
 type Stats struct {
@@ -54,7 +54,7 @@ type ResultV2 struct {
 	Path    string        `json:"path"`
 	Lines   []*ResultLine `json:"lines"`
 	// Will never be sent over wire, used to deduplicate
-	ContextLines map[int]*ResultLine
+	ContextLines map[int]*ResultLine `json:"-"`
 }
 
 type ResultLine struct {
@@ -67,6 +67,13 @@ type ResultLine struct {
 
 type FileResult struct {
 	Tree    string `json:"tree"`
+	Version string `json:"version"`
+	Path    string `json:"path"`
+	Bounds  [2]int `json:"bounds"`
+}
+
+type FileResultV2 struct {
+	Tree    string `json:"repo"`
 	Version string `json:"version"`
 	Path    string `json:"path"`
 	Bounds  [2]int `json:"bounds"`
