@@ -252,6 +252,20 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
+func (s *server) ServeSearchResults(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	data, statusCode, errorMsg, errorMsgLong := s.APISearchV2(ctx, w, r)
+
+	if (statusCode) > 200 {
+		log.Printf(ctx, "> 200: %s %s", errorMsg, errorMsgLong)
+		return
+	}
+
+	s.renderPage(ctx, w, r, "search_results.html", &page{
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
 func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// Help is now shown in the main search page when no search has been entered.
 	http.Redirect(w, r, "/search", 303)
@@ -524,6 +538,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/search/:backend", srv.Handler(srv.ServeAPISearchV2))
 	m.Add("GET", "/api/v2/getServerInfo", srv.Handler(srv.ServeInitSearchInfo))
 	m.Add("GET", "/api/v2/getFileInfo", srv.Handler(srv.ServeFileInfo))
+	m.Add("GET", "/serveSearchResults", srv.Handler(srv.ServeSearchResults))
 
 	var h http.Handler = m
 

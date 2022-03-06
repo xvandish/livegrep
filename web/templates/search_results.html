@@ -1,0 +1,42 @@
+<div id="file-results">
+  {{range .Data.FileResults}}
+    <div class="cr-header">
+      <div class="links">
+        <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+        <span>/</span>
+        <!-- TODO: Add highlighting Go func maybe? -->
+        <a class="path-link" href="/view/{{.Tree}}/{{.Tree}}">{{.Path}}</a>
+      </div>
+    </div>
+  {{end}}
+</div>
+
+<div id="code-results">
+  {{range .Data.Results}}
+  {{$repo := .Tree}}
+  {{$path := .Path}}
+  <div class="code-result">
+    <div class="cr-header">
+      <div class="links">
+        <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+        <span>/</span>
+        <!-- TODO: Add highlighting Go func maybe? -->
+        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">{{.Path}}</a>
+      </div>
+    </div>
+    <div class="cr-lines">
+      {{range .Lines}}
+        <div class="code-line">
+          <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="num-link">
+            <span class="num">{{.LineNumber}}</span>
+          </a>
+          <div class="line">
+            <!-- TODO: add highlighting to matching part -->
+            <span>{{.Line}}</span>
+          </div>
+        </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>

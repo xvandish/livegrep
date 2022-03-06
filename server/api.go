@@ -141,6 +141,15 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error, cach
 	}
 }
 
+func getQueryError(err error) (errCode int, errorMsg string, errorMsgLong string) {
+	if code := grpc.Code(err); code == codes.InvalidArgument {
+		return 400, "query", grpc.ErrorDesc(err)
+	} else {
+		return 500, "internal_error",
+			fmt.Sprintf("Talking to backend: %s", err.Error())
+	}
+}
+
 func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) {
 	params := r.URL.Query()
 	var query pb.Query
@@ -595,4 +604,55 @@ func (s *server) ServeAPISearchV2(ctx context.Context, w http.ResponseWriter, r 
 		asJSON{reply.Info})
 
 	replyJSON(ctx, w, 200, reply, cacheKey, s)
+}
+
+func (s *server) APISearchV2(ctx context.Context, w http.ResponseWriter, r *http.Request) (reply *api.ReplySearchV2, errCode int, errorMsg string, errorMsgLong string) {
+	defer timeTrack(ctx, time.Now(), "ServeAPISearch")
+	backendName := r.URL.Query().Get(":backend")
+	var backend *Backend
+	if backendName != "" {
+		backend = s.bk[backendName]
+		if backend == nil {
+			return nil, 400, "bad_backend", fmt.Sprintf("Unknown backend: %s", backendName)
+		}
+	} else {
+		for _, backend = range s.bk {
+			break
+		}
+	}
+
+	q, is_regex, err := extractQuery(ctx, r)
+
+	if err != nil {
+		return nil, 400, "bad_query", err.Error()
+	}
+
+	if q.Line == "" {
+		kind := "string"
+		if is_regex {
+			kind = "regex"
+		}
+		msg := fmt.Sprintf("You must specify a %s to match", kind)
+		return nil, 400, "bad_query", msg
+	}
+
+	if q.MaxMatches == 0 {
+		q.MaxMatches = s.config.DefaultMaxMatches
+	}
+
+	reply, err = s.doSearchV2(ctx, backend, &q)
+
+	if err != nil {
+		log.Printf(ctx, "error in search err=%s", err)
+		errCode, errorMsg, errorMsgLong = getQueryError(err)
+		return nil, errCode, errorMsg, errorMsgLong
+	}
+
+	log.Printf(ctx,
+		"responding success results=%d why=%s stats=%s",
+		len(reply.Results),
+		reply.Info.ExitReason,
+		asJSON{reply.Info})
+
+	return reply, 200, "", ""
 }

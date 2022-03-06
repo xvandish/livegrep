@@ -183,6 +183,7 @@
     }
 
     // getting mixed results here
+    let htmlContext = ''
     async function doSearch() {
       if (query === '') {
         // clear the previous results
@@ -192,17 +193,18 @@
         return;
       };
       console.time('query');
-      const res = await fetch(`http://localhost:8910/api/v2/search/?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}`);
-      const inf = await res.json();
+      const res = await fetch(`http://localhost:8910/serveSearchResults?q=${query}&fold_case=${caseSensitivity}&regex=${isRegexSearch}&context=${isContextEnabled}`);
+      htmlContext = await res.text();
+      /* const inf = await res.json(); */
       console.timeEnd('query');
 
       // TODO: handle errors (404, 500 etc)
-      sampleRes.results = [...inf.results];
-      sampleRes.fileResults = [...inf.file_results];
+      /* sampleRes.results = [...inf.results]; */
+      /* sampleRes.fileResults = [...inf.file_results]; */
       sampleRes.stats = {
-        exitReason: inf.info.why,
-        totalTime: parseInt(inf.info.total_time, 10),
-        totalMatches: inf.search_type === 'filename_only' ? inf.dedupedFileResults.length : inf.code_matches 
+        exitReason: "COOL",
+        totalTime: 200,
+        totalMatches: 200
       }
     }
 
@@ -395,18 +397,7 @@
     </span>
   </div>
   <div class:hidden={query === ''} id='results' tabindex='-1'>
-  <div id="file-results">
-    {#each sampleRes.fileResults.slice(0,10) as f (`${f.repo}-${f.path}-${f.bounds}`)}
-      <FileHeader path={f.path} repo={f.repo} numMatches={-1} bounds={f.bounds} />
-    {/each}
-  </div>
-  <!-- keying by the entire object is unfortunate, maybe we want to create an id -->
-  <!-- but if we don't do this, then lines get-reused and so have bad highlighting -->
-  <div id="code-results">
-    {#each sampleRes.results as cr (`${cr.repo}-${cr.path}-${cr.version}`)}
-      <CodeResult {...cr} />
-    {/each}
-  </div>
+    {@html htmlContext}
   </div>
 </div>
 <p class='credit'>
