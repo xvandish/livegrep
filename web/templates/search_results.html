@@ -1,14 +1,37 @@
 <div id="file-results">
-  {{range .Data.FileResults}}
+  <div class="initially-visible-file-links">
+  {{range $i, $e := (slice .Data.FileResults 0 10)}}
     <div class="cr-header">
       <div class="links">
         <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
         <span>/</span>
         <!-- TODO: Add highlighting Go func maybe? -->
-        <a class="path-link" href="/view/{{.Tree}}/{{.Tree}}">{{.Path}}</a>
+        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+          {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+              <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+        </a>
       </div>
     </div>
   {{end}}
+  </div>
+  <div class="initially-hidden-file-links" style="display:none;">
+  {{range $i, $e := (slice .Data.FileResults 10 )}}
+      <div class="cr-header">
+        <div class="links">
+          <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+          <span>/</span>
+          <!-- TODO: Add highlighting Go func maybe? -->
+          <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+            {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+                <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+          </a>
+        </div>
+      </div>
+  {{end}}
+  </div>
+  {{ if gt (len .Data.FileResults) 10 }}
+    <a>Show more</a>
+  {{ end }}
 </div>
 
 <div id="code-results">
@@ -20,7 +43,6 @@
       <div class="links">
         <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
         <span>/</span>
-        <!-- TODO: Add highlighting Go func maybe? -->
         <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">{{.Path}}</a>
       </div>
     </div>
@@ -31,7 +53,10 @@
             <span class="num">{{.LineNumber}}</span>
           </a>
           <div class="line">
-            <!-- TODO: add highlighting to matching part -->
+            {{ if gt (len .Bounds) 0}}
+              {{ $lineParts := splitCodeLineIntoParts .Line .Bounds}}
+              <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+            {{end}}
             <span>{{.Line}}</span>
           </div>
         </div>

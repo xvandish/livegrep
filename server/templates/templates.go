@@ -33,12 +33,30 @@ func scriptTag(nonce template.HTMLAttr, s string, m map[string]string) template.
 	))
 }
 
+type lineParts struct {
+	Prefix      string
+	Highlighted string
+	Suffix      string
+}
+
+func splitCodeLineIntoParts(line string, bounds []int) lineParts {
+	start := bounds[0]
+	end := bounds[1]
+
+	return lineParts{
+		Prefix:      line[0:start],
+		Highlighted: line[start:end],
+		Suffix:      line[end:],
+	}
+}
+
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
-		"toLineNum": func(n int) int { return n + 1 },
-		"linkTag":   linkTag,
-		"scriptTag": scriptTag,
+		"loop":                   func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum":              func(n int) int { return n + 1 },
+		"linkTag":                linkTag,
+		"scriptTag":              scriptTag,
+		"splitCodeLineIntoParts": splitCodeLineIntoParts,
 	}
 }
 
