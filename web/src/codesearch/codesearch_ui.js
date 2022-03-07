@@ -47,6 +47,22 @@ function updateSearchParamState() {
   doSearch();
 }
 
+// This guy from 2009 is faster than .innerHTML...
+// Credit here: http://blog.stevenlevithan.com/archives/faster-than-innerhtml
+function replaceHtml(el, html) {
+	var oldEl = typeof el === "string" ? document.getElementById(el) : el;
+	/*@cc_on // Pure innerHTML is slightly faster in IE
+		oldEl.innerHTML = html;
+		return oldEl;
+	@*/
+	var newEl = oldEl.cloneNode(false);
+	newEl.innerHTML = html;
+	oldEl.parentNode.replaceChild(newEl, oldEl);
+	/* Since we just removed the old element from the DOM, return a reference
+	to the new element, which can be used to restore variable references. */
+	return newEl;
+};
+
 // Take the present search options, perform a search
 // then update the 
 async function doSearch() {
@@ -56,10 +72,13 @@ async function doSearch() {
   console.time('query');
   const res = await fetch(`/serveSearchResults?q=${searchOptions.q}&fold_case=${searchOptions.case}&regex=${searchOptions.regex}&context=${searchOptions.context}`);
   searchResults = await res.text();
-  resultsContainer.innerHTML = searchResults;
+
+  var start = performance.now();
+  resultsContainer = replaceHtml(resultsContainer, searchResults);
+  var stop = performance.now();
+  console.log(`replaceHtml took ${stop - start} milliseconds`);
 
   /* const inf = await res.json(); */
-  console.timeEnd('query');
 
   // TODO: handle errors (404, 500 etc)
   /* sampleRes.results = [...inf.results]; */
