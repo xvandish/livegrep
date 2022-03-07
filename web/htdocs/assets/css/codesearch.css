@@ -1588,9 +1588,15 @@ div.example {
 }
 
 .code-line .line {
-    white-space: pre-wrap;
+    /* white-space: pre-wrap; */
     /* font-family: "Menlo", "Consolas", "Monaco", monospace; */
     font-size: 12px;
+}
+
+/* This works, but not sure why the line-height if I set pre-wrap for .line is
+ * so high... */
+.code-line .line span {
+    white-space: pre-wrap;
 }
 
 .code-line .line .highlighted {
