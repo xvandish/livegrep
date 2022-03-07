@@ -40,14 +40,24 @@ type lineParts struct {
 }
 
 func splitCodeLineIntoParts(line string, bounds []int) lineParts {
+	if strings.Contains(line, "MHI_PCI_DEV_SUSPENDED") {
+		fmt.Printf("line: %s, bounds: %v\n", line, bounds)
+	}
 	start := bounds[0]
 	end := bounds[1]
 
-	return lineParts{
+	p := lineParts{
 		Prefix:      line[0:start],
 		Highlighted: line[start:end],
 		Suffix:      line[end:],
 	}
+
+	if strings.Contains(line, "MHI_PCI_DEV_SUSPENDED") {
+		fmt.Printf("lineParts: %+v\n", p)
+	}
+
+	return p
+
 }
 
 func getFuncs() map[string]interface{} {

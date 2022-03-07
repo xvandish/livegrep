@@ -23,7 +23,7 @@
           <option value="true">ignore</option>
         </select>
         </div>
-        <button type="button" class="regex-toggle" on:click={toggleRegex} data-selected={isRegexSearch} title="TODO">
+        <button type="button" class="regex-toggle" id="toggle-regex" on:click={toggleRegex} data-selected="false" title="TODO" name="regex">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
             <g id="regular-expression">
                     <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"/>
@@ -33,7 +33,7 @@
             </g>
           </svg>
         </button>
-        <button type="button" class="regex-toggle" on:click={toggleContext} data-selected={isContextEnabled}>
+        <button type="button" class="regex-toggle" id="toggle-context" on:click={toggleContext} data-selected="true" name="context">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-align-center"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
         </button>
 
