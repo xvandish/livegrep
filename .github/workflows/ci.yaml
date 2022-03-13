@@ -28,7 +28,9 @@ jobs:
       - name: 'Configure remote build cache usage'
         env:
           EVENT_TYPE: ${{ github.event_name }}
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
+          sed -i 's/build --remote_header=BUILDBUDDY_API_KEY/build --remote_header='"$BUILDBUDDY_API_KEY"'/' .bazelrc
           if [ "${EVENT_TYPE}" = pull_request ]; then
             printf 'Using read-only cache (PR build)\n'
             exit
