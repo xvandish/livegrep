@@ -227,8 +227,8 @@ func (s *server) ServeLog(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	gitHistory, ok := histories[repo.Name]
-	if !ok {
+	gitHistory, err := getBlameForRepo(s.config, repoName)
+	if err != nil {
 		http.Error(w, "Repo not configued for log", 404)
 		return
 	}
@@ -269,8 +269,8 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 	}
 	log.Printf(ctx, fmt.Sprintf("repo exists\n"))
 
-	gitHistory, ok := histories[repo.Name]
-	if !ok {
+	gitHistory, err := getBlameForRepo(s.config, repo.Name)
+	if err != nil {
 		http.Error(w, "Repo not configured for blame", 404)
 		return
 	}
@@ -347,7 +347,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	//
 	if len(rest) > 0 && rest != "message" {
 		log.Printf(ctx, "doing this for some reason")
-		diffRedirect(w, r, repoName, hash, rest)
+		diffRedirect(w, r, repoName, hash, rest, s.config)
 		return
 	}
 	data := DiffData{}

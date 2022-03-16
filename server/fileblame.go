@@ -112,8 +112,81 @@ func setHistory(key string, value *blameworthy.GitHistory) {
 	historiesLock.Unlock()
 }
 
+func getBlameForRepo(cfg *config.Config, repoName string) (*blameworthy.GitHistory, error) {
+	// TODO: precomputation to generate a map for O(1) access to cfg.IndexConfig.Repositories
+
+	log.Printf("Fetching blame info for %s\n", repoName)
+
+	gitHistory := getHistory(repoName)
+
+	if gitHistory != nil {
+		return gitHistory, nil
+	}
+
+	log.Printf("Need to compute blame for %s\n", repoName)
+
+	repoIdx := -1
+	for idx, r := range cfg.IndexConfig.Repositories {
+		if r.Name != repoName {
+			continue
+		}
+
+		if _, ok := r.Metadata["blame"]; !ok {
+			log.Printf("repo: %s is not blame valid", repoName)
+			return nil, errors.New("repo not blame valid")
+		}
+
+		repoIdx = idx
+		break
+	}
+
+	if repoIdx == -1 {
+		return nil, errors.New("could not find repo")
+	}
+
+	repoInfo := cfg.IndexConfig.Repositories[repoIdx]
+
+	path, _ := repoInfo.Metadata["blame"]
+	var gitLogOutput io.ReadCloser
+	var err error
+	if path == "git" {
+		log.Printf("Running git log on: ", repoName)
+		gitLogOutput, err = blameworthy.RunGitLog(repoInfo.Path, "HEAD")
+		if err != nil {
+			log.Printf("error running git log: %v", err)
+			return nil, err
+		}
+	} else {
+		log.Printf("Reading git log file: ", path)
+		gitLogOutput, err = os.Open(path)
+		if err != nil {
+			log.Printf("error reading git log file: %v\n", err)
+			return nil, err
+		}
+	}
+	gitHistory, err = blameworthy.ParseGitLog(gitLogOutput)
+	if err != nil {
+		log.Printf("error parsing git log: %v\n", err)
+		return nil, err
+	}
+
+	setHistory(repoName, gitHistory)
+	log.Printf("Finished computing blame for %s\n", repoName)
+	return nil, gitHistory
+}
+
 func initBlame(cfg *config.Config) error {
-	log.Printf("Loading blame...")
+	log.Printf("Loading blame config...")
+	if cfg.BlameInitMethod != "on-demand" || cfg.BlameInitMethod != "on-startup" {
+		log.Printf("Invalid blame startup method. Must be `on-demand` or `on-startup`")
+		return errors.New("invalid blame startup option provided")
+	}
+	if cfg.BlameInitMethod == "on-demand" {
+		log.Printf("blame history will be computed on demand.")
+		return nil
+	}
+
+	log.Printf("Loading blame for all enabled repos...")
 	start := time.Now()
 
 	concurrencyLimit := 2000
@@ -312,8 +385,8 @@ func fileRedirect(gitHistory *blameworthy.GitHistory, repoName, hash, path, dest
 	return url, nil
 }
 
-func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash string, rest string) {
-	gitHistory := getHistory(repoName)
+func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash string, rest string, cfg config.Config) {
+	gitHistory, err := getBlameForRepo(cfg, repoName)
 	if gitHistory == nil {
 		http.Error(w, "Repo not configured for blame", 404)
 		return
@@ -381,8 +454,8 @@ func buildDiffData(
 	commitHash string,
 	data *DiffData,
 ) error {
-	gitHistory := getHistory(repo.Name)
-	if gitHistory == nil {
+	gitHistory, err := getBlameForRepo(repo.Name)
+	if err != nil {
 		return fmt.Errorf("Repo not configured for blame")
 	}
 

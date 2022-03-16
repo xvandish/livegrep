@@ -63,6 +63,9 @@ type Config struct {
 	DefaultSearchRepos []string `json:"default_search_repos"`
 
 	LinkConfigs []LinkConfig `json:"file_links"`
+
+	// Valid values are "on-demand" or "on-startup"
+	BlameInitMethod string `json:"blame_init_method"`
 }
 
 type IndexConfig struct {
