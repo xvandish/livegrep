@@ -172,12 +172,12 @@ func getBlameForRepo(cfg *config.Config, repoName string) (*blameworthy.GitHisto
 
 	setHistory(repoName, gitHistory)
 	log.Printf("Finished computing blame for %s\n", repoName)
-	return nil, gitHistory
+	return gitHistory, nil
 }
 
 func initBlame(cfg *config.Config) error {
 	log.Printf("Loading blame config...")
-	if cfg.BlameInitMethod != "on-demand" || cfg.BlameInitMethod != "on-startup" {
+	if cfg.BlameInitMethod != "on-demand" && cfg.BlameInitMethod != "on-startup" {
 		log.Printf("Invalid blame startup method. Must be `on-demand` or `on-startup`")
 		return errors.New("invalid blame startup option provided")
 	}
@@ -385,7 +385,7 @@ func fileRedirect(gitHistory *blameworthy.GitHistory, repoName, hash, path, dest
 	return url, nil
 }
 
-func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash string, rest string, cfg config.Config) {
+func diffRedirect(w http.ResponseWriter, r *http.Request, repoName string, hash string, rest string, cfg *config.Config) {
 	gitHistory, err := getBlameForRepo(cfg, repoName)
 	if gitHistory == nil {
 		http.Error(w, "Repo not configured for blame", 404)
@@ -453,8 +453,9 @@ func buildDiffData(
 	repo config.RepoConfig,
 	commitHash string,
 	data *DiffData,
+	config *config.Config,
 ) error {
-	gitHistory, err := getBlameForRepo(repo.Name)
+	gitHistory, err := getBlameForRepo(config, repo.Name)
 	if err != nil {
 		return fmt.Errorf("Repo not configured for blame")
 	}

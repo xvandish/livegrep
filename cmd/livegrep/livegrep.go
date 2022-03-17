@@ -56,6 +56,7 @@ func main() {
 			WriteKey: os.Getenv("HONEYCOMB_WRITE_KEY"),
 			Dataset:  os.Getenv("HONEYCOMB_DATASET"),
 		},
+		BlameInitMethod: "on-demand",
 	}
 
 	if *indexConfig != "" {

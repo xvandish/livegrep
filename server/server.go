@@ -146,7 +146,12 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	h := getHistory(repo.Name).Hashes
+	gitHistory, err := getBlameForRepo(s.config, repo.Name)
+	if err != nil {
+		http.Error(w, "Error getting hashes", 500)
+		return
+	}
+	h := gitHistory.Hashes
 	head := h[len(h)-1]
 
 	if ffl != "" {
@@ -304,7 +309,7 @@ func (s *server) ServeBlame(ctx context.Context, w http.ResponseWriter, r *http.
 		http.Redirect(w, r, destURL, 307)
 		return
 	}
-	err := buildBlameData(repo, hash, gitHistory, path, &data)
+	err = buildBlameData(repo, hash, gitHistory, path, &data)
 
 	log.Printf(ctx, fmt.Sprintf("data after buildBlameData : %v\n", data))
 	log.Printf(ctx, fmt.Sprintf("err is: %s\n", err))
@@ -381,7 +386,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	err := buildDiffData(repo, hash, &data)
+	err := buildDiffData(repo, hash, &data, s.config)
 	if err != nil {
 		http.Error(w, err.Error(), 404)
 		return
