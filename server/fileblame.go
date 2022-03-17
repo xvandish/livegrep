@@ -112,8 +112,14 @@ func setHistory(key string, value *blameworthy.GitHistory) {
 	historiesLock.Unlock()
 }
 
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
+}
+
 func getBlameForRepo(cfg *config.Config, repoName string) (*blameworthy.GitHistory, error) {
 	// TODO: precomputation to generate a map for O(1) access to cfg.IndexConfig.Repositories
+	defer timeTrack(time.Now(), "getBlameForRepo")
 
 	log.Printf("Fetching blame info for %s\n", repoName)
 
