@@ -26,6 +26,10 @@ var (
 	flagReloadBackend = flag.String("reload-backend", "", "Backend to send a Reload RPC to")
 	flagNumWorkers    = flag.Int("num-workers", 8, "Number of workers used to update repositories")
 	flagNoIndex       = flag.Bool("no-index", false, "Skip indexing after fetching")
+	flagMetricsPath   = flag.String("metrics-out", "", "File that indexing metrics should be sent to")
+	flagStatsdOn      = flag.Bool("send-metrics-to-statsd", false, "Send indexing metrics to StatsD")
+	flagStatsdAddr    = flag.String("statsd-address", "", "address URI of statsd listener for metrics export")
+	flagStatsdPrefix  = flag.String("statsd-prefix", "", "optional prefix to apply to all metrics")
 )
 
 func main() {
@@ -66,6 +70,9 @@ func main() {
 	if *flagRevparse {
 		args = append(args, "--revparse")
 	}
+	if *flagMetricsPath != "" {
+		args = append(args, "--dump_metrics", *flagMetricsPath)
+	}
 	args = append(args, flag.Arg(0))
 
 	cmd := exec.Command(findCodesearch(*flagCodesearch), args...)
@@ -84,6 +91,22 @@ func main() {
 			log.Fatalln("reload:", err.Error())
 		}
 	}
+
+	if *flagStatsdOn {
+		if *flagMetricsPath == "" {
+			log.Fatalln("statsd metrics export depends on metrics being written to file. Add the -metrics-out flag")
+		}
+		cmd := exec.Command(findBinary("livegrep-metrics-exporter"),
+			"--statsd-address", *flagStatsdAddr,
+			"--statsd-prefix", *flagStatsdPrefix,
+			"--metrics-out", *flagMetricsPath,
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatalln("livegrep-metrics-exporter: ", err)
+		}
+	}
 }
 
 func findCodesearch(given string) string {
@@ -100,6 +123,19 @@ func findCodesearch(given string) string {
 		}
 	}
 	return "codesearch"
+}
+
+func findBinary(name string) string {
+	paths := []string{
+		path.Join(path.Dir(os.Args[0]), name),
+		strings.Replace(os.Args[0], path.Base(os.Args[0]), name, -1),
+	}
+	for _, try := range paths {
+		if st, err := os.Stat(try); err == nil && (st.Mode()&os.ModeDir) == 0 {
+			return try
+		}
+	}
+	return name
 }
 
 func checkoutRepos(repos *[]*config.RepoSpec) error {
