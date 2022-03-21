@@ -20,12 +20,12 @@ test --test_verbose_timeout_warnings
 # GRPC, so a single connection/API call can be used to stream many writes
 build --bes_results_url=https://app.buildbuddy.io/invocation/
 build --bes_backend=grpcs://remote.buildbuddy.io
-build --remote_cache=grpcs://remote.buildbuddy.io
-build --remote_timeout=180
-build --remote_download_minimal
-build --experimental_remote_cache_compression
-build --experimental_remote_cache_async
-build --experimental_remote_merkle_tree_cache
+# build --remote_cache=grpcs://remote.buildbuddy.io
+# build --remote_timeout=180
+# build --remote_download_minimal
+# build --experimental_remote_cache_compression
+# build --experimental_remote_cache_async
+# build --experimental_remote_merkle_tree_cache
 build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY
 
 # don't fail if the cache is unavailable
