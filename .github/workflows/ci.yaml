@@ -33,14 +33,19 @@ jobs:
         run: |
           sed -i 's/build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY/build --remote_header=x-buildbuddy-api-key='"$BUILDBUDDY_API_KEY"'/' .bazelrc
           if [ "${EVENT_TYPE}" = pull_request ]; then
-            printf 'Using read-only cache (PR build)\n'
+            printf 'Using temporary PR write cache (PR build)\n'
+            sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' .bazelrc
             exit
           fi
           printf 'Using writable cache\n'
-          creds_file=/tmp/svc_acct_creds.json
-          printf '%s\n' "${GCP_CREDS}" >"${creds_file}"
-          printf '%s\n' >>.bazelrc "common --google_credentials=${creds_file}";
           sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' .bazelrc
+      - name: Initialize bazel cache
+        id: cache
+        uses: actions/cache@v1
+        with:
+          path: ~/.cache/bazel
+          key: cache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: cache-${{ runner.os }}-
       - name: bazel build
         id: build
         run: |
