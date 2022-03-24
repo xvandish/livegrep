@@ -47,10 +47,6 @@ jobs:
           path: ~/.cache/bazel
           key: cache-${{ runner.os }}-${{ github.sha }}
           restore-keys: cache-${{ runner.os }}-
-      - name: print cache size
-        id: stats
-        run: |
-          ls -alh ~/.cache/bazel
       - name: bazel build
         id: build
         run: |
