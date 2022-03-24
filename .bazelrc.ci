@@ -18,14 +18,14 @@ test --test_verbose_timeout_warnings
 # cache) will write ~18k objects - 
 # each which is theoretically an HTTP PUT call. BuildBuddy otoh uses
 # GRPC, so a single connection/API call can be used to stream many writes
-build --bes_results_url=https://app.buildbuddy.io/invocation/
-build --bes_backend=grpcs://cloud.buildbuddy.io
+# build --bes_results_url=https://app.buildbuddy.io/invocation/
+# build --bes_backend=grpcs://cloud.buildbuddy.io
 # build --remote_cache=grpcs://cloud.buildbuddy.io
 common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
-build --remote_timeout=300s
-build --experimental_remote_cache_async
-build --experimental_remote_merkle_tree_cache
-build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY
+common --remote_timeout=300s
+common --experimental_remote_cache_async
+common --experimental_remote_merkle_tree_cache
+# build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY
 
 # don't fail if the cache is unavailable
 common --remote_local_fallback=true
