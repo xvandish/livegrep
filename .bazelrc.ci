@@ -23,6 +23,8 @@ build --bes_backend=grpcs://cloud.buildbuddy.io
 # build --remote_cache=grpcs://cloud.buildbuddy.io
 common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
 build --remote_timeout=300s
+# Avoid fetching unnecessary intermediate files locally
+build --remote_download_minimal
 build --experimental_remote_cache_async
 build --experimental_remote_merkle_tree_cache
 build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY

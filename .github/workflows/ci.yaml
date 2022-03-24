@@ -31,7 +31,7 @@ jobs:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
           GCP_CREDS: ${{ secrets.GCP_SVC_ACCT_CREDS }}
         run: |
-          sed -i 's/build --remote_header=BUILDBUDDY_API_KEY/build --remote_header='"$BUILDBUDDY_API_KEY"'/' .bazelrc
+          sed -i 's/build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY/build --remote_header=x-buildbuddy-api-key='"$BUILDBUDDY_API_KEY"'/' .bazelrc
           if [ "${EVENT_TYPE}" = pull_request ]; then
             printf 'Using read-only cache (PR build)\n'
             exit
