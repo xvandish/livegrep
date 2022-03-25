@@ -13,6 +13,9 @@ import (
 	"gopkg.in/alexcesaro/statsd.v2"
 )
 
+// The shape of this program is all credit to Kevin Lin's fork of livegrep. Source at:
+// https://source.static.kevinlin.info/external/livegrep/file/cmd/livegrep-metrics-exporter/main.go
+
 const (
 	envStatsdAddr   = "LIVEGREP_METRICS_STATSD_ADDRESS"
 	envStatsdPrefix = "LIVEGREP_METRICS_STATSD_PREFIX"
@@ -78,14 +81,12 @@ func main() {
 		log.Fatal("failed to read time to index line from stdin")
 	}
 
-	metrics := make(map[string]int)
 	timeToIndex, err := time.ParseDuration(string(iTimeToCompleteLine[1]))
-
-	metrics["index.timeToIndex"] = int(timeToIndex.Milliseconds())
 
 	if err != nil {
 		log.Fatalf("failed to parse indexing time %v", err)
 	}
+	statsd.Timing("index.timeToIndex", timeToIndex.Milliseconds())
 
 	// Regex-match the metrics dump block
 	dump := metricsDumpPattern.FindStringSubmatch(metricsFileStr)
@@ -94,6 +95,7 @@ func main() {
 	}
 
 	// Regex-match the metric name and value from each line
+	metrics := make(map[string]int)
 	for _, metricLine := range strings.Split(dump[1], "\n") {
 		metric := metricPattern.FindStringSubmatch(metricLine)
 		if len(metric) < 3 {
