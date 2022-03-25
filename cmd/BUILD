@@ -10,6 +10,7 @@ pkg_tar(
             "livegrep-fetch-reindex",
             "livegrep-github-reindex",
             "livegrep-reload",
+            "livegrep-metrics-exporter",
         ]
     ],
     package_dir = "/bin",
