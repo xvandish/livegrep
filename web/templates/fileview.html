@@ -11,7 +11,10 @@
     </nav>
     <ul class="header-actions without-selection">
       <li class="header-action">
-        <a data-action-name="search" title="Perform a new search. Keyboard shortcut: /" href="#">new search [<span class='shortcut'>/</span>]</a>
+        <a data-action-name="searchInCurrRepo" title="Perform a new search in this repo. Keyboard shortcut: ." href="#">new search in this repo [<span class='shortcut'>.</span>]</a>
+      </li>,
+      <li class="header-action">
+        <a data-action-name="searchGlobally" title="Perform a new global search. Keyboard shortcut: /" href="#">new global search [<span class='shortcut'>/</span>]</a>
       </li>,
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
@@ -31,7 +34,10 @@
     </ul>
     <ul class="header-actions with-selection" style="display:none">
       <li class="header-action">
-        search for selected text [/]
+        search for selected text in this repo [.]
+      </li>,
+      <li class="header-action">
+        search for selected text globally [/]
       </li>,
       <li class="header-action">
         previous match [p]
