@@ -1,6 +1,17 @@
+/* Credit - https://aykevl.nl/2014/09/fix-jumping-scrollbar */
+/* makes it so that on naviagtions (or events) the scrollbar
+ * appearing doesn't cause a layout shift */
+@media screen and (min-width: 960px) {
+    html {
+        margin-left: calc(100vw - 100%);
+        margin-right: 0;
+    }
+}
+
 body {
     margin: 0;
     font-family: sans-serif;
+    min-height: 100vh;
 }
 
 a {
