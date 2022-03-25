@@ -25,7 +25,6 @@ jobs:
       # Credit to the tensorboard repo for the cache configuration step
       # https://github.com/tensorflow/tensorboard/blob/master/.github/workflows/ci.yml#L58
       # Plenty of ways to do something similar but I really liked theirs
-      #
       - name: 'Configure remote build cache usage'
         env:
           EVENT_TYPE: ${{ github.event_name }}
