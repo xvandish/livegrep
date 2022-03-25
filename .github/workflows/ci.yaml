@@ -72,6 +72,8 @@ jobs:
           name: "${{ env.build_output_file_name }}"
           path: "builds/${{ env.build_output_file_name }}.tgz"
           retention-days: 1
+      - name: debug env
+        uses: hmarr/debug-action@v2
       - name: Build images
         # livegrep/livegrep already contains built images that match whats in refs/heads/main - don't rebuild
         if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
