@@ -37,8 +37,7 @@ jobs:
         run: |
           sed -i 's/build --remote_header=x-buildbuddy-api-key=BUILDBUDDY_API_KEY/build --remote_header=x-buildbuddy-api-key='"$BUILDBUDDY_API_KEY"'/' .bazelrc
           if [ "${EVENT_TYPE}" = pull_request ]; then
-            printf 'Using temporary PR write cache (PR build)\n'
-            sed -i 's/common --remote_upload_local_results=false/common --remote_upload_local_results=true/' .bazelrc
+            printf 'Using read-only cache (PR build)\n'
             exit
           fi
           printf 'Using writable cache\n'
