@@ -7,6 +7,10 @@ on:
     branches:
       - main
       - my_main
+  schedule:
+    # Run in cron every 5 days at midnight to keep the cache warm.
+    # Github prunes caches every 7 days
+    - cron: '0 0 */5 * *'
 
 name: Continuous integration
 
@@ -72,8 +76,6 @@ jobs:
           name: "${{ env.build_output_file_name }}"
           path: "builds/${{ env.build_output_file_name }}.tgz"
           retention-days: 1
-      - name: debug env
-        uses: hmarr/debug-action@v2
       - name: Build images
         # livegrep/livegrep already contains built images that match whats in refs/heads/main - don't rebuild
         if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
