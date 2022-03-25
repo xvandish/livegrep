@@ -16,6 +16,25 @@ function getSelectedText() {
 function init(initData) {
 "use strict";
 
+var searchBox = document.getElementById("searchbox");
+
+// Listen for the '/' key to trigger a search input focs
+document.addEventListener("keyup", function (event) {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+    return;
+  if (event.key !== "/" || (searchBox === document.activeElement)) return;
+
+  // if there is some selected text, then start a new search for it
+  const selectedText = document.getSelection().toString();
+  if (selectedText !== "") {
+    return; // let this event be handled by _handleKey for now, until we remove all this JS 
+  }
+
+  event.preventDefault();
+  searchBox.focus();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
 var h = new html.HTMLFactory();
 var last_url_update = 0;
 
