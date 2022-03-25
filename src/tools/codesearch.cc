@@ -56,6 +56,7 @@ DEFINE_bool(hot_index_reload, false, "Enable automatic reloads when the index fi
 DEFINE_bool(reuseport, true, "Set SO_REUSEPORT to enable multiple concurrent server instances.");
 DEFINE_int32(max_recv_message_size, 0, "Maximum gRPC receive (inbound) message size in bytes");
 DEFINE_int32(max_send_message_size, 0, "Maximum gRPC send (outbound) message size in bytes");
+DEFINE_string(dump_metrics, "", "Dump indexing metrics to a specified file");
 
 using namespace std;
 using namespace re2;
@@ -140,6 +141,9 @@ void initialize_search(code_searcher *search,
         fprintf(stderr, "repository indexed in %d.%06ds\n",
                 (int)elapsed.tv_sec, (int)elapsed.tv_usec);
         metric::dump_all();
+        if (FLAGS_dump_metrics.size() > 0) {
+            metric::dump_all_to_file(FLAGS_dump_metrics, (int)elapsed.tv_sec, (int)elapsed.tv_usec);
+        }
     } else {
         search->load_index(FLAGS_load_index);
     }

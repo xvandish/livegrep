@@ -22,6 +22,7 @@ public:
     void dec(long i) {val_ -= i;}
 
     static void dump_all();
+    static void dump_all_to_file(const std::string &path, int elapsedSec, int elapsedUSec);
 
 #ifdef CODESEARCH_SLOWGTOD
     class timer {
