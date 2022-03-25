@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -42,11 +41,11 @@ func init() {
 	flag.Parse()
 
 	if *flagMetricsPath == "" {
-		log.Fatalf("--metrics-out must be provided\n")
+		log.Fatalf("--metrics-out is required. It is the path to the file containing metrics from the indexing run\n")
 	}
 
 	if *flagStatsdAddr == "" {
-		panic(fmt.Errorf("no statsd target address specified"))
+		log.Fatalf("--statsd-address is required. It is the host:port of the StatsD server.\n")
 	} else {
 		log.Printf("using statsd server: address=%s", *flagStatsdAddr)
 	}
@@ -91,7 +90,7 @@ func main() {
 	// Regex-match the metrics dump block
 	dump := metricsDumpPattern.FindStringSubmatch(metricsFileStr)
 	if len(dump) < 2 {
-		panic(fmt.Errorf("failed to parse metrics dump from indexer output"))
+		log.Fatalf("failed to parse metrics dump from indexer output")
 	}
 
 	// Regex-match the metric name and value from each line
@@ -99,12 +98,12 @@ func main() {
 	for _, metricLine := range strings.Split(dump[1], "\n") {
 		metric := metricPattern.FindStringSubmatch(metricLine)
 		if len(metric) < 3 {
-			panic(fmt.Errorf("failed to parse metric name and value: line=%s", metricLine))
+			log.Fatalf("failed to parse metric name and value: line=%s", metricLine)
 		}
 
 		value, err := strconv.Atoi(metric[2])
 		if err != nil {
-			panic(fmt.Errorf("failed to parse metric value: name=%s value=%s", metric[1], metric[2]))
+			log.Fatalf("failed to parse metric value: name=%s value=%s", metric[1], metric[2])
 		}
 
 		metrics[metric[1]] = value
