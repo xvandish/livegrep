@@ -3,6 +3,7 @@ $ = require('jquery');
 var KeyCodes = {
   ESCAPE: 27,
   ENTER: 13,
+  DOT: 190,
   SLASH_OR_QUESTION_MARK: 191
 };
 
@@ -96,17 +97,22 @@ function init(initData) {
   var lineNumberContainer = root.find('.line-numbers');
   var helpScreen = $('.help-screen');
 
-  function doSearch(event, query, newTab) {
-    var url;
-    if (query !== undefined) {
-      url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(initData.repo_info.name);
-    } else {
-      url = '/search';
+  function doSearch(query, newTab, scopeToRepo) {
+    var url = new URL('/search', window.location.href);
+
+    if (query !== null && query !== '') {
+      url.searchParams.set('q', query);
     }
+
+    if (scopeToRepo) {
+      url.searchParams.set('repo', initData.repo_info.name);
+    };
+
+    // url.toString() will encode our query params
     if (newTab === true){
       window.open(url);
     } else {
-      window.location.href = url
+      window.location.href = url.toString();
     }
   }
 
@@ -202,11 +208,12 @@ function init(initData) {
   }
 
   function processKeyEvent(event) {
+    var selectedText = getSelectedText();
+
     if(event.which === KeyCodes.ENTER) {
       // Perform a new search with the selected text, if any
-      var selectedText = getSelectedText();
       if(selectedText) {
-        doSearch(event, selectedText, true);
+        doSearch(selectedText, true, false);
       }
     } else if(event.which === KeyCodes.SLASH_OR_QUESTION_MARK) {
         event.preventDefault();
@@ -214,8 +221,11 @@ function init(initData) {
           showHelp();
         } else {
           hideHelp();
-          doSearch(event, getSelectedText());
+          doSearch(selectedText, false, false);
         }
+    } else if (event.which === KeyCodes.DOT) {
+      event.preventDefault();
+      doSearch(selectedText, false, true);
     } else if(event.which === KeyCodes.ESCAPE) {
       // Avoid swallowing the important escape key event unless we're sure we want to
       if(!helpScreen.hasClass('hidden')) {
@@ -236,7 +246,6 @@ function init(initData) {
       }
     } else if (String.fromCharCode(event.which) == 'N' || String.fromCharCode(event.which) == 'P') {
       var goBackwards = String.fromCharCode(event.which) === 'P';
-      var selectedText = getSelectedText();
       if (selectedText) {
         window.find(selectedText, false /* case sensitive */, goBackwards);
       }
@@ -248,7 +257,8 @@ function init(initData) {
     // Map out action name to function call, and automate the details of actually hooking
     // up the event handling.
     var ACTION_MAP = {
-      search: doSearch,
+      searchGlobally: function() { return doSearch(null, false, false) },
+      searchInCurrRepo: function() { return doSearch(null, false, true) },
       help: showHelp,
     };
 
