@@ -21,7 +21,8 @@ test --test_verbose_timeout_warnings
 # build --bes_results_url=https://app.buildbuddy.io/invocation/
 # build --bes_backend=grpcs://cloud.buildbuddy.io
 # build --remote_cache=grpcs://cloud.buildbuddy.io
-common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
+# common --remote_cache=https://storage.googleapis.com/livegrep-bazel-remote-cache
+common --disk_cache=~/.cache/bazel
 common --remote_timeout=300s
 common --experimental_remote_cache_async
 common --experimental_remote_merkle_tree_cache
