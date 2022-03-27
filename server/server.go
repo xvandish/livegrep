@@ -9,13 +9,14 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strings"
 	texttemplate "text/template"
 	"time"
 
 	"golang.org/x/net/context"
 
 	"github.com/bmizerany/pat"
-	libhoney "github.com/honeycombio/libhoney-go"
+	"gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/log"
@@ -47,7 +48,7 @@ type server struct {
 	AssetHashes map[string]string
 	Layout      *template.Template
 
-	honey *libhoney.Builder
+	statsd *statsd.Client
 
 	serveFilePathRegex *regexp.Regexp
 }
@@ -257,6 +258,12 @@ func (s *server) ServeOpensearch(ctx context.Context, w http.ResponseWriter, r *
 }
 
 func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, templateName string, pageData *page) {
+	if s.statsd != nil {
+		normTemplName := "pages." + strings.Replace(templateName, ".html", "", 1)
+		defer s.statsd.NewTiming().Send(normTemplName + ".response_time")
+		s.statsd.Increment(normTemplName + ".hits")
+	}
+
 	t, ok := s.Templates[templateName]
 	if !ok {
 		log.Printf(ctx, "Error: no template named %v", templateName)
@@ -315,12 +322,39 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.loadTemplates()
 
-	if cfg.Honeycomb.WriteKey != "" {
-		log.Printf(context.Background(),
-			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
-		srv.honey = libhoney.NewBuilder()
-		srv.honey.WriteKey = cfg.Honeycomb.WriteKey
-		srv.honey.Dataset = cfg.Honeycomb.Dataset
+	if cfg.StatsD.Address != "" {
+		ctx := context.Background()
+		log.Printf(ctx, "Initializing StatsD client")
+		args := []statsd.Option{statsd.Address(cfg.StatsD.Address)}
+
+		if cfg.StatsD.Prefix != "" {
+			log.Printf(ctx, "appending prefix: %s", cfg.StatsD.Prefix)
+			args = append(args, statsd.Prefix(cfg.StatsD.Prefix))
+		}
+
+		if cfg.StatsD.Tags[0] != "" {
+			var tagsFormat statsd.TagFormat
+			givenFmt := cfg.StatsD.TagsFormat
+			if givenFmt == "datadog" {
+				tagsFormat = statsd.Datadog
+			} else if givenFmt == "influxdb" {
+				tagsFormat = statsd.InfluxDB
+			} else {
+				panic(fmt.Sprint("Invalid TagsFormat: %s. Only 'datadog' and 'influxdb' allowed", givenFmt))
+			}
+
+			log.Printf(ctx, "appending tags: %v\n", cfg.StatsD.Tags)
+			log.Printf(ctx, "appending tagsFormat: %v\n", tagsFormat)
+			args = append(args, statsd.Tags(cfg.StatsD.Tags...), statsd.TagsFormat(tagsFormat))
+		}
+
+		statsdClient, err := statsd.New(args...)
+
+		if err != nil {
+			panic(fmt.Sprintf("could not initialize StatsD client: %v", err))
+		}
+		srv.statsd = statsdClient
+		log.Printf(ctx, "Finished initializing StatsD client")
 	}
 
 	for _, bk := range srv.config.Backends {

@@ -227,30 +227,15 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		return
 	}
 
-	if s.honey != nil {
-		e := s.honey.NewEvent()
-		reqid, ok := reqid.FromContext(ctx)
-		if ok {
-			e.AddField("request_id", reqid)
-		}
-		e.AddField("backend", backend.Id)
-		e.AddField("query_line", q.Line)
-		e.AddField("query_file", q.File)
-		e.AddField("query_repo", q.Repo)
-		e.AddField("query_foldcase", q.FoldCase)
-		e.AddField("query_not_file", q.NotFile)
-		e.AddField("query_not_repo", q.NotRepo)
-		e.AddField("max_matches", q.MaxMatches)
-
-		e.AddField("result_count", len(reply.Results))
-		e.AddField("re2_time", reply.Info.RE2Time)
-		e.AddField("git_time", reply.Info.GitTime)
-		e.AddField("sort_time", reply.Info.SortTime)
-		e.AddField("index_time", reply.Info.IndexTime)
-		e.AddField("analyze_time", reply.Info.AnalyzeTime)
-
-		e.AddField("exit_reason", reply.Info.ExitReason)
-		e.Send()
+	if s.statsd != nil {
+		s.statsd.Increment("api.search.v1.invocations")
+		s.statsd.Increment("api.search.v1.exit_reason." + reply.Info.ExitReason)
+		s.statsd.Timing("api.search.v1.re2_time", reply.Info.RE2Time)
+		s.statsd.Timing("api.search.v1.git_time", reply.Info.GitTime)
+		s.statsd.Timing("api.search.v1.sort_time", reply.Info.SortTime)
+		s.statsd.Timing("api.search.v1.index_time", reply.Info.IndexTime)
+		s.statsd.Timing("api.search.v1.analyze_time", reply.Info.AnalyzeTime)
+		s.statsd.Timing("api.search.v1.total_time", reply.Info.TotalTime)
 	}
 
 	log.Printf(ctx,
