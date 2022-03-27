@@ -14,6 +14,20 @@ type Honeycomb struct {
 	Dataset  string `json:"dataset"`
 }
 
+// For more options - https://pkg.go.dev/gopkg.in/alexcesaro/statsd.v2#pkg-index
+type StatsD struct {
+	// The location of the StatsD daemon - :8125 is the default
+	Address string `json:"address"`
+	// The prefix that will be used in every bucket name
+	// e.g Prefix=hello and you send 'index.bytes', 'hello.index.bytes' will be sent
+	Prefix string `json:"prefix"`
+	// Appends the given tags to the tags sent with every metric
+	// must be set as key-value pairs. If non-even num of tags given, Tags panics
+	Tags []string `json:"tags"`
+	// Format of the tags. Only the strings "InfluxDB" and "Datadog" are accepted
+	TagsFormat string `json:"tags_format"`
+}
+
 type GoogleIAPConfig struct {
 	ProjectNumber string `json:"project_number"`
 
@@ -68,6 +82,9 @@ type Config struct {
 
 	// honeycomb API write key
 	Honeycomb Honeycomb `json:"honeycomb"`
+
+	// If included, search api metrics will be sent to StatsD
+	StatsD StatsD `json:"statsd"`
 
 	DefaultMaxMatches int32 `json:"default_max_matches"`
 

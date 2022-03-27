@@ -253,6 +253,17 @@ func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *h
 		e.Send()
 	}
 
+	if s.statsd != nil {
+		s.statsd.Increment("api.search.v1.invocations")
+		s.statsd.Increment("api.search.v1.exit_reason." + reply.Info.ExitReason)
+		s.statsd.Timing("api.search.v1.re2_time", reply.Info.RE2Time)
+		s.statsd.Timing("api.search.v1.git_time", reply.Info.GitTime)
+		s.statsd.Timing("api.search.v1.sort_time", reply.Info.SortTime)
+		s.statsd.Timing("api.search.v1.index_time", reply.Info.IndexTime)
+		s.statsd.Timing("api.search.v1.analyze_time", reply.Info.AnalyzeTime)
+		s.statsd.Timing("api.search.v1.total_time", reply.Info.TotalTime)
+	}
+
 	log.Printf(ctx,
 		"responding success results=%d why=%s stats=%s",
 		len(reply.Results),

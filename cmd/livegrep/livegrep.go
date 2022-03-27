@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path"
+	"strings"
 
 	libhoney "github.com/honeycombio/libhoney-go"
 	"github.com/livegrep/livegrep/server"
@@ -60,6 +61,12 @@ func main() {
 			ProjectNumber:    os.Getenv("GOOGLE_IAP_PROJECT_NUMBER"),
 			BackendServiceID: os.Getenv("GOOGLE_IAP_BACKEND_SERVICE_ID"),
 			ProjectID:        os.Getenv("GOOGLE_IAP_PROJECT_ID"),
+		},
+		StatsD: config.StatsD{
+			Address:    os.Getenv("STATSD_ADDRESS"),
+			Prefix:     os.Getenv("STATSD_PREFIX"),
+			Tags:       strings.Split(os.Getenv("STATSD_TAGS"), ","),
+			TagsFormat: os.Getenv("STATSD_TAGS_FORMAT"),
 		},
 	}
 

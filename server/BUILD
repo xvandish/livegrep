@@ -32,6 +32,7 @@ go_library(
         "@org_golang_google_grpc//codes:go_default_library",
         "@org_golang_google_grpc//metadata:go_default_library",
         "@org_golang_x_net//context:go_default_library",
+        "@in_gopkg_alexcesaro_statsd_v2//:go_default_library",
     ],
 )
 
