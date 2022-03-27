@@ -12,7 +12,6 @@ import (
 	"path"
 	"strings"
 
-	libhoney "github.com/honeycombio/libhoney-go"
 	"github.com/livegrep/livegrep/server"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/middleware"
@@ -53,10 +52,6 @@ func main() {
 		Backends: []config.Backend{
 			{Id: "", Addr: *backendAddr},
 		},
-		Honeycomb: config.Honeycomb{
-			WriteKey: os.Getenv("HONEYCOMB_WRITE_KEY"),
-			Dataset:  os.Getenv("HONEYCOMB_DATASET"),
-		},
 		GoogleIAPConfig: config.GoogleIAPConfig{
 			ProjectNumber:    os.Getenv("GOOGLE_IAP_PROJECT_NUMBER"),
 			BackendServiceID: os.Getenv("GOOGLE_IAP_BACKEND_SERVICE_ID"),
@@ -91,8 +86,6 @@ func main() {
 			log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 		}
 	}
-
-	libhoney.Init(libhoney.Config{})
 
 	handler, err := server.New(cfg)
 	if err != nil {

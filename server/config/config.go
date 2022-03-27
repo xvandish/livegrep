@@ -9,11 +9,6 @@ type Backend struct {
 	Addr string `json:"addr"`
 }
 
-type Honeycomb struct {
-	WriteKey string `json:"write_key"`
-	Dataset  string `json:"dataset"`
-}
-
 // For more options - https://pkg.go.dev/gopkg.in/alexcesaro/statsd.v2#pkg-index
 type StatsD struct {
 	// The location of the StatsD daemon - :8125 is the default
@@ -79,9 +74,6 @@ type Config struct {
 
 	// Whether to re-load templates on every request
 	Reload bool `json:"reload"`
-
-	// honeycomb API write key
-	Honeycomb Honeycomb `json:"honeycomb"`
 
 	// If included, search api metrics will be sent to StatsD
 	StatsD StatsD `json:"statsd"`

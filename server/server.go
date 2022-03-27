@@ -16,7 +16,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/bmizerany/pat"
-	libhoney "github.com/honeycombio/libhoney-go"
 	"gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/livegrep/livegrep/server/config"
@@ -49,7 +48,6 @@ type server struct {
 	AssetHashes map[string]string
 	Layout      *template.Template
 
-	honey  *libhoney.Builder
 	statsd *statsd.Client
 
 	serveFilePathRegex *regexp.Regexp
@@ -323,14 +321,6 @@ func New(cfg *config.Config) (http.Handler, error) {
 		repos:  make(map[string]config.RepoConfig),
 	}
 	srv.loadTemplates()
-
-	if cfg.Honeycomb.WriteKey != "" {
-		log.Printf(context.Background(),
-			"Enabling honeycomb dataset=%s", cfg.Honeycomb.Dataset)
-		srv.honey = libhoney.NewBuilder()
-		srv.honey.WriteKey = cfg.Honeycomb.WriteKey
-		srv.honey.Dataset = cfg.Honeycomb.Dataset
-	}
 
 	if cfg.StatsD.Address != "" {
 		ctx := context.Background()
