@@ -9,7 +9,6 @@ go_library(
         "//server:go_default_library",
         "//server/config:go_default_library",
         "//server/middleware:go_default_library",
-        "@com_github_honeycombio_libhoney_go//:go_default_library",
     ],
 )
 
