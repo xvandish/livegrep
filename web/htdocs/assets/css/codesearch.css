@@ -12,6 +12,8 @@ body {
     margin: 0;
     font-family: sans-serif;
     min-height: 100vh;
+
+    --hover-highlight-color: #d0eaf9;
 }
 
 a {
@@ -206,6 +208,13 @@ a:hover {
 
 .file-extensions button {
     margin-left: 4px;
+    background-color: transparent;
+    border: 1px solid black;
+    border-radius: 3px;
+}
+
+.file-extensions button:hover {
+    background-color: var(--hover-highlight-color);
 }
 
 .file-group {
@@ -277,7 +286,7 @@ a:hover {
 }
 
 .match .content-line-wrapper:hover > * {
-    background-color: #d0eaf9;
+    background-color: var(--hover-highlight-color);
 }
 
 .match .contents {
