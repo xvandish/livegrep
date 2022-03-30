@@ -311,9 +311,13 @@ a:hover {
 }
 
 .lno-link {
-    color: #3d464d;
+    color: #6e7781;
     padding-right: 1em;
     text-align: right;
+}
+
+.lno-link:hover {
+    color: black;
 }
 
 .lno:before {
