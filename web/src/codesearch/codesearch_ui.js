@@ -175,7 +175,7 @@ var MatchView = Backbone.View.extend({
     return this;
   },
   _renderLno: function(n, isMatch) {
-    var lnoStr = n.toString() + (isMatch ? ":" : "-");
+    var lnoStr = n.toString();
     var classes = ['lno-link'];
     if (isMatch) classes.push('matchlno');
     return h.a({cls: classes.join(' '), href: this.model.url(n)}, [
@@ -192,19 +192,34 @@ var MatchView = Backbone.View.extend({
     var lines_to_display_before = Math.max(0, ctxBefore.length - (clip_before || 0));
     for (i = 0; i < lines_to_display_before; i ++) {
       ctx_before.unshift(
-        this._renderLno(lno - i - 1, false),
-        h.span([this.model.get('context_before')[i]]),
-        h.span({}, [])
+        h.div({ cls: 'content-line-wrapper' }, [].concat(
+          this._renderLno(lno - i - 1, false),
+          h.span([this.model.get('context_before')[i]]),
+          h.span({}, [])
+        ))
       );
     }
     var lines_to_display_after = Math.max(0, ctxAfter.length - (clip_after || 0));
     for (i = 0; i < lines_to_display_after; i ++) {
       ctx_after.push(
-        this._renderLno(lno + i + 1, false),
-        h.span([this.model.get('context_after')[i]]),
-        h.span({}, [])
+        h.div({ cls: 'content-line-wrapper' }, [].concat(
+          this._renderLno(lno + i + 1, false),
+          h.span([this.model.get('context_after')[i]]),
+          h.span({}, [])
+        ))
       );
     }
+
+    if (this.model.get('add_blank_line')) {
+      ctx_after.push(
+          h.div({ cls: 'content-line-wrapper blank-line' }, [
+            h.span({ cls: 'lno-link' }, ['...']),
+            h.span({ cls: '' }, ['']),
+            h.span({ cls: '' }, [''])
+          ])
+      );
+    };
+
     var line = this.model.get('line');
     var bounds = this.model.get('bounds');
     var pieces = [line.substring(0, bounds[0]),
@@ -229,12 +244,14 @@ var MatchView = Backbone.View.extend({
       h.div({cls: 'contents'}, [].concat(
         ctx_before,
         [
+          h.div({ cls: 'content-line-wrapper' }, [].concat( 
             this._renderLno(lno, true),
             h.span({cls: 'matchline'}, [pieces[0], h.span({cls: 'matchstr'}, [pieces[1]]), pieces[2]]),
             h.span({cls: 'matchlinks'}, links)
+          )),
         ],
         ctx_after
-      ))
+      )),
     ]);
 
     return matchElement;
@@ -322,6 +339,7 @@ var FileGroup = Backbone.Model.extend({
       } else {
         previous_match.unset('clip_after');
         this_match.unset('clip_before');
+        previous_match.set('add_blank_line', true);
       }
     }
   }
