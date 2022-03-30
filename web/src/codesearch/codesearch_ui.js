@@ -175,7 +175,7 @@ var MatchView = Backbone.View.extend({
     return this;
   },
   _renderLno: function(n, isMatch) {
-    var lnoStr = n.toString() + (isMatch ? ":" : "-");
+    var lnoStr = n.toString();
     var classes = ['lno-link'];
     if (isMatch) classes.push('matchlno');
     return h.a({cls: classes.join(' '), href: this.model.url(n)}, [
