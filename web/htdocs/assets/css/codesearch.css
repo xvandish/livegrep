@@ -934,3 +934,23 @@ div.example {
     cursor: pointer;
     background-color: var(--hover-highlight-color);
 }
+
+#log-table tr {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    justify-content: flex-start;
+}
+
+#log-table .expanded-row-content {
+    border-top: none;
+    display: grid;
+    grid-column: 1/-1;
+    justify-content: flex-start;
+    color: #AEB1B3;
+    font-size: 13px;
+    background-color: #fff;
+}
+
+#log-table .hide-row {
+    display: none;
+}

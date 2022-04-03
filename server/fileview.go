@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/livegrep/livegrep/server/config"
 )
@@ -238,6 +240,77 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 		SymlinkTarget: symlinkTarget,
 	}
 }
+
+/*
+* The format below outputs
+* commit someCommit <shortHash>
+* author <SomeName> <someEmail>
+* subject ......
+* date authorDate in iso8601
+* body ............
+* \x00 (null seperator from the -z option)
+ */
+var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
+
+// The named capture groups are just for human readability
+var gitLogRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\x00`)
+
+// Later on when we add support for CommitCommiter we can abstract Author to it's own struct
+type Commit struct {
+	Hash        string
+	ShortHash   string
+	AuthorName  string
+	AuthorEmail string
+	Date        string
+	Subject     string
+	Body        string
+}
+
+// Add more as we need it
+type SimpleGitLog struct {
+	Commits []*Commit
+}
+
+// We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
+func buildSimpleGitLogData(relativePath string, repo config.RepoConfig) (*SimpleGitLog, error) {
+	cleanPath := path.Clean(relativePath)
+	out, err := exec.Command("git", "-C", repo.Path, "log", "-z", "--pretty="+customGitLogFormat, "HEAD", "--", cleanPath).Output()
+	if err != nil {
+		return nil, err
+	}
+	// Null terminate our thing
+	start := time.Now()
+	out = append(out, byte(rune(0)))
+	fmt.Printf("took %s to append rune\n", time.Since(start))
+	err = os.WriteFile("./tmp-log", out, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	matches := gitLogRegex.FindAllSubmatch(out, -1)
+
+	simpleGitLog := SimpleGitLog{}
+	simpleGitLog.Commits = make([]*Commit, len(matches))
+
+	for i, match := range matches {
+		simpleGitLog.Commits[i] = &Commit{
+			Hash:        string(match[1]),
+			ShortHash:   string(match[2]),
+			AuthorName:  string(match[3]),
+			AuthorEmail: string(match[4]),
+			Subject:     string(match[5]),
+			Date:        string(match[6]),
+			Body:        string(match[7]),
+		}
+	}
+
+	return &simpleGitLog, nil
+}
+
+// Given a specific commitHash, get detailed info (--numstat or --shortstat)
+// func getDetailedGitLogForCommit(relativePath string, repo config.RepoConfig, commit string) {
+
+// }
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
 	commitHash := commit

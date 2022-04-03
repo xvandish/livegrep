@@ -14,7 +14,7 @@ func assertRepoPath(t *testing.T,
 	expectedRepo string,
 	expectedPath string,
 	expectedErr error) {
-	actualRepo, actualPath, err := getRepoPathFromURL(repoRegex, url)
+	actualRepo, actualPath, err := getRepoPathFromURL(repoRegex, url, "/view/")
 	if err != expectedErr {
 		t.Errorf("error expectation mismatch when parsing url, got %v, expected %v", err.Error(), expectedErr)
 	}
