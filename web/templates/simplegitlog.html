@@ -1,0 +1,36 @@
+
+{{template "layout" .}}
+
+<!-- start with table, move to divs with <flex if useful -->
+{{ with .Data }}
+<table id="log-table">
+  <thead>
+    <tr>
+      <th>Short Hash</th>
+      <th>Author</th>
+      <th>Commit Date</th>
+      <th>Subject</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range $commit := .Commits }}
+      <tr onClick='toggleRow(this)'>
+        <td>{{$commit.ShortHash}}</td>
+        <td>{{$commit.AuthorName}}</td>
+        <td>{{$commit.Date}}</td>
+        <td>{{$commit.Subject}}</td>
+        <td class='expanded-row-content hide-row'>
+          <pre>{{$commit.Body}}</pre>
+        </td>
+      </tr>
+    {{ end }}
+  </tbody>
+</table>
+{{end}}
+
+<script>
+ const toggleRow = (element) => {
+  element.getElementsByClassName('expanded-row-content')[0].classList.toggle('hide-row');
+  console.log(event);
+}
+</script>

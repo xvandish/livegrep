@@ -121,8 +121,44 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	})
 }
 
+func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/simple-git-log/")
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	commit := r.URL.Query().Get("commit")
+	if commit == "" {
+		commit = "HEAD"
+	}
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := buildSimpleGitLogData(path, repo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
+		return
+	}
+
+	s.renderPage(ctx, w, r, "simplegitlog.html", &page{
+		Title:         "simplegitlog",
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path)
+	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/view/")
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -386,6 +422,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
@@ -432,8 +469,8 @@ func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {
 	return repoFileRegex, nil
 }
 
-func getRepoPathFromURL(repoRegex *regexp.Regexp, url string) (repo string, path string, err error) {
-	matches := repoRegex.FindStringSubmatch(pat.Tail("/view/", url))
+func getRepoPathFromURL(repoRegex *regexp.Regexp, url, pathPrefix string) (repo string, path string, err error) {
+	matches := repoRegex.FindStringSubmatch(pat.Tail(pathPrefix, url))
 	if len(matches) == 0 {
 		return "", "", serveUrlParseError
 	}
