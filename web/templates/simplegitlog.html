@@ -14,14 +14,25 @@
   </thead>
   <tbody>
     {{range $commit := .Commits }}
-      <tr onClick='toggleRow(this)'>
+      <tr>
         <td>{{$commit.ShortHash}}</td>
         <td>{{$commit.AuthorName}}</td>
         <td>{{$commit.Date}}</td>
-        <td>{{$commit.Subject}}</td>
+        <td>
+          <span>
+          {{$commit.Subject}}
+          </span>
+          {{ if ne $commit.Body "" }}
+            <span class="hidden-text-expander">
+              <button type="button" class="ellipses-expander" data-action="expandText">…</button>
+            </span>
+          {{ end }}
+        </td>
+        {{ if ne $commit.Body "" }}
         <td class='expanded-row-content hide-row'>
           <pre>{{$commit.Body}}</pre>
         </td>
+        {{ end }}
       </tr>
     {{ end }}
   </tbody>
@@ -29,8 +40,23 @@
 {{end}}
 
 <script>
- const toggleRow = (element) => {
-  element.getElementsByClassName('expanded-row-content')[0].classList.toggle('hide-row');
-  console.log(event);
-}
+  const functionMap = {
+    "expandText": expandText
+  };
+
+  function expandText(event) {
+    // Get the row that triggered this click
+    const row = event.target.closest('tr');
+    row.querySelector('.expanded-row-content').classList.toggle('hide-row');
+  }
+
+  function dealWithClick(event) {
+    if (event.target.tagName != "BUTTON") {
+        return
+    }
+
+    functionMap[event.target.dataset.action](event);
+  }
+
+  document.getElementById('log-table').addEventListener('click', dealWithClick, false);
 </script>
