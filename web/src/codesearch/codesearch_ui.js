@@ -602,6 +602,7 @@ var MatchesView = Backbone.View.extend({
   el: $('#results'),
   events: {
     'click .file-extension': '_limitExtension',
+    'click .show-more-filematches-btn': '_toggleMoreFileMatches',
     'keydown': '_handleKey',
   },
   initialize: function() {
@@ -624,15 +625,31 @@ var MatchesView = Backbone.View.extend({
     }
 
     var pathResults = h.div({'cls': 'path-results'});
+    var shownFileResults = h.div();
+    var hiddenFileResults = h.div({'id': 'extra-results', cls: 'hidden'});
     var count = 0;
     this.model.file_search_results.each(function(file) {
+      var view = new FileMatchView({model: file});
       if (this.model.get('search_type') == 'filename_only' || count < 10) {
-        var view = new FileMatchView({model: file});
-        pathResults.append(view.render().el);
+        shownFileResults.append(view.render().el);
+      } else {
+        hiddenFileResults.append(view.render().el);
       }
       countExtension(file.attributes.path);
       count += 1;
     }, this);
+    pathResults.append(shownFileResults);
+    if (hiddenFileResults.children.length > 0) {
+      var showMoreBtn = h.button({'cls': 'show-more-filematches-btn'}, [
+        h.span({ id: "toggle-btn-text" }, ['Show all']),
+        h.img({ src: "/assets/img/chevron-down.svg" }),
+      ]); 
+
+      pathResults.append(hiddenFileResults);
+      pathResults.append(showMoreBtn);
+    }
+    
+
     this.$el.append(pathResults);
 
     this.model.search_results.each(function(file_group) {
@@ -686,6 +703,12 @@ var MatchesView = Backbone.View.extend({
       q = 'file:' + ext + ' ' + q;
     CodesearchUI.input.val(q);
     CodesearchUI.newsearch();
+  },
+  _toggleMoreFileMatches: function(e) {
+    document.querySelector('.path-results #extra-results').classList.toggle('hidden');
+    var textContainer = e.currentTarget.querySelector('#toggle-btn-text');
+    textContainer.innerText = textContainer.innerText === 'Show all' ? 'Show less' : 'Show all';
+    e.currentTarget.querySelector('img').classList.toggle('open');
   },
   _handleKey: function(e) {
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
