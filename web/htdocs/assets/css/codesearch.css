@@ -202,7 +202,34 @@ a:hover {
     outline: none; /* despite 'tabindex' that lets it receive keystrokes */
 }
 
-.file-extensions, .path-results {
+.path-results .hidden {
+    display: none;
+}
+
+.path-results .show-more-filematches-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    background-color: #fafafa;
+    border-radius: 3px;
+    padding: 5px;
+    border: none;
+}
+
+.path-results .show-more-filematches-btn:hover {
+    background-color: var(--hover-highlight-color);
+}
+
+.path-results .show-more-filematches-btn img.open {
+    transform: rotate(180deg);
+}
+
+.path-results {
+    margin-bottom: 30px;
+}
+
+.file-extensions {
     margin-bottom: 15px;
 }
 
