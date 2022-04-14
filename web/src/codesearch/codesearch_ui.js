@@ -921,6 +921,14 @@ var CodesearchUI = function() {
         currHistory = [];
       }
 
+      var rootC = document.querySelector('#helparea #recent-searches');
+      if (currHistory.length === 0) {
+        rootC.classList.add('hidden');
+        return;
+      } else {
+        rootC.classList.remove('hidden');
+      }
+
       var c = document.querySelector('#helparea #recent-searches .searches-container');
       // empty the container. Note we can't replaceChildren(historyElems)
       // because the current UglifyJs plugin used by webpack doesn't support the
@@ -942,7 +950,7 @@ var CodesearchUI = function() {
           CodesearchUI.newsearch();
         });
         c.appendChild(elem);
-      }
+      };
     },
     toggle_context: function(){
       CodesearchUI.state.set('context', CodesearchUI.input_context.prop('checked'));
