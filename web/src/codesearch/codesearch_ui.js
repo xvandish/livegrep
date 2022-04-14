@@ -850,11 +850,13 @@ var CodesearchUI = function() {
 
       RepoSelector.init();
       CodesearchUI.update_repo_options();
+      CodesearchUI._render_search_history();
 
       CodesearchUI.init_query();
 
       CodesearchUI.input.keydown(CodesearchUI.keypress);
       CodesearchUI.input.bind('paste', CodesearchUI.keypress);
+      CodesearchUI.input.bind('blur', CodesearchUI.register_search_item_to_history);
       CodesearchUI.input.focus();
       if (CodesearchUI.input_backend)
         CodesearchUI.input_backend.change(CodesearchUI.select_backend);
@@ -884,6 +886,71 @@ var CodesearchUI = function() {
         CodesearchUI.init_query_from_parms(parms);
         CodesearchUI.newsearch();
       }
+    },
+    register_search_item_to_history: function(e) {
+      // Don't log a search that errors out
+      if (CodesearchUI.state.get('error') || e.target.value.trim() === '') {
+        return;
+      }
+
+      var currHistory = localStorage.getItem('search-history') || '[]';
+      try {
+        currHistory = JSON.parse(currHistory);
+      } catch (err) {
+        console.error('error parsing localStorage search history. Resetting it.');
+        currHistory = [];
+      }
+
+      var dedupedHistory = currHistory.filter(function (hElem) {
+        return hElem !== e.target.value;
+      });
+    
+      dedupedHistory.unshift(e.target.value); // Add the new item to the front
+      dedupedHistory = dedupedHistory.slice(0, 5); // Only keep the last 5 entries
+
+      localStorage.setItem('search-history', JSON.stringify(dedupedHistory));
+
+      CodesearchUI._render_search_history();
+    },
+    _render_search_history: function() {
+      var currHistory = localStorage.getItem('search-history') || '[]';
+      try {
+        currHistory = JSON.parse(currHistory);
+      } catch (err) {
+        console.error('error parsing localStorage search history. Resetting it.');
+        currHistory = [];
+      }
+
+      var rootC = document.querySelector('#helparea #recent-searches');
+      if (currHistory.length === 0) {
+        rootC.classList.add('hidden');
+        return;
+      } else {
+        rootC.classList.remove('hidden');
+      }
+
+      var c = document.querySelector('#helparea #recent-searches .searches-container');
+      // empty the container. Note we can't replaceChildren(historyElems)
+      // because the current UglifyJs plugin used by webpack doesn't support the
+      // .../spread operator and replaceChildren expects a comma delimited list
+      // of nodes
+      c.replaceChildren();
+
+      for (var i = 0; i < currHistory.length; i++) {
+        var searchText = currHistory[i];
+        var elem = h.button(
+          { 
+            cls: 'search-item', 
+            title: 'Do search for: ' + searchText 
+          }, 
+          [searchText]
+        );
+        elem.addEventListener('click', function(e) {
+          CodesearchUI.input.val(e.target.innerText);
+          CodesearchUI.newsearch();
+        });
+        c.appendChild(elem);
+      };
     },
     toggle_context: function(){
       CodesearchUI.state.set('context', CodesearchUI.input_context.prop('checked'));
