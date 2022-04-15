@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 type Tree struct {
@@ -25,10 +26,15 @@ type I struct {
 }
 
 type Backend struct {
-	Id         string
-	Addr       string
-	I          *I
-	Codesearch pb.CodeSearchClient
+	Id               string
+	Addr             string
+	I                *I
+	Codesearch       pb.CodeSearchClient
+	Available        bool
+	UnavailableSince time.Time
+	UnavailableCode  codes.Code
+	InitialTreesSet  bool
+	sync.Mutex
 }
 
 func NewBackend(id string, addr string) (*Backend, error) {
@@ -52,15 +58,41 @@ func (bk *Backend) Start() {
 	go bk.poll()
 }
 
+// Use quickPoll to see if we should call Info!
 func (bk *Backend) poll() {
 	for {
-		info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(false))
+		quickInfo, e := bk.Codesearch.QuickInfo(context.Background(), &pb.Empty{}, grpc.FailFast(true))
+		bk.Lock()
+		// If the backend index hash changed out on us, get the detailed info
 		if e == nil {
-			bk.refresh(info)
+			log.Printf("available")
+			newTime := time.Unix(quickInfo.IndexTime, 0)
+			if !bk.Available || bk.I.IndexTime.Before(newTime) {
+				bk.getInfo()
+			}
+			bk.Available = true
 		} else {
-			log.Printf("refresh %s: %v", bk.Id, e)
+			log.Printf("unavailable!!")
+			if bk.Available || bk.UnavailableSince.IsZero() {
+				log.Print("setting unavailable info")
+				bk.Available = false
+				bk.UnavailableSince = time.Now()
+				bk.UnavailableCode = grpc.Code(e)
+			}
 		}
-		time.Sleep(60 * time.Second)
+		bk.Unlock()
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func (bk *Backend) getInfo() {
+	log.Printf("inside of getInfo")
+	info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(true))
+
+	if e == nil {
+		bk.refresh(info)
+	} else {
+		log.Printf("refresh %s: %v", bk.Id, e)
 	}
 }
 
@@ -70,6 +102,13 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 
 	if info.Name != "" {
 		bk.I.Name = info.Name
+	}
+	log.Printf("in refresh")
+
+	// Only refresh the trees if the index has changed
+	if !bk.InitialTreesSet {
+		log.Print("initial trees are starting to be set")
+		bk.InitialTreesSet = true
 	}
 	bk.I.IndexTime = time.Unix(info.IndexTime, 0)
 	if len(info.Trees) > 0 {
@@ -91,4 +130,5 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 				Tree{r.Name, r.Version, pattern})
 		}
 	}
+	log.Printf("here")
 }

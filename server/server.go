@@ -222,6 +222,24 @@ func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
+func (s *server) ServeBackendStatus(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	backendName := r.URL.Query().Get(":backend")
+	var backend *Backend
+	if backendName != "" {
+		backend = s.bk[backendName]
+		if backend == nil {
+			writeError(ctx, w, 400, "bad_backend",
+				fmt.Sprintf("Unknown backend: %s", backendName))
+			return
+		}
+	} else {
+		for _, backend = range s.bk {
+			break
+		}
+	}
+
+}
+
 func (s *server) requestProtocol(r *http.Request) string {
 	if s.config.ReverseProxy {
 		if proto := r.Header.Get("X-Real-Proto"); len(proto) > 0 {

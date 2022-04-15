@@ -1,5 +1,9 @@
 package api
 
+import (
+	"time"
+)
+
 type InnerError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -16,6 +20,13 @@ type ReplySearch struct {
 	Results     []*Result     `json:"results"`
 	FileResults []*FileResult `json:"file_results"`
 	SearchType  string        `json:"search_type"`
+}
+
+type ReplyBackendStatus struct {
+	Available          bool
+	IndexTime          time.Time
+	UnavailableSince   time.Time
+	UnavailableMessage string
 }
 
 type Stats struct {
