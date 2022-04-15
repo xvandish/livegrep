@@ -25,16 +25,19 @@ type I struct {
 	IndexTime time.Time
 }
 
-type Backend struct {
-	Id               string
-	Addr             string
-	I                *I
-	Codesearch       pb.CodeSearchClient
-	Available        bool
-	UnavailableSince time.Time
-	UnavailableCode  codes.Code
-	InitialTreesSet  bool
+type Availability struct {
+	IsUp      bool
+	DownSince time.Time
+	DownCode  codes.Code
 	sync.Mutex
+}
+
+type Backend struct {
+	Id         string
+	Addr       string
+	I          *I
+	Codesearch pb.CodeSearchClient
+	Up         *Availability
 }
 
 func NewBackend(id string, addr string) (*Backend, error) {
@@ -47,6 +50,7 @@ func NewBackend(id string, addr string) (*Backend, error) {
 		Addr:       addr,
 		I:          &I{Name: id},
 		Codesearch: pb.NewCodeSearchClient(client),
+		Up:         &Availability{},
 	}
 	return bk, nil
 }
@@ -58,35 +62,36 @@ func (bk *Backend) Start() {
 	go bk.poll()
 }
 
-// Use quickPoll to see if we should call Info!
+// We continuosly poll for QuickInfo every second
+// We make requests for detailed info when
+//  1. the indexTime we have is different than what quickInfo returns
+// This occurs on startup and on codesearch backend reloads
 func (bk *Backend) poll() {
 	for {
 		quickInfo, e := bk.Codesearch.QuickInfo(context.Background(), &pb.Empty{}, grpc.FailFast(true))
-		bk.Lock()
+		bk.Up.Lock()
 		// If the backend index hash changed out on us, get the detailed info
 		if e == nil {
-			log.Printf("available")
 			newTime := time.Unix(quickInfo.IndexTime, 0)
-			if !bk.Available || bk.I.IndexTime.Before(newTime) {
+			if !bk.Up.IsUp || bk.I.IndexTime.Before(newTime) {
 				bk.getInfo()
 			}
-			bk.Available = true
+			bk.Up.IsUp = true
+			bk.Up.DownSince = time.Time{}
+			bk.Up.DownCode = 0
 		} else {
-			log.Printf("unavailable!!")
-			if bk.Available || bk.UnavailableSince.IsZero() {
-				log.Print("setting unavailable info")
-				bk.Available = false
-				bk.UnavailableSince = time.Now()
-				bk.UnavailableCode = grpc.Code(e)
+			if bk.Up.IsUp || bk.Up.DownSince.IsZero() {
+				bk.Up.IsUp = false
+				bk.Up.DownSince = time.Now()
+				bk.Up.DownCode = grpc.Code(e)
 			}
 		}
-		bk.Unlock()
+		bk.Up.Unlock()
 		time.Sleep(1 * time.Second)
 	}
 }
 
 func (bk *Backend) getInfo() {
-	log.Printf("inside of getInfo")
 	info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(true))
 
 	if e == nil {
@@ -103,13 +108,7 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	if info.Name != "" {
 		bk.I.Name = info.Name
 	}
-	log.Printf("in refresh")
 
-	// Only refresh the trees if the index has changed
-	if !bk.InitialTreesSet {
-		log.Print("initial trees are starting to be set")
-		bk.InitialTreesSet = true
-	}
 	bk.I.IndexTime = time.Unix(info.IndexTime, 0)
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
@@ -130,5 +129,4 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 				Tree{r.Name, r.Version, pattern})
 		}
 	}
-	log.Printf("here")
 }

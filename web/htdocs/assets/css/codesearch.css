@@ -107,11 +107,26 @@ a:hover {
     white-space: nowrap;
 }
 
+#live-status-main-info-container {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eaeaea;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+    margin-top: 15px;
+    color: #888;
+}
+
+#live-status-sub-info {
+    color: #888;
+}
+
 .live-dot {
     height: 12px;
     width: 12px;
     border-radius: 50%;
     display: inline-block; /*? */
+    margin-right: 10px;
 }
 
 .live-dot[data-status='up'] {

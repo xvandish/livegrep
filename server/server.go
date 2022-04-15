@@ -239,13 +239,14 @@ func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	bk.Lock()
-	if bk.Available {
+	bk.Up.Lock()
+	if bk.Up.IsUp {
 		io.WriteString(w, fmt.Sprintf("0,%d", bk.I.IndexTime.Unix()))
 	} else {
-		io.WriteString(w, fmt.Sprintf("%d,%s", bk.UnavailableCode, time.Since(bk.UnavailableSince).Round(time.Second)))
+		secondsDown := time.Since(bk.Up.DownSince).Round(time.Second)
+		io.WriteString(w, fmt.Sprintf("%d,%s", bk.Up.DownCode, secondsDown))
 	}
-	bk.Unlock()
+	bk.Up.Unlock()
 }
 
 func (s *server) requestProtocol(r *http.Request) string {
