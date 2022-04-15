@@ -222,22 +222,30 @@ func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
-func (s *server) ServeBackendStatus(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("in thing\n")
 	backendName := r.URL.Query().Get(":backend")
-	var backend *Backend
+	var bk *Backend
 	if backendName != "" {
-		backend = s.bk[backendName]
-		if backend == nil {
-			writeError(ctx, w, 400, "bad_backend",
+		bk = s.bk[backendName]
+		if bk == nil {
+			writeError(nil, w, 400, "bad_backend",
 				fmt.Sprintf("Unknown backend: %s", backendName))
 			return
 		}
 	} else {
-		for _, backend = range s.bk {
+		for _, bk = range s.bk {
 			break
 		}
 	}
 
+	bk.Lock()
+	if bk.Available {
+		io.WriteString(w, fmt.Sprintf("0,%d", bk.I.IndexTime.Unix()))
+	} else {
+		io.WriteString(w, fmt.Sprintf("%d,%s", bk.UnavailableCode, time.Since(bk.UnavailableSince).Round(time.Second)))
+	}
+	bk.Unlock()
 }
 
 func (s *server) requestProtocol(r *http.Request) string {
@@ -411,6 +419,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/bkstatus/:backend", http.HandlerFunc(srv.ServeBackendStatus))
+	m.Add("GET", "/api/v1/bkstatus/", http.HandlerFunc(srv.ServeBackendStatus))
 
 	var h http.Handler = m
 

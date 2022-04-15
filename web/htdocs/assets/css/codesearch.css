@@ -107,6 +107,25 @@ a:hover {
     white-space: nowrap;
 }
 
+.live-dot {
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    display: inline-block; /*? */
+}
+
+.live-dot[data-status='up'] {
+    background-color: green;
+}
+
+.live-dot[data-status='down'] {
+    background-color: red;
+}
+
+.live-dot[data-status='reloading'] {
+    background-color: orange;
+}
+
 #regex-error {
     padding-top: 3px;
     display: none;

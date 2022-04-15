@@ -2,6 +2,10 @@ $ = require('jquery');
 _ = require('underscore');
 
 "use strict";
+
+var liveDot;
+var liveText;
+
 var Codesearch = function() {
   return {
     delegate: null,
@@ -13,6 +17,36 @@ var Codesearch = function() {
         Codesearch.delegate = delegate;
       if (Codesearch.delegate.on_connect)
         setTimeout(Codesearch.delegate.on_connect, 0)
+      liveDot = document.getElementById("live-status-dot");
+      liveText = document.getElementById("live-status-text");
+    },
+    live_poll: function() {
+      var url = "/api/v1/bkstatus/";
+      // TODO: add the selected bk from the select
+      console.log('liveDot: ', liveDot);
+      console.log('liveText: ', liveText);
+      setInterval(function () {
+        // Don't make network requests while tab is in background
+        if (document.hidden) return;
+        var resp = fetch(url).then(function(r) {
+          return r.text()
+        })
+         .then(function (text) {
+            console.log('got text: ', text);
+            var split = text.split(',');
+            var status = split[0];
+            if (status === "0") {
+              // TODO: If the indexTime here is different than what we have in
+              // state, then add a "reload" button
+              liveDot.dataset.status = 'up';
+              liveText.innerText = 'Connected';
+            } else {
+              var timeDown = split[1];
+              liveDot.dataset.status = 'down';
+              liveText.innerText = 'Disconnected (' + timeDown + ')';
+            }
+         });
+      }, 1000);
     },
     new_search: function(opts) {
       Codesearch.next_search = opts;

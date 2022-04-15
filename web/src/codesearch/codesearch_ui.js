@@ -879,6 +879,7 @@ var CodesearchUI = function() {
       CodesearchUI.toggle_context();
 
       Codesearch.connect(CodesearchUI);
+      Codesearch.live_poll();
 
       // Update the search when the user hits Forward or Back.
       window.onpopstate = function(event) {
