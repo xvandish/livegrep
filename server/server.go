@@ -222,6 +222,40 @@ func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
+func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
+	backendName := r.URL.Query().Get(":backend")
+	var bk *Backend
+	if backendName != "" {
+		bk = s.bk[backendName]
+		if bk == nil {
+			writeError(nil, w, 400, "bad_backend",
+				fmt.Sprintf("Unknown backend: %s", backendName))
+			return
+		}
+	} else {
+		for _, bk = range s.bk {
+			break
+		}
+	}
+
+	bk.Up.Lock()
+	if bk.Up.IsUp {
+		// 0s -> 0m and anthing0s -> anything
+		normalizedAge := fmt.Sprintf("%s", bk.I.IndexAge)
+		if "0s" == normalizedAge {
+			normalizedAge = "0m"
+		} else {
+			normalizedAge = strings.TrimSuffix(normalizedAge, "0s")
+		}
+
+		io.WriteString(w, fmt.Sprintf("0,%s", normalizedAge))
+	} else {
+		secondsDown := time.Since(bk.Up.DownSince).Round(time.Second)
+		io.WriteString(w, fmt.Sprintf("%d,%s", bk.Up.DownCode, secondsDown))
+	}
+	bk.Up.Unlock()
+}
+
 func (s *server) requestProtocol(r *http.Request) string {
 	if s.config.ReverseProxy {
 		if proto := r.Header.Get("X-Real-Proto"); len(proto) > 0 {
@@ -393,6 +427,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
+	m.Add("GET", "/api/v1/bkstatus/:backend", http.HandlerFunc(srv.ServeBackendStatus))
+	m.Add("GET", "/api/v1/bkstatus/", http.HandlerFunc(srv.ServeBackendStatus))
 
 	var h http.Handler = m
 
