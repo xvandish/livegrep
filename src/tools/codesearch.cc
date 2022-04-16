@@ -182,17 +182,11 @@ void listen_grpc(code_searcher *search, code_searcher *tags, const string& addr)
 
     if (FLAGS_reload_rpc) {
         thread shutdown_thread([&]() {
-            log("waiting for the reload_request to come through");
             reload_request.get_future().wait();
-            log("now we're after the wait");
             server->Shutdown();
-            log("now we've shutdown the server");
         });
-        log("now we're outside thread shutdown_thread");
         server->Wait();
-        log("now we're after server.Wait()");
         shutdown_thread.join();
-        log("now we're after shutdown_thread.join()");
     } else if (FLAGS_hot_index_reload && FLAGS_load_index.size()) {
         thread shutdown_thread([&]() {
             fswatcher watcher(FLAGS_load_index);
