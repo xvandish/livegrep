@@ -67,6 +67,10 @@ message ServerInfo {
     int64 index_time = 4;
 }
 
+message QuickServerInfo {
+    int64 index_time = 2;
+}
+
 message CodeSearchResult {
     SearchStats stats = 1;
     repeated SearchResult results = 2;
@@ -84,6 +88,7 @@ message Empty {
 
 service CodeSearch {
     rpc Info(InfoRequest) returns (ServerInfo);
+    rpc QuickInfo(Empty) returns (QuickServerInfo);
     rpc Search(Query) returns (CodeSearchResult);
     rpc Reload(Empty) returns (Empty);
 }

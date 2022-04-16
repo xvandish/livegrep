@@ -37,6 +37,7 @@ class CodeSearchImpl final : public CodeSearch::Service {
     virtual ~CodeSearchImpl();
 
     virtual grpc::Status Info(grpc::ServerContext* context, const ::InfoRequest* request, ::ServerInfo* response);
+    virtual grpc::Status QuickInfo(grpc::ServerContext* context, const ::Empty* request, ::QuickServerInfo* response);
     void TagsFirstSearch_(::CodeSearchResult* response, query& q, match_stats& stats);
     virtual grpc::Status Search(grpc::ServerContext* context, const ::Query* request, ::CodeSearchResult* response);
     virtual grpc::Status Reload(grpc::ServerContext* context, const ::Empty* request, ::Empty* response);
@@ -92,6 +93,14 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
         insert->mutable_metadata()->CopyFrom(it->metadata);
     }
     response->set_has_tags(tagdata_ != nullptr);
+    response->set_index_time(cs_->index_timestamp());
+
+    return Status::OK;
+}
+
+Status CodeSearchImpl::QuickInfo(ServerContext* context, const ::Empty* request, ::QuickServerInfo* response) {
+    scoped_trace_id trace(trace_id_from_request(context));
+    
     response->set_index_time(cs_->index_timestamp());
     return Status::OK;
 }

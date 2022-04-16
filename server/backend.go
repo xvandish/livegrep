@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 )
 
 type Tree struct {
@@ -22,6 +23,14 @@ type I struct {
 	Trees []Tree
 	sync.Mutex
 	IndexTime time.Time
+	IndexAge  time.Duration
+}
+
+type Availability struct {
+	IsUp      bool
+	DownSince time.Time
+	DownCode  codes.Code
+	sync.Mutex
 }
 
 type Backend struct {
@@ -29,6 +38,7 @@ type Backend struct {
 	Addr       string
 	I          *I
 	Codesearch pb.CodeSearchClient
+	Up         *Availability
 }
 
 func NewBackend(id string, addr string) (*Backend, error) {
@@ -41,6 +51,7 @@ func NewBackend(id string, addr string) (*Backend, error) {
 		Addr:       addr,
 		I:          &I{Name: id},
 		Codesearch: pb.NewCodeSearchClient(client),
+		Up:         &Availability{},
 	}
 	return bk, nil
 }
@@ -50,17 +61,62 @@ func (bk *Backend) Start() {
 		bk.I = &I{Name: bk.Id}
 	}
 	go bk.poll()
+	go bk.updateIndexAge()
 }
 
+func (bk *Backend) updateIndexAge() {
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			bk.I.Lock()
+			if bk.I.IndexTime.IsZero() {
+				bk.I.Unlock()
+				continue
+			}
+			mSince := time.Since(bk.I.IndexTime).Round(time.Minute)
+			bk.I.IndexAge = mSince
+			bk.I.Unlock()
+		}
+	}
+}
+
+// We continuosly poll for QuickInfo every second
+// We make requests for detailed info when
+//  1. the indexTime we have is different than what quickInfo returns
+// This occurs on startup and on codesearch backend reloads
 func (bk *Backend) poll() {
 	for {
-		info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(false))
+		quickInfo, e := bk.Codesearch.QuickInfo(context.Background(), &pb.Empty{}, grpc.FailFast(true))
+		bk.Up.Lock()
+		// If the backend index hash changed out on us, get the detailed info
 		if e == nil {
-			bk.refresh(info)
+			newTime := time.Unix(quickInfo.IndexTime, 0)
+			if !bk.Up.IsUp || bk.I.IndexTime.Before(newTime) {
+				bk.getInfo()
+			}
+			bk.Up.IsUp = true
+			bk.Up.DownSince = time.Time{}
+			bk.Up.DownCode = 0
 		} else {
-			log.Printf("refresh %s: %v", bk.Id, e)
+			if bk.Up.IsUp || bk.Up.DownSince.IsZero() {
+				bk.Up.IsUp = false
+				bk.Up.DownSince = time.Now()
+				bk.Up.DownCode = grpc.Code(e)
+			}
 		}
-		time.Sleep(60 * time.Second)
+		bk.Up.Unlock()
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func (bk *Backend) getInfo() {
+	info, e := bk.Codesearch.Info(context.Background(), &pb.InfoRequest{}, grpc.FailFast(true))
+
+	if e == nil {
+		bk.refresh(info)
+	} else {
+		log.Printf("getInfo %s: %v", bk.Id, e)
 	}
 }
 
@@ -71,7 +127,11 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	if info.Name != "" {
 		bk.I.Name = info.Name
 	}
-	bk.I.IndexTime = time.Unix(info.IndexTime, 0)
+
+	newIndexTime := time.Unix(info.IndexTime, 0)
+	bk.I.IndexTime = newIndexTime
+	bk.I.IndexAge = time.Since(newIndexTime).Round(time.Minute)
+
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
 		for _, r := range info.Trees {

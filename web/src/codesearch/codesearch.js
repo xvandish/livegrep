@@ -2,6 +2,11 @@ $ = require('jquery');
 _ = require('underscore');
 
 "use strict";
+
+var liveDot;
+var liveText;
+var liveSubInfo; 
+
 var Codesearch = function() {
   return {
     delegate: null,
@@ -13,6 +18,63 @@ var Codesearch = function() {
         Codesearch.delegate = delegate;
       if (Codesearch.delegate.on_connect)
         setTimeout(Codesearch.delegate.on_connect, 0)
+      liveDot = document.getElementById("live-status-dot");
+      liveText = document.getElementById("live-status-text");
+      liveSubInfo = document.getElementById("live-status-sub-info");
+    },
+    live_poll: function() {
+      var url = "/api/v1/bkstatus/";
+      var lastText = "";
+      var lastDate;
+      var lastDateNum;
+      // TODO: add the selected bk from the select
+      setInterval(function () {
+        // Don't make network requests while tab is in background
+        if (document.hidden) return;
+        var resp = fetch(url)
+         .then(function(r) {
+          return r.text()
+         })
+         .then(function (text) {
+           // closure land
+           // if (text === lastText) return;
+
+            var split = text.split(',');
+            var status = split[0];
+            if (status === "0") {
+              // TODO: If the indexTime here is different than what we have in
+              // state, then add a "reload" button
+
+              liveDot.dataset.status = 'up';
+              liveText.innerText = 'Connected';
+
+              var indexText = 'Querying index created ' + split[1] + ' ago';
+              if (indexText !== liveSubInfo.innerText) {
+                liveSubInfo.innerText = indexText;
+              }
+            } else {
+              var timeDown = split[1];
+
+              // https://pkg.go.dev/google.golang.org/grpc@v1.45.0/codes#Code
+              if (status === '14') {
+                liveDot.dataset.status = 'reloading';
+                liveText.innerText = 'Search Index Reloading (' + timeDown + ')';
+                liveSubInfo.innerText = 'Queries will resolve once the index is reloaded';
+                return;
+              }
+              // Some other unhandled grpc issue
+              liveDot.dataset.status = 'down';
+              liveText.innerText = 'Disconnected (' + timeDown + ')';
+              liveSubInfo.innerText = 'Search backend down'
+            }
+         })
+        .catch(function (error) {
+          console.log(error);
+          liveDot.dataset.status = 'down';
+          liveText.innerText = 'Disconnected';
+          liveSubInfo.innerText = 'No connection to webserver';
+        });
+      }, 1000);
     },
     new_search: function(opts) {
       Codesearch.next_search = opts;
