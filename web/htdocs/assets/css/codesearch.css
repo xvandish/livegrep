@@ -126,7 +126,7 @@ a:hover {
     height: 12px;
     width: 12px;
     border-radius: 50%;
-    display: inline-block; /*? */
+    display: inline-block;
     margin-right: 10px;
 }
 
