@@ -116,7 +116,7 @@ func (bk *Backend) getInfo() {
 	if e == nil {
 		bk.refresh(info)
 	} else {
-		log.Printf("refresh %s: %v", bk.Id, e)
+		log.Printf("getInfo %s: %v", bk.Id, e)
 	}
 }
 
@@ -128,8 +128,9 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 		bk.I.Name = info.Name
 	}
 
-	bk.I.IndexTime = time.Unix(info.IndexTime, 0)
-	bk.I.IndexAge = time.Since(bk.I.IndexTime).Round(time.Minute)
+	newIndexTime := time.Unix(info.IndexTime, 0)
+	bk.I.IndexTime = newIndexTime
+	bk.I.IndexAge = time.Since(newIndexTime).Round(time.Minute)
 
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil

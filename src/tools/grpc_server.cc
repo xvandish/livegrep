@@ -84,7 +84,6 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
     scoped_trace_id trace(trace_id_from_request(context));
     log("Info()");
 
-    timer info_tm(true);
     response->set_name(cs_->name());
     std::vector<indexed_tree> trees = cs_->trees();
     for (auto it = trees.begin(); it != trees.end(); ++it) {
@@ -95,17 +94,13 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
     }
     response->set_has_tags(tagdata_ != nullptr);
     response->set_index_time(cs_->index_timestamp());
-    info_tm.pause();
 
-    std::cout << timeval_ms(info_tm.elapsed()) << '\n';
     return Status::OK;
 }
 
 Status CodeSearchImpl::QuickInfo(ServerContext* context, const ::Empty* request, ::QuickServerInfo* response) {
     scoped_trace_id trace(trace_id_from_request(context));
-    log("QuickInfo()");
     
-    response->set_name(cs_->name());
     response->set_index_time(cs_->index_timestamp());
     return Status::OK;
 }

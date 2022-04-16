@@ -68,7 +68,6 @@ message ServerInfo {
 }
 
 message QuickServerInfo {
-    string name = 1;
     int64 index_time = 2;
 }
 
