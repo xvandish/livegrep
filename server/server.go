@@ -223,7 +223,6 @@ func (s *server) ServeStats(ctx context.Context, w http.ResponseWriter, r *http.
 }
 
 func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("in thing\n")
 	backendName := r.URL.Query().Get(":backend")
 	var bk *Backend
 	if backendName != "" {
@@ -241,7 +240,15 @@ func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
 
 	bk.Up.Lock()
 	if bk.Up.IsUp {
-		io.WriteString(w, fmt.Sprintf("0,%d", bk.I.IndexTime.Unix()))
+		// 0s -> 0m and anthing0s -> anything
+		normalizedAge := fmt.Sprintf("%s", bk.I.IndexAge)
+		if "0s" == normalizedAge {
+			normalizedAge = "0m"
+		} else {
+			normalizedAge = strings.TrimSuffix(normalizedAge, "0s")
+		}
+
+		io.WriteString(w, fmt.Sprintf("0,%s", normalizedAge))
 	} else {
 		secondsDown := time.Since(bk.Up.DownSince).Round(time.Second)
 		io.WriteString(w, fmt.Sprintf("%d,%s", bk.Up.DownCode, secondsDown))

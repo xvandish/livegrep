@@ -47,18 +47,8 @@ var Codesearch = function() {
 
               liveDot.dataset.status = 'up';
               liveText.innerText = 'Connected';
-              var date;
-              if (lastDateNum === split[1]) {
-                date = lastDate;
-              }
-              date = new Date(split[1] * 1000); // Unix Timestamp to date
-              lastDate = date;
 
-              var now = new Date();
-              var diff = now.getTime() - date.getTime();
-              diff = Math.round(diff / 60000);
-
-              var indexText = 'Querying index created ' + diff + 'min ago';
+              var indexText = 'Querying index created ' + split[1] + ' ago';
               if (indexText !== liveSubInfo.innerText) {
                 liveSubInfo.innerText = indexText;
               }

@@ -23,6 +23,7 @@ type I struct {
 	Trees []Tree
 	sync.Mutex
 	IndexTime time.Time
+	IndexAge  time.Duration
 }
 
 type Availability struct {
@@ -60,6 +61,24 @@ func (bk *Backend) Start() {
 		bk.I = &I{Name: bk.Id}
 	}
 	go bk.poll()
+	go bk.updateIndexAge()
+}
+
+func (bk *Backend) updateIndexAge() {
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			bk.I.Lock()
+			if bk.I.IndexTime.IsZero() {
+				bk.I.Unlock()
+				continue
+			}
+			mSince := time.Since(bk.I.IndexTime).Round(time.Minute)
+			bk.I.IndexAge = mSince
+			bk.I.Unlock()
+		}
+	}
 }
 
 // We continuosly poll for QuickInfo every second
@@ -110,6 +129,8 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	}
 
 	bk.I.IndexTime = time.Unix(info.IndexTime, 0)
+	bk.I.IndexAge = time.Since(bk.I.IndexTime).Round(time.Minute)
+
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
 		for _, r := range info.Trees {
