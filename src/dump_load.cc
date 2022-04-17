@@ -551,11 +551,12 @@ void load_allocator::load(code_searcher *cs) {
         cs->filename_positions_.push_back(make_pair(pos, sf));
     }
 
+    fprintf(stderr, "about to try to load in index_timestamp_\n");
     struct stat st;
     assert(fstat(fd_, &st) == 0);
     cs->index_timestamp_ = st.st_mtime;
-    fprintf(stdout, "loaded index with index_timestamp_: %lld\n", cs->index_timestamp_);
-    fprintf(stdout, "st.st_mtime: %ld\n", st.st_mtime);
+    fprintf(stderr, "loaded index with index_timestamp_: %lld\n", cs->index_timestamp_);
+    fprintf(stderr, "st.st_mtime: %ld\n", st.st_mtime);
 
     cs->finalized_ = true;
 }
