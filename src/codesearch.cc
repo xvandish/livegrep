@@ -511,6 +511,8 @@ void code_searcher::finalize() {
     timeval now;
     gettimeofday(&now, NULL);
     index_timestamp_ = now.tv_sec;
+    fprintf(stdout, "now.tv_sec: %ld\n", now.tv_sec);
+    fprintf(stdout, "index_timestamp_: %lld\n", index_timestamp_);
 
     idx_data_chunks.inc(alloc_->end() - alloc_->begin());
     idx_content_chunks.inc(alloc_->end_content() - alloc_->begin_content());
