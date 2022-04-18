@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 14;
+const uint32_t kIndexVersion = 16;
 const uint32_t kPageSize     = (1 << 12);
 
 struct index_header {
@@ -20,6 +20,7 @@ struct index_header {
     uint32_t chunk_size;
 
     uint64_t name_off;
+    uint64_t timestamp_off;
 
     uint32_t ntrees;
     uint64_t refs_off;

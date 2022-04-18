@@ -505,12 +505,14 @@ void code_searcher::index_filenames() {
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
-    index_filenames();
-    alloc_->finalize();
 
     timeval now;
     gettimeofday(&now, NULL);
     index_timestamp_ = now.tv_sec;
+
+    index_filenames();
+    alloc_->finalize();
+
     fprintf(stdout, "now.tv_sec: %ld\n", now.tv_sec);
     fprintf(stdout, "index_timestamp_: %lld\n", index_timestamp_);
 
