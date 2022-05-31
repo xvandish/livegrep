@@ -82,7 +82,6 @@ struct indexed_tree {
 };
 
 struct indexed_file {
-    string repopath;
     const indexed_tree *tree;
     string path;
     file_contents *content;
