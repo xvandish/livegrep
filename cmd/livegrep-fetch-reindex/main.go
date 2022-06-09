@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -30,7 +32,12 @@ var (
 	flagStatsdOn      = flag.Bool("send-metrics-to-statsd", false, "Send indexing metrics to StatsD")
 	flagStatsdAddr    = flag.String("statsd-address", "", "address URI of statsd listener for metrics export")
 	flagStatsdPrefix  = flag.String("statsd-prefix", "", "optional prefix to apply to all metrics")
+	flagUpdateHead    = flag.Bool("update-head", true, "update the local HEAD ref if it is different than remote. Done when updating already cloned repos.")
 )
+
+// Used to extract the refname from a line like the following:
+// ref: refs/heads/good_main_2     HEAD
+var remoteHeadRefExtractorReg = regexp.MustCompile("ref:\\s*([^\\s]*)\\s*HEAD")
 
 func main() {
 	flag.Parse()
@@ -202,8 +209,12 @@ if test "$1" = "get"; then
 fi
 `)
 
-func callGit(program string, args []string, username string, password string) error {
+// calls cmd.Run() if returnOutput is false
+// and cmd.Output() otherwise
+// always returns an out []byte, but it will always be nill if returnOutput is false
+func callGit(program string, args []string, username string, password string, returnOutput bool) ([]byte, error) {
 	var err error
+	var out []byte
 
 	if username != "" || password != "" {
 		// If we're given credentials, pass them to git via a
@@ -216,7 +227,7 @@ func callGit(program string, args []string, username string, password string) er
 		// from that pipe.
 		f, err := ioutil.TempFile("", "livegrep-credential-helper")
 		if err != nil {
-			return err
+			return nil, err
 		}
 		f.WriteString(credentialHelperScript)
 		f.Close()
@@ -228,12 +239,14 @@ func callGit(program string, args []string, username string, password string) er
 
 	for i := 0; i < 3; i++ {
 		cmd := exec.Command("git", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		if !returnOutput {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
 		if password != "" {
 			r, w, err := os.Pipe()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			cmd.ExtraFiles = []*os.File{r}
@@ -247,11 +260,16 @@ func callGit(program string, args []string, username string, password string) er
 		if username != "" {
 			cmd.Env = append(os.Environ(), fmt.Sprintf("LIVEGREP_GITHUB_USERNAME=%s", username))
 		}
-		if err = cmd.Run(); err == nil {
-			return nil
+		if !returnOutput {
+			err = cmd.Run()
+		} else {
+			out, err = cmd.Output()
+		}
+		if err == nil {
+			return out, nil
 		}
 	}
-	return fmt.Errorf("%s %v: %s", program, args, err.Error())
+	return nil, fmt.Errorf("%s %v: %s", program, args, err.Error())
 }
 
 func checkoutOne(r *config.RepoSpec) error {
@@ -285,7 +303,8 @@ func checkoutOne(r *config.RepoSpec) error {
 			args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 		}
 		args = append(args, remote, r.Path)
-		return callGit("git", args, username, password)
+		_, err = callGit("git", args, username, password, false)
+		return err
 	}
 
 	if err := exec.Command("git", "-C", r.Path, "remote", "set-url", "origin", remote).Run(); err != nil {
@@ -296,7 +315,77 @@ func checkoutOne(r *config.RepoSpec) error {
 	if r.CloneOptions != nil && r.CloneOptions.Depth != 0 {
 		args = append(args, fmt.Sprintf("--depth=%d", r.CloneOptions.Depth))
 	}
-	return callGit("git", args, username, password)
+
+	// Call git-fetch and finish
+	if !(*flagUpdateHead) {
+		_, err = callGit("git", args, username, password, false)
+		return err
+	}
+
+	// We check and update (if needed) the HEAD ref to avoid scenarios where
+	// a remote repo has changed it's head (like a default branch rename/change).
+	// git fetch won't do this, at least not on the mirror clones we use.
+	// See https://public-inbox.org/git/CANWRddPDhM1g6rtu-a2a=EogXD_hOFwSDsgMCbVvB7dibMaEqw@mail.gmail.com/T/#t
+	// for confirmation on this approach from the Git folks.
+	//
+	// To update the HEAD ref we do the following:
+	// 1. Get the remote head ref			- (git ls-remote --symref origin HEAD)
+	// 2. Get the current local head ref	- (git symbolic-ref HEAD)
+	// 3. Compare them. If outdated, update the local to match remote - (git symbolic-ref HEAD new_ref)
+	// We use goroutines to call `git fetch -p` and `git ls-remote --symref origin HEAD` in "parallel"
+	// becase they each take ~1.5s.
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	var remoteOut []byte
+	var err1, err2 error
+	args2 := []string{"--git-dir", r.Path, "ls-remote", "--symref", "origin", "HEAD"}
+
+	// git fetch -p
+	go func(outErr *error, wg *sync.WaitGroup) {
+		defer wg.Done()
+		_, *outErr = callGit("git", args, username, password, false)
+	}(&err1, &wg)
+
+	// git ls-remote --symref origin HEAD
+	go func(outBuff *[]byte, outErr *error, wg *sync.WaitGroup) {
+		defer wg.Done()
+		*outBuff, *outErr = callGit("git", args2, username, password, true)
+	}(&remoteOut, &err2, &wg)
+
+	wg.Wait()
+
+	// Brute concat the errors always
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("fetch err: %w; ls-remote err: %w", err1, err2)
+	}
+
+	currHeadOut, err := exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD").Output()
+	if err != nil {
+		return err
+	}
+	currHead := strings.TrimSpace(string(currHeadOut))
+
+	submatches := remoteHeadRefExtractorReg.FindStringSubmatch(string(remoteOut))
+	if len(submatches) == 1 {
+		return errors.New("could not parse ls-remote --symref origin HEAD output")
+	}
+	remoteHead := strings.TrimSpace(submatches[1])
+
+	if currHead == remoteHead { // nothing to do
+		return nil
+	}
+
+	log.Printf("%s: remote HEAD: %s does not match local HEAD: %s. Attempting to fix...\n", r.Name, remoteHead, currHead)
+
+	// update the HEAD ref
+	if err = exec.Command("git", "--git-dir", r.Path, "symbolic-ref", "HEAD", remoteHead).Run(); err != nil {
+		log.Printf("%s: error setting symbolic ref. %v\n", r.Name, err)
+		return err
+	}
+
+	log.Printf("%s: HEAD update done.\n", r.Name)
+	return nil
 }
 
 func reloadBackend(addr string) error {
