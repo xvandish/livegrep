@@ -51,6 +51,7 @@ var (
 	flagMaxConcurrentGHRequests = flag.Int("max-concurrent-gh-requests", 1, "Applied per org/user. If fetching 2 orgs, you will have 2x{yourInput} network calls possible at a time")
 	flagNoIndex                 = flag.Bool("no-index", false, "Skip indexing after writing config and fetching")
 	flagOnlyWriteConfig         = flag.Bool("only-write-config", false, "Skip fetching+indexing after writing config")
+	flagUpdateHead              = flag.Bool("update-head", true, "update the local HEAD ref if it is different than remote. Done when updating already cloned repos.")
 
 	flagRepos = stringList{}
 	flagOrgs  = stringList{}
@@ -162,6 +163,9 @@ func main() {
 	}
 	if *flagSkipMissing {
 		args = append(args, "--skip-missing")
+	}
+	if !(*flagUpdateHead) { // only include when false, since true by default
+		args = append(args, "--update-head=false")
 	}
 	args = append(args, configPath)
 
