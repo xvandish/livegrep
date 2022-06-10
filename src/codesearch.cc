@@ -377,11 +377,41 @@ protected:
     friend class code_searcher::search_thread;
 };
 
+class treename_searcher {
+public: 
+    treename_searcher(const code_searcher *cc,
+                      const query &q,
+                      intrusive_ptr<QueryPlan> index_key) :
+        cc_(cc), query_(&q), index_key_(index_key), queue_(), limiter_(q.max_matches)
+    {}
+
+    void operator()();
+
+    exit_reason why() {
+        return limiter_.why();
+    }
+
+protected:
+    void match_reponame(indexed_tree *tree);
+
+    const code_searcher *cc_;
+    const query *query_;
+    intrusive_ptr<QueryPlan> index_key_;
+    thread_queue<file_result*> queue_;
+    search_limiter limiter_;
+
+    friend class code_searcher::search_thread;
+};
+
 int suffix_search(const unsigned char *data,
                   const uint32_t *suffixes,
                   int size,
                   intrusive_ptr<QueryPlan> index,
                   vector<uint32_t> &indexes_out);
+
+/* void treename_searcher::operator()() { */
+    
+/* } */
 
 void filename_searcher::operator()()
 {
@@ -502,6 +532,30 @@ void code_searcher::index_filenames() {
                filename_data_size);
 }
 
+void code_searcher::index_treenames() {
+    log("Build treename index...");
+    treename_positions_.reserve(trees_.size());
+
+    size_t treename_data_size = 0;
+    for (auto it = trees_.begin(); it != trees_.end(); ++it) {
+        treename_data_size += (*it)->name.size() + 1;
+    }
+
+    treename_data_.resize(treename_data_size);
+    int offset = 0;
+    for (auto it = trees_.begin(); it != trees_.end(); ++it) {
+        memcpy(treename_data_.data() + offset, (*it)->name.data(), (*it)->name.size());
+        treename_data_[offset + (*it)->name.size()] = '\0';
+        treename_positions_.emplace_back(offset, it->get());
+        offset += (*it)->name.size() + 1;
+    }
+
+    treename_suffixes_.resize(treename_data_size);
+    divsufsort(treename_data_.data(),
+               reinterpret_cast<saidx_t*>(treename_suffixes_.data()),
+               treename_data_size);
+};
+
 void code_searcher::finalize() {
     assert(!finalized_);
     finalized_ = true;
@@ -511,6 +565,7 @@ void code_searcher::finalize() {
     index_timestamp_ = now.tv_sec;
 
     index_filenames();
+    index_treenames();
     alloc_->finalize();
 
     fprintf(stdout, "now.tv_sec: %ld\n", now.tv_sec);

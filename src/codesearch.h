@@ -28,6 +28,7 @@
 
 class searcher;
 class filename_searcher;
+class treename_searcher;
 class chunk_allocator;
 class file_contents;
 struct match_result;
@@ -103,6 +104,11 @@ struct match_result {
 
 struct file_result {
     indexed_file *file;
+    int matchleft, matchright;
+};
+
+struct tree_result {
+    indexed_tree *tree;
     int matchleft, matchright;
 };
 
@@ -238,11 +244,19 @@ protected:
     // pairs (i, file), where file->path starts at filename_data_[i]
     vector<pair<int, indexed_file*>> filename_positions_;
 
+    // Structures for fast treename search; somehwat similar to a single chunk.
+    // Build from trees_ at finalization, not serialized or anything like that.
+    vector<unsigned char> treename_data_;
+    vector<uint32_t> treename_suffixes_;
+    // pairs (i, tree) where tree->name starts at treename_data_[i]
+    vector<pair<int, indexed_tree*>> treename_positions_;
+
     vector<std::unique_ptr<indexed_tree>> trees_;
     vector<std::unique_ptr<indexed_file>> files_;
 
 private:
     void index_filenames();
+    void index_treenames();
 
     friend class search_thread;
     friend class searcher;
