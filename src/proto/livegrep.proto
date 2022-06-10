@@ -13,7 +13,8 @@ message Query {
     string not_tags = 8;
     int32 max_matches = 9;
     bool filename_only = 10;
-    int32 context_lines = 11;
+    bool treename_only = 11;
+    int32 context_lines = 12;
 }
 
 message Bounds {
@@ -36,6 +37,13 @@ message FileResult {
     string tree = 1;
     string version = 2;
     string path = 3;
+    Bounds bounds = 4;
+}
+
+message TreeResult {
+    string name = 1;
+    string version = 2;
+    Metadata metadata = 3;
     Bounds bounds = 4;
 }
 
@@ -75,9 +83,10 @@ message CodeSearchResult {
     SearchStats stats = 1;
     repeated SearchResult results = 2;
     repeated FileResult file_results = 3;
+    repeated TreeResult tree_results = 4;
     // unique index identity that served this request
-    string index_name = 4;
-    int64 index_time = 5;
+    string index_name = 5;
+    int64 index_time = 6;
 }
 
 message InfoRequest {

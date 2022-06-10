@@ -392,12 +392,12 @@ public:
     }
 
 protected:
-    void match_reponame(indexed_tree *tree);
+    void match_treename(indexed_tree *tree);
 
     const code_searcher *cc_;
     const query *query_;
     intrusive_ptr<QueryPlan> index_key_;
-    thread_queue<file_result*> queue_;
+    thread_queue<tree_result*> queue_;
     search_limiter limiter_;
 
     friend class code_searcher::search_thread;
@@ -409,9 +409,65 @@ int suffix_search(const unsigned char *data,
                   intrusive_ptr<QueryPlan> index,
                   vector<uint32_t> &indexes_out);
 
-/* void treename_searcher::operator()() { */
+void treename_searcher::operator()() {
+    static per_thread<vector<uint32_t> > indexes;
+    if (!indexes.get()) {
+        indexes.put(new vector<uint32_t>(cc_->treename_data_.size() / kMinFilterRatio / 10));
+    }
+
+    int count = suffix_search(cc_->treename_data_.data(),
+                              cc_->treename_suffixes_.data(),
+                              cc_->treename_data_.size(), index_key_, *indexes);
+
+    if (count > indexes->size()) {
+        for (auto it = cc_->trees_.begin(); it < cc_->trees_.end(); it++) {
+            if (limiter_.exit_early()) {
+                return;
+            }
+            match_treename(it->get());
+        }
+        return;
+    }
     
-/* } */
+    lsd_radix_sort(indexes->data(), indexes->data() + count);
+
+    // find candidate indexed_trees from the positions of the candidate matches.
+    // This is O(candidate_matches * log(indexed_trees)), but it could probably
+    // be done more cleverly in something like O(candidate_matches + log(indexed_trees))
+
+    // moving the left bound as we go isn't a big-O improvement, but may help a little bit.
+    auto left_bound = cc_->treename_positions_.begin();
+    int previous_first = -1;
+
+    for (int i = 0; i < count; i++) {
+        if (limiter_.exit_early()) {
+            break;
+        }
+
+        int target_index = (*indexes)[i];
+        pair<int, indexed_tree*> target(target_index, NULL);
+        auto lb = lower_bound(left_bound, cc_->treename_positions_.end(), target);
+
+        if (lb->first == previous_first) {
+            // We have already returned this treename because of a match
+            // earlier in its text.
+            continue;
+        }
+        previous_first = lb->first;
+
+        if (lb->first != target_index) {
+            assert(lb == cc_->treename_positions_.end() ||
+                   lb->first > target_index);
+            assert(lb != left_bound);
+            lb--;
+        }
+        assert(lb->first <= (*indexes)[i]);
+        assert((*indexes)[i] < lb->first + lb->second->name.size());
+        match_treename(lb->second);
+
+        left_bound = lb;
+    }
+}
 
 void filename_searcher::operator()()
 {
@@ -472,6 +528,22 @@ void filename_searcher::operator()()
 
         left_bound = lb;
     }
+}
+
+void treename_searcher::match_treename(indexed_tree *tree) {
+    StringPiece treename = StringPiece(tree->name);
+    StringPiece match;
+    if (!query_->line_pat->Match(treename, 0, treename.size(),
+                                 RE2::UNANCHORED, &match, 1))
+        return;
+
+    tree_result *t = new tree_result;
+    t->tree = tree;
+    t->matchleft = utf8::distance(treename.data(), match.data());
+    t->matchright = t->matchleft + utf8::distance(match.data(), match.data() + match.size());
+
+    queue_.push(t);
+    limiter_.record_match();
 }
 
 void filename_searcher::match_filename(indexed_file *file) {
@@ -1125,17 +1197,20 @@ code_searcher::search_thread::search_thread(code_searcher *cs)
             threads_.emplace_back(search_one, this);
         }
         threads_.emplace_back(search_file_one, this);
+        threads_.emplace_back(search_tree_one, this);
     }
 }
 
 void code_searcher::search_thread::match(const query &q,
                                          const callback_func& cb,
                                          const file_callback_func& fcb,
+                                         const tree_callback_func& tcb,
                                          const transform_func& func,
                                          match_stats *stats) {
     match_result *m;
     file_result *f;
-    int matches = 0, file_matches = 0;
+    tree_result *t;
+    int matches = 0, file_matches = 0, tree_matches = 0;
 
     assert(cs_->finalized_);
 
@@ -1159,11 +1234,30 @@ void code_searcher::search_thread::match(const query &q,
 
     searcher search(cs_, q, index_key, func);
     filename_searcher file_search(cs_, q, index_key);
+    treename_searcher tree_search(cs_, q, index_key);
     job j;
     j.trace_id = current_trace_id();
     j.search = &search;
     j.file_search = &file_search;
+    j.tree_search = &tree_search;
     j.pending = 0;
+
+    // We return early from a treename_only search
+    // So that we don't complicate existing logic
+    // That does a combined filename and code search
+    if (q.treename_only) {
+        fprintf(stdout, "In treename_only search\n");
+        tree_queue_.push(&j);
+        while (tree_search.queue_.pop(&t)) {
+            tree_matches++;
+            tcb(t);
+            delete t;
+        }
+
+        stats->why = tree_search.why();
+        stats->matches += tree_matches;
+        return;
+    }
 
     if (!q.filename_only) {
         for (int i = 0; i < FLAGS_threads; ++i) {
@@ -1202,14 +1296,15 @@ void code_searcher::search_thread::match(const query &q,
         stats->matches += matches;
     }
 
-    struct timeval t = analyze_time.elapsed();
-    timeradd(&stats->analyze_time, &t, &stats->analyze_time);
+    struct timeval time = analyze_time.elapsed();
+    timeradd(&stats->analyze_time, &time, &stats->analyze_time);
 }
 
 
 code_searcher::search_thread::~search_thread() {
     queue_.close();
     file_queue_.close();
+    tree_queue_.close();
     for (auto it = threads_.begin(); it != threads_.end(); ++it)
         it->join();
 }
@@ -1235,6 +1330,15 @@ void code_searcher::search_thread::search_file_one(search_thread *me) {
         scoped_trace_id trace(j->trace_id);
         (*j->file_search)();
         j->file_search->queue_.close();
+    }
+}
+
+void code_searcher::search_thread::search_tree_one(search_thread *me) {
+    job *j;
+    while (me->tree_queue_.pop(&j)) {
+        scoped_trace_id trace(j->trace_id);
+        (*j->tree_search)();
+        j->tree_search->queue_.close();
     }
 }
 

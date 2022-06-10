@@ -131,11 +131,14 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 	reply := &api.ReplySearch{
 		Results:     make([]*api.Result, 0),
 		FileResults: make([]*api.FileResult, 0),
+		TreeResults: make([]*api.TreeResult, 0),
 		SearchType:  "normal",
 	}
 
 	if q.FilenameOnly {
 		reply.SearchType = "filename_only"
+	} else if q.TreenameOnly {
+		reply.SearchType = "treename_only"
 	}
 
 	for _, r := range search.Results {
@@ -156,6 +159,14 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			Tree:    r.Tree,
 			Version: r.Version,
 			Path:    r.Path,
+			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+		})
+	}
+
+	for _, r := range search.TreeResults {
+		reply.TreeResults = append(reply.TreeResults, &api.TreeResult{
+			Name:    r.Name,
+			Version: r.Version,
 			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
 		})
 	}

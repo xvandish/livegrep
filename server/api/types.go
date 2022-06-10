@@ -15,6 +15,7 @@ type ReplySearch struct {
 	Info        *Stats        `json:"info"`
 	Results     []*Result     `json:"results"`
 	FileResults []*FileResult `json:"file_results"`
+	TreeResults []*TreeResult `json:"tree_results"`
 	SearchType  string        `json:"search_type"`
 }
 
@@ -26,6 +27,13 @@ type Stats struct {
 	AnalyzeTime int64  `json:"analyze_time"`
 	TotalTime   int64  `json:"total_time"`
 	ExitReason  string `json:"why"`
+}
+
+type Metadata struct {
+	UrlPattern string   `json:"url_pattern"`
+	Remote     string   `json:"remote"`
+	Github     string   `json:"github"`
+	Labels     []string `json:"labels"`
 }
 
 type Result struct {
@@ -44,4 +52,11 @@ type FileResult struct {
 	Version string `json:"version"`
 	Path    string `json:"path"`
 	Bounds  [2]int `json:"bounds"`
+}
+
+type TreeResult struct {
+	Name     string    `json:"name"`
+	Version  string    `json:"version"`
+	Metadata *Metadata `json:"metadata"`
+	Bounds   [2]int    `json:"bounds"`
 }
