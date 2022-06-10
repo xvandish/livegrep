@@ -185,7 +185,7 @@ var MatchView = Backbone.View.extend({
     if (this.model.get('add_blank_line')) {
       ctx_after.push(
           h.div({ cls: 'content-line-wrapper blank-line' }, [
-            h.span({ cls: 'lno-link' }, ['...']),
+            h.span({ cls: 'lno-link' }, ['…']),
             h.span({ cls: '' }, ['']),
             h.span({ cls: '' }, [''])
           ])
