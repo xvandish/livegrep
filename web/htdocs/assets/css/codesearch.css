@@ -415,8 +415,11 @@ button:hover {
 
 .match .contents {
     display: grid;
-    grid-template-columns: 4em auto auto;
+    /* 5em to allow for line numbers like in the tens of thousands */
+    grid-template-columns: 5em auto auto;
     white-space: pre-wrap;
+     /* Break lines that have no white-space in them, but are too long. */
+    overflow-wrap: anywhere;
     font-family: "Menlo", "Consolas", "Monaco", monospace;
     font-size: 12px;
     color: #000;
