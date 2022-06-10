@@ -336,6 +336,47 @@ var SearchResultSet = Backbone.Collection.extend({
   }
 });
 
+var TreeMatch = Backbone.Model.extend({
+  path_info: function() {
+    var name = this.get('name');
+    var version = this.get('version');
+    return {
+      id: name + ':' + version,
+      name: name,
+      version: version,
+      bounds: this.get('bounds')
+    }
+  },
+
+  url: function() {
+      return this.get('metadata').external_url;
+  }
+});
+
+var TreeMatchView = Backbone.View.extend({
+    tagName: 'div',
+
+    render: function() {
+        var path_info = this.model.path_info();
+        var pieces = [
+            path_info.name.substring(0, path_info.bounds[0]),
+            path_info.name.substring(path_info.bounds[0], path_info.bounds[1]),
+            path_info.name.substring(path_info.bounds[1])
+        ]
+        var treeLabel = [
+            pieces[0],
+            h.span({cls: "matchstr"}, [pieces[1]]),
+            pieces[2]
+        ];
+
+        var el = this.$el;
+        el.empty();
+        el.addClass('treename-match');
+        el.append(h.a({cls: 'label header result-path', href: this.model.url()}, treeLabel));
+        return this;
+    }
+});
+
 /**
  * A FileMatch represents a single filename match in the code base.
  *
@@ -404,6 +445,7 @@ var SearchState = Backbone.Model.extend({
     this.search_map = {};
     this.search_results = new SearchResultSet();
     this.file_search_results = new Backbone.Collection();
+    this.tree_search_results = new Backbone.Collection();
     this.search_id = 0;
     this.on('change:displaying', this.new_search, this);
   },
@@ -416,6 +458,7 @@ var SearchState = Backbone.Model.extend({
     });
     this.search_results.reset();
     this.file_search_results.reset();
+    this.tree_search_results.reset();
     for (var k in this.search_map) {
       if (parseInt(k) < this.get('displaying'))
         delete this.search_map[k];
@@ -505,6 +548,14 @@ var SearchState = Backbone.Model.extend({
     var fm = _.clone(file_match);
     fm.backend = this.search_map[search].backend;
     this.file_search_results.add(new FileMatch(fm));
+  },
+  handle_tree_match: function (search, tree_match) {
+    if (search < this.get('displaying'))
+      return false;
+    this.set('displaying', search);
+    var tm = _.clone(tree_match);
+    tm.backend = this.search_map[search].backend;
+    this.tree_search_results.add(new TreeMatch(tm));
   },
   handle_done: function (search, time, search_type, why) {
     if (search < this.get('displaying'))
@@ -621,8 +672,16 @@ var MatchesView = Backbone.View.extend({
       pathResults.append(showMoreBtn);
     }
     
-
     this.$el.append(pathResults);
+
+    // For tree-results. Not sure if this is best but it's a good start
+    var treeResults = h.div({'cls': 'tree-results'});
+    this.model.tree_search_results.each(function(tree) {
+        var view = new TreeMatchView({ model: tree });
+        treeResults.append(view.render().el);
+    }, this);
+
+    this.$el.append(treeResults);
 
     this.model.search_results.each(function(file_group) {
       file_group.process_context_overlaps();
@@ -786,6 +845,8 @@ var ResultView = Backbone.View.extend({
     var results;
     if (this.model.get('search_type') == 'filename_only') {
       results = '' + this.model.file_search_results.length;
+    } else if (this.model.get('search_type') == 'treename_only') {
+      results = '' + this.model.tree_search_results.length;
     } else {
       results = '' + this.model.search_results.num_matches();
     }
@@ -1082,6 +1143,9 @@ var CodesearchUI = function() {
     },
     file_match: function(search, file_match) {
       CodesearchUI.state.handle_file_match(search, file_match);
+    },
+    tree_match: function(search, tree_match) {
+        CodesearchUI.state.handle_tree_match(search, tree_match);
     },
     search_done: function(search, time, search_type, why) {
       CodesearchUI.state.handle_done(search, time, search_type, why);

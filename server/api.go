@@ -168,6 +168,11 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			Name:    r.Name,
 			Version: r.Version,
 			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+			// Only GitHub links are enabled atm.
+			Metadata: &api.Metadata{
+				Labels:      r.Metadata.Labels,
+				ExternalUrl: r.Metadata.Github + "/tree/" + r.Version,
+			},
 		})
 	}
 

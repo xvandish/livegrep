@@ -30,10 +30,8 @@ type Stats struct {
 }
 
 type Metadata struct {
-	UrlPattern string   `json:"url_pattern"`
-	Remote     string   `json:"remote"`
-	Github     string   `json:"github"`
-	Labels     []string `json:"labels"`
+	Labels      []string `json:"labels"`
+	ExternalUrl string   `json:"external_url"`
 }
 
 type Result struct {
