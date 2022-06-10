@@ -82,49 +82,81 @@
 
 <div id='resultbox'>
 <div id='helparea'>
-  <div id='recent-searches' class="hidden">
-    <div class="helpsection"><h5>Recent Searches</h5></div>
-    <!-- js will populate this with history from localstorage -->
-    <div class="searches-container"></div>
+  <div id="joined-stuff">  
+    <div id='recent-searches'>
+        <div class="helpsection"><h3>Recent Searches</h3></div>
+        <!-- js will populate this with history from localstorage -->
+        <div class="searches-container"></div>
+    </div>
+    <div id="terms-wrapper">
+        <div class='helpsection'>
+            <h3>Special query terms</h3>
+        </div>
+        <table id='query-terms-table'>
+            <tr>
+            <td><code class="query-hint-text">path:</code></td>
+            <td>
+                <span>Only include results from matching files.</span>
+                <br/>
+                <span class="query-hint">OR</span>
+                <br />
+                <span>Only search filenames.</span>
+            </td>
+            <td>
+                <div id="multiple-examples">
+                    <a href="/search?q=hello+path:test">example</a>
+                    <a href="/search?q=path:test">example</a>
+                </div>
+            </td>
+            </tr>
+            <tr>
+            <td><code class="query-hint-text">-path:</code></td>
+            <td>Exclude results from matching files.</td>
+            <td><a href="/search?q=hello+-path:test">example</a></td>
+            </tr>
+            <tr>
+            <td><code class="query-hint-text">repo:</code></td>
+            <td>
+                <span>Only include results from matching repositories.</span>
+                <br />
+                <span class="query-hint">OR</span>
+                <br />
+                <span>Only search repo names.</span>
+            </td>
+            <td>
+                <div id="multiple-examples">
+                    <a href="/search?q=hello+repo:{{.Data.SampleRepo}}">example</a>
+                    <a href="/search?q=repo:{{.Data.SampleRepo}}">example</a>
+                </div>
+            </td>
+            </tr>
+            <tr>
+            <td><code class="query-hint-text">-repo:</code></td>
+            <td>Exclude results from matching repositories.</td>
+            <td><a href="/search?q=hello+-repo:{{.Data.SampleRepo}}">example</a></td>
+            </tr>
+            <tr>
+            <td><code class="query-hint-text">max_matches:</code></td>
+            <td>Adjust the limit on number of matching lines returned.</td>
+            <td><a href="/search?q=hello+max_matches:5">example</a></td>
+            </tr>
+            <tr>
+            <td><code class="query-hint-text">(<em>special-term</em>:)</code></td>
+            <td>Escape one of the above terms by wrapping it in parentheses (with regex enabled).</td>
+            <td><a href="/search?q=(file:)&regex=true">example</a></td>
+            </tr>
+        </table>
+        <div>
+            <div class='helpsection'>
+                <h3>Regular Expressions</h3>
+            </div>
+            <p>
+                See <a href="https://github.com/google/re2/wiki/Syntax">the RE2
+                documentation</a> for a complete listing of supported regex syntax.
+            </p>
+        </div>
+    </div>
   </div>
-  <div class='helpsection'><h5>Special query terms</h5></div>
-  <table>
-    <tr>
-      <td><code>path:</code></td>
-      <td>Only include results from matching files.</td>
-      <td><a href="/search?q=hello+path:test">example</a></td>
-    </tr>
-    <tr>
-      <td><code>-path:</code></td>
-      <td>Exclude results from matching files.</td>
-      <td><a href="/search?q=hello+-path:test">example</a></td>
-    </tr>
-    <tr>
-      <td><code>repo:</code></td>
-      <td>Only include results from matching repositories.</td>
-      <td><a href="/search?q=hello+repo:{{.Data.SampleRepo}}">example</a></td>
-    </tr>
-    <tr>
-      <td><code>-repo:</code></td>
-      <td>Exclude results from matching repositories.</td>
-      <td><a href="/search?q=hello+-repo:{{.Data.SampleRepo}}">example</a></td>
-    </tr>
-    <tr>
-      <td><code>max_matches:</code></td>
-      <td>Adjust the limit on number of matching lines returned.</td>
-      <td><a href="/search?q=hello+max_matches:5">example</a></td>
-    </tr>
-    <tr>
-      <td><code>(<em>special-term</em>:)</code></td>
-      <td>Escape one of the above terms by wrapping it in parentheses (with regex enabled).</td>
-      <td><a href="/search?q=(file:)&regex=true">example</a></td>
-    </tr>
-  </table>
-  <div class='helpsection'><h5>Regular Expressions</h5></div>
-  <p>
-    See <a href="https://github.com/google/re2/wiki/Syntax">the RE2
-    documentation</a> for a complete listing of supported regex syntax.
-  </p>
 </div>
 <div id='resultarea'>
   <div id='countarea'>

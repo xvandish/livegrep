@@ -17,11 +17,16 @@ body {
 }
 
 a {
+    color: #337ab7;
     text-decoration: none;
 }
 
 a:hover {
     text-decoration: underline;
+}
+
+button:hover {
+    cursor: pointer;
 }
 
 #searcharea {
@@ -93,6 +98,10 @@ a:hover {
     font-style: normal;
     margin: 0px 1px;
     padding: 1px 3px;
+}
+
+.query-hint-text {
+    font-weight: bold;
 }
 
 .search-options {
@@ -207,10 +216,10 @@ a:hover {
 }
 
 #helparea {
-    width: 60em;
-    margin: auto;
-    color: #999;
-    padding-bottom: 100px;
+    color: #333;
+    margin-top: 50px;
+    margin-bottom: 100px;
+    font-family: monospace;
 }
 
 .helpsection {
@@ -222,9 +231,40 @@ a:hover {
     width: 100%;
 }
 
-#helparea #recent-searches .searches-container {
-    width: 20%;
+#helparea #joined-stuff {
+    display: grid;
+    grid-template-columns: 30% 1fr;
+    gap: 50px;
+    width: 100em;
     margin: auto;
+}
+
+#query-terms-table {
+    border-collapse: collapse;
+    font-family: monospace;
+    margin-bottom: 20px;
+}
+
+#query-terms-table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+#query-terms-table tr:hover {
+    background-color: #eaeaea;
+}
+
+#query-terms-table td {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 5px;
+}
+
+#query-terms-table #multiple-examples {
+    display: grid;
+    gap: 10px;
+}
+
+#helparea #recent-searches .searches-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -236,10 +276,8 @@ a:hover {
     border-radius: 3px;
     padding: 5px;
     border: none;
-    min-width: 60px;
-    /* since these are almost like links, give them 
-     * bootstrap link color */
-    color: #337ab7;
+    width: 100%;
+    min-height: 2rem;
 }
 
 #helparea #recent-searches .searches-container button:hover {
@@ -757,21 +795,6 @@ div.example {
 .example .link {
     font-size: 80%;
     float: right;
-}
-
-/* limit the damage bootstrap does to our styling */
-
-.btn, .dropdown-menu {
-    font-size: 12px;
-}
-
-#searcharea, #results {
-    line-height: normal;
-    font-size: 13px;
-}
-
-.file-content code, .file-content .line-numbers {
-    font-size: 12px;
 }
 
 /* /repos */
