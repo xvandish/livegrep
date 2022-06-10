@@ -774,6 +774,24 @@ div.example {
     font-size: 12px;
 }
 
+/* /repos */
+.available-repos-container {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#repos-container {
+    list-style: none;
+    margin: 0;
+}
+
+/* .repos-container li[data-shown='false'] { */
+/*     display: none; */
+/* } */
+#repos-container li[data-shown='false'] {
+    display: none;
+}
+
 /* Colors, without all the other disruptive markup, from:
    https://raw.githubusercontent.com/PrismJS/prism-themes/master/themes/prism-ghcolors.css
    with color 00a4db darkened to 0075a9 to improve contrast.

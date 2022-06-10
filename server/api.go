@@ -82,16 +82,6 @@ func extractQuery(ctx context.Context, r *http.Request) (pb.Query, bool, error) 
 		}
 	}
 
-	// New-style repo multiselect, only if "repo:" is not in the query.
-	if query.Repo == "" {
-		if newRepos, ok := params["repo[]"]; ok {
-			for i := range newRepos {
-				newRepos[i] = "^" + regexp.QuoteMeta(newRepos[i]) + "$"
-			}
-			query.Repo = strings.Join(newRepos, "|")
-		}
-	}
-
 	if fc, ok := params["fold_case"]; ok {
 		if fc[0] == "false" {
 			query.FoldCase = false

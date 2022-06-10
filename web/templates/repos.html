@@ -1,0 +1,18 @@
+<!-- The idea for this page is to display a list of all the URL's that are currently indexed -->
+{{template "layout" .}}
+
+{{define "body"}}
+<section class="available-repos-container">
+<h2>Available repos</h2>
+
+<input type="text" id="searchbox" />
+
+{{with .Data}}
+<ul id="repos-container">
+{{range $repo := .Repos }}
+ <li data-shown="true">{{$repo.Name}}</li>
+{{ end }}
+</ul>
+</section>
+{{ end }}
+{{ end}}
