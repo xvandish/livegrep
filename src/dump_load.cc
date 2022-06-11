@@ -62,6 +62,7 @@ protected:
     void dump_chunk_data(chunk *);
     void dump_content_data();
     void dump_filename_index();
+    void dump_treename_index();
 
     void alignp(uint32_t align) {
         streampos pos = stream_.tellp();
@@ -161,6 +162,7 @@ public:
         }
         index_->dump_metadata();
         index_->dump_filename_index();
+        index_->dump_treename_index();
         index_->stream_.seekp(0);
         index_->dump(&index_->hdr_);
         index_->stream_.close();
@@ -392,6 +394,32 @@ void codesearch_index::dump_filename_index() {
     }
 }
 
+void codesearch_index::dump_treename_index() {
+    hdr_.ntreedata = cs_->treename_data_.size();
+
+    hdr_.treedata_off = stream_.tellp();
+    for (auto it = cs_->treename_data_.begin();
+         it != cs_->treename_data_.end(); ++it) {
+        dump(&*it);
+    }
+
+    hdr_.treesuffixes_off = stream_.tellp();
+    for (auto it = cs_->treename_suffixes_.begin();
+         it != cs_->treename_suffixes_.end(); ++it) {
+        dump_int32(*it);
+    }
+
+    hdr_.treepos_off = stream_.tellp();
+    for (auto it = cs_->treename_positions_.begin();
+         it != cs_->treename_positions_.end(); ++it) {
+        dump(&it->first);
+        // The indexed_tree associated with this treename position is already
+        // populated into the dump file via dump_metadata at this point; it need
+        // not be re-written.
+    }
+
+}
+
 void codesearch_index::dump() {
     assert(cs_->finalized_);
 
@@ -401,6 +429,7 @@ void codesearch_index::dump() {
     dump_content_data();
     dump_metadata();
     dump_filename_index();
+    dump_treename_index();
 
     stream_.seekp(0);
     dump(&hdr_);
@@ -542,6 +571,7 @@ void load_allocator::load(code_searcher *cs) {
     }
     assert(it == cs->files_.end());
 
+    // Load the filename index
     p_ = ptr<uint8_t>(hdr_->filedata_off);
     cs->filename_data_.reserve(hdr_->nfiledata);
     for (int i = 0; i < hdr_->nfiledata; i++) {
@@ -561,6 +591,28 @@ void load_allocator::load(code_searcher *cs) {
         int pos = *consume<int>();
         indexed_file *sf = it->get();
         cs->filename_positions_.push_back(make_pair(pos, sf));
+    }
+
+    // Load the treename index
+    p_ = ptr<uint8_t>(hdr_->treedata_off);
+    cs->treename_data_.reserve(hdr_->ntreedata);
+    for (int i = 0; i < hdr_->ntreedata; i++) {
+        cs->treename_data_.push_back(*consume<unsigned char>());
+    }
+
+    p_ = ptr<uint8_t>(hdr_->treesuffixes_off);
+    cs->treename_suffixes_.reserve(hdr_->ntreedata);
+    for (int i = 0; i < hdr_->ntreedata; i++) {
+        cs->treename_suffixes_.push_back(load_int32());
+    }
+
+    p_ = ptr<uint8_t>(hdr_->treepos_off);
+    cs->treename_positions_.reserve(hdr_->ntrees);
+    for (auto it = cs->trees_.begin();
+         it != cs->trees_.end(); ++it) {
+        int pos = *consume<int>();
+        indexed_tree *sf = it->get();
+        cs->treename_positions_.push_back(make_pair(pos, sf));
     }
 
     cs->finalized_ = true;

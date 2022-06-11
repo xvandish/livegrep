@@ -28,6 +28,7 @@
 
 class searcher;
 class filename_searcher;
+class treename_searcher;
 class chunk_allocator;
 class file_contents;
 struct match_result;
@@ -106,6 +107,11 @@ struct file_result {
     int matchleft, matchright;
 };
 
+struct tree_result {
+    indexed_tree *tree;
+    int matchleft, matchright;
+};
+
 // A query specification passed to match(). line_pat is required to be
 // non-NULL; file_pat, tree_pat and tag_pat may be NULL to specify "no
 // constraint"
@@ -124,6 +130,7 @@ struct query {
     } negate;
 
     bool filename_only;
+    bool treename_only;
     int context_lines;
 };
 
@@ -176,6 +183,8 @@ public:
         typedef std::function<void (const struct match_result*)> callback_func;
         // function that will be called to record a filename match
         typedef std::function<void (const struct file_result*)> file_callback_func;
+        // function that will be called to record a treename match
+        typedef std::function<void (const struct tree_result*)> tree_callback_func;
         // function that will be called to transform a match
         typedef std::function<bool (struct match_result*)> transform_func;
 
@@ -183,13 +192,15 @@ public:
         void match(const query& q,
                    const callback_func& cb,
                    const file_callback_func& fcb,
+                   const tree_callback_func& tcb,
                    match_stats *stats)
         {
-            match(q, cb, fcb, transform_func(), stats);
+            match(q, cb, fcb, tcb, transform_func(), stats);
         }
         void match(const query& q,
                    const callback_func& cb,
                    const file_callback_func& fcb,
+                   const tree_callback_func& tcb,
                    const transform_func& func,
                    match_stats *stats);
     protected:
@@ -198,6 +209,7 @@ public:
             atomic_int pending;
             searcher *search;
             filename_searcher *file_search;
+            treename_searcher *tree_search;
             thread_queue<chunk*> chunks;
         };
 
@@ -205,9 +217,11 @@ public:
         vector<std::thread> threads_;
         thread_queue<job*> queue_;
         thread_queue<job*> file_queue_;
+        thread_queue<job*> tree_queue_;
 
         static void search_one(search_thread *);
         static void search_file_one(search_thread *);
+        static void search_tree_one(search_thread *);
     private:
         search_thread(const search_thread&);
         void operator=(const search_thread&);
@@ -238,15 +252,24 @@ protected:
     // pairs (i, file), where file->path starts at filename_data_[i]
     vector<pair<int, indexed_file*>> filename_positions_;
 
+    // Structures for fast treename search; somehwat similar to a single chunk.
+    // Build from trees_ at finalization, not serialized or anything like that.
+    vector<unsigned char> treename_data_;
+    vector<uint32_t> treename_suffixes_;
+    // pairs (i, tree) where tree->name starts at treename_data_[i]
+    vector<pair<int, indexed_tree*>> treename_positions_;
+
     vector<std::unique_ptr<indexed_tree>> trees_;
     vector<std::unique_ptr<indexed_file>> files_;
 
 private:
     void index_filenames();
+    void index_treenames();
 
     friend class search_thread;
     friend class searcher;
     friend class filename_searcher;
+    friend class treename_searcher;
     friend class codesearch_index;
     friend class load_allocator;
     friend class tag_searcher;

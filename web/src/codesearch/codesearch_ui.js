@@ -3,7 +3,6 @@ var Backbone = require('backbone');
 var Cookies = require('js-cookie');
 
 var Codesearch = require('codesearch/codesearch.js').Codesearch;
-var RepoSelector = require('codesearch/repo_selector.js');
 
 var KeyCodes = {
   SLASH_OR_QUESTION_MARK: 191
@@ -37,34 +36,6 @@ document.addEventListener("keyup", function (event) {
 
 var h = new html.HTMLFactory();
 var last_url_update = 0;
-
-function vercmp(a, b) {
-  var re = /^([0-9]*)([^0-9]*)(.*)$/;
-  var abits, bbits;
-  var anum, bnum;
-  while (a.length && b.length) {
-    abits = re.exec(a);
-    bbits = re.exec(b);
-    if ((abits[1] === '') != (bbits[1] === '')) {
-      return abits[1] ? -1 : 1;
-    }
-    if (abits[1] !== '') {
-      anum = parseInt(abits[1]);
-      bnum = parseInt(bbits[1])
-      if (anum !== bnum)
-        return anum - bnum;
-    }
-
-    if (abits[2] !== bbits[2]) {
-      return abits[2] < bbits[2] ? -1 : 1
-    }
-
-    a = abits[3];
-    b = bbits[3];
-  }
-
-  return a.length - b.length;
-}
 
 function shorten(ref) {
   var match = /^refs\/(tags|branches)\/(.*)/.exec(ref);
@@ -213,7 +184,7 @@ var MatchView = Backbone.View.extend({
     if (this.model.get('add_blank_line')) {
       ctx_after.push(
           h.div({ cls: 'content-line-wrapper blank-line' }, [
-            h.span({ cls: 'lno-link' }, ['...']),
+            h.span({ cls: 'lno-link' }, ['…']),
             h.span({ cls: '' }, ['']),
             h.span({ cls: '' }, [''])
           ])
@@ -364,6 +335,47 @@ var SearchResultSet = Backbone.Collection.extend({
   }
 });
 
+var TreeMatch = Backbone.Model.extend({
+  path_info: function() {
+    var name = this.get('name');
+    var version = this.get('version');
+    return {
+      id: name + ':' + version,
+      name: name,
+      version: version,
+      bounds: this.get('bounds')
+    }
+  },
+
+  url: function() {
+      return this.get('metadata').external_url;
+  }
+});
+
+var TreeMatchView = Backbone.View.extend({
+    tagName: 'div',
+
+    render: function() {
+        var path_info = this.model.path_info();
+        var pieces = [
+            path_info.name.substring(0, path_info.bounds[0]),
+            path_info.name.substring(path_info.bounds[0], path_info.bounds[1]),
+            path_info.name.substring(path_info.bounds[1])
+        ]
+        var treeLabel = [
+            pieces[0],
+            h.span({cls: "matchstr"}, [pieces[1]]),
+            pieces[2]
+        ];
+
+        var el = this.$el;
+        el.empty();
+        el.addClass('treename-match');
+        el.append(h.a({cls: 'label header result-path', href: this.model.url()}, treeLabel));
+        return this;
+    }
+});
+
 /**
  * A FileMatch represents a single filename match in the code base.
  *
@@ -432,6 +444,7 @@ var SearchState = Backbone.Model.extend({
     this.search_map = {};
     this.search_results = new SearchResultSet();
     this.file_search_results = new Backbone.Collection();
+    this.tree_search_results = new Backbone.Collection();
     this.search_id = 0;
     this.on('change:displaying', this.new_search, this);
   },
@@ -444,6 +457,7 @@ var SearchState = Backbone.Model.extend({
     });
     this.search_results.reset();
     this.file_search_results.reset();
+    this.tree_search_results.reset();
     for (var k in this.search_map) {
       if (parseInt(k) < this.get('displaying'))
         delete this.search_map[k];
@@ -533,6 +547,14 @@ var SearchState = Backbone.Model.extend({
     var fm = _.clone(file_match);
     fm.backend = this.search_map[search].backend;
     this.file_search_results.add(new FileMatch(fm));
+  },
+  handle_tree_match: function (search, tree_match) {
+    if (search < this.get('displaying'))
+      return false;
+    this.set('displaying', search);
+    var tm = _.clone(tree_match);
+    tm.backend = this.search_map[search].backend;
+    this.tree_search_results.add(new TreeMatch(tm));
   },
   handle_done: function (search, time, search_type, why) {
     if (search < this.get('displaying'))
@@ -649,8 +671,16 @@ var MatchesView = Backbone.View.extend({
       pathResults.append(showMoreBtn);
     }
     
-
     this.$el.append(pathResults);
+
+    // For tree-results. Not sure if this is best but it's a good start
+    var treeResults = h.div({'cls': 'tree-results'});
+    this.model.tree_search_results.each(function(tree) {
+        var view = new TreeMatchView({ model: tree });
+        treeResults.append(view.render().el);
+    }, this);
+
+    this.$el.append(treeResults);
 
     this.model.search_results.each(function(file_group) {
       file_group.process_context_overlaps();
@@ -814,6 +844,8 @@ var ResultView = Backbone.View.extend({
     var results;
     if (this.model.get('search_type') == 'filename_only') {
       results = '' + this.model.file_search_results.length;
+    } else if (this.model.get('search_type') == 'treename_only') {
+      results = '' + this.model.tree_search_results.length;
     } else {
       results = '' + this.model.search_results.num_matches();
     }
@@ -836,7 +868,6 @@ var CodesearchUI = function() {
       CodesearchUI.view = new ResultView({model: CodesearchUI.state});
 
       CodesearchUI.input      = $('#searchbox');
-      CodesearchUI.input_repos = $('#repos');
       CodesearchUI.input_backend = $('#backend');
       if (CodesearchUI.input_backend.length == 0)
         CodesearchUI.input_backend = null;
@@ -848,8 +879,6 @@ var CodesearchUI = function() {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
       }
 
-      RepoSelector.init();
-      CodesearchUI.update_repo_options();
       CodesearchUI._render_search_history();
 
       CodesearchUI.init_query();
@@ -863,14 +892,10 @@ var CodesearchUI = function() {
 
       CodesearchUI.inputs_case.change(CodesearchUI.keypress);
       CodesearchUI.input_regex.change(CodesearchUI.keypress);
-      CodesearchUI.input_repos.change(CodesearchUI.keypress);
       CodesearchUI.input_context.change(CodesearchUI.toggle_context);
 
       CodesearchUI.input_regex.change(function(){
         CodesearchUI.set_pref('regex', CodesearchUI.input_regex.prop('checked'));
-      });
-      CodesearchUI.input_repos.change(function(){
-        CodesearchUI.set_pref('repos', CodesearchUI.input_repos.val());
       });
       CodesearchUI.input_context.change(function(){
         CodesearchUI.set_pref('context', CodesearchUI.input_context.prop('checked'));
@@ -920,14 +945,6 @@ var CodesearchUI = function() {
       } catch (err) {
         console.error('error parsing localStorage search history. Resetting it.');
         currHistory = [];
-      }
-
-      var rootC = document.querySelector('#helparea #recent-searches');
-      if (currHistory.length === 0) {
-        rootC.classList.add('hidden');
-        return;
-      } else {
-        rootC.classList.remove('hidden');
       }
 
       var c = document.querySelector('#helparea #recent-searches .searches-container');
@@ -1015,12 +1032,6 @@ var CodesearchUI = function() {
         }
       }
 
-      var repos = [];
-      if (parms.repo)
-        repos = repos.concat(parms.repo);
-      if (parms['repo[]'])
-        repos = repos.concat(parms['repo[]']);
-      RepoSelector.updateSelected(repos);
     },
     init_controls_from_prefs: function() {
       var prefs = Cookies.getJSON('prefs');
@@ -1029,11 +1040,6 @@ var CodesearchUI = function() {
       }
       if (prefs['regex'] !== undefined) {
         CodesearchUI.input_regex.prop('checked', prefs['regex']);
-      }
-      if (prefs['repos'] !== undefined) {
-        RepoSelector.updateSelected(prefs['repos']);
-      } else if (CodesearchUI.defaultSearchRepos !== undefined) {
-        RepoSelector.updateSelected(CodesearchUI.defaultSearchRepos);
       }
       if (prefs['context'] !== undefined) {
         CodesearchUI.input_context.prop('checked', prefs['context']);
@@ -1072,14 +1078,7 @@ var CodesearchUI = function() {
     select_backend: function() {
       if (!CodesearchUI.input_backend)
         return;
-      CodesearchUI.update_repo_options();
       CodesearchUI.keypress();
-    },
-    update_repo_options: function(repos) {
-      if (!CodesearchUI.input_backend)
-        return;
-      var backend = CodesearchUI.input_backend.val();
-      RepoSelector.updateOptions(_.keys(CodesearchUI.repo_urls[backend]));
     },
     keypress: function() {
       CodesearchUI.clear_timer();
@@ -1091,7 +1090,6 @@ var CodesearchUI = function() {
         q: CodesearchUI.input.val(),
         fold_case: CodesearchUI.inputs_case.filter(':checked').val(),
         regex: CodesearchUI.input_regex.is(':checked'),
-        repo: CodesearchUI.input_repos.val()
       };
       if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();
@@ -1112,6 +1110,9 @@ var CodesearchUI = function() {
     },
     file_match: function(search, file_match) {
       CodesearchUI.state.handle_file_match(search, file_match);
+    },
+    tree_match: function(search, tree_match) {
+        CodesearchUI.state.handle_tree_match(search, tree_match);
     },
     search_done: function(search, time, search_type, why) {
       CodesearchUI.state.handle_done(search, time, search_type, why);
