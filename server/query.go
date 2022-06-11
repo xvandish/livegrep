@@ -187,6 +187,10 @@ func ParseQuery(query string, globalRegex bool) (pb.Query, error) {
 		out.Line = out.File
 		out.File = ""
 		out.FilenameOnly = true
+	} else if out.Line == "" && out.Repo != "" {
+		out.Line = out.Repo
+		out.Repo = ""
+		out.TreenameOnly = true
 	}
 
 	if _, ok := ops["case"]; ok {

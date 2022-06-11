@@ -96,8 +96,7 @@ var Codesearch = function() {
       var q = {
         q: opts.q,
         fold_case: opts.fold_case,
-        regex: opts.regex,
-        repo: opts.repo
+        regex: opts.regex
       };
 
       url = url + "?" + $.param(q);
@@ -111,6 +110,9 @@ var Codesearch = function() {
         });
         data.file_results.forEach(function (r) {
           Codesearch.delegate.file_match(opts.id, r);
+        });
+        data.tree_results.forEach(function (t) {
+          Codesearch.delegate.tree_match(opts.id, t);
         });
         Codesearch.delegate.search_done(opts.id, elapsed, data.search_type, data.info.why);
       });

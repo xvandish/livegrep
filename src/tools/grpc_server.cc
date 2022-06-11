@@ -153,6 +153,7 @@ Status parse_query(query *q, const ::Query* request, ::CodeSearchResult* respons
     if (status.ok())
         status = extract_regex(&q->negate.tags_pat, "-tags", request->not_tags());
     q->filename_only = request->filename_only();
+    q->treename_only = request->treename_only();
     q->context_lines = request->context_lines();
     if (q->context_lines <= 0 && FLAGS_context_lines) {
         q->context_lines = FLAGS_context_lines;
@@ -212,6 +213,15 @@ public:
         result->mutable_bounds()->set_right(f->matchright);
     }
 
+    void operator()(const tree_result *t) const {
+        auto result = response_->add_tree_results();
+        result->set_name(t->tree->name);
+        result->set_version(t->tree->version);
+        result->mutable_metadata()->CopyFrom(t->tree->metadata);
+        result->mutable_bounds()->set_left(t->matchleft);
+        result->mutable_bounds()->set_right(t->matchright);
+    }
+
 private:
     line_set* unique_lines_;
     CodeSearchResult* response_;
@@ -240,6 +250,7 @@ static void run_tags_search(const query& main_query, std::string regex,
 
     code_searcher::search_thread search(tagdata);
     search.match(q,
+                 cb,
                  cb,
                  cb,
                  boost::bind(&tag_searcher::transform, searcher, &constraints, _1),
@@ -281,7 +292,7 @@ void CodeSearchImpl::TagsFirstSearch_(::CodeSearchResult* response, query& q, ma
     code_searcher::search_thread *search;
     if (!pool_.try_pop(&search))
         search = new code_searcher::search_thread(cs_);
-    search->match(q, cb, cb, &stats);
+    search->match(q, cb, cb, cb, &stats);
     pool_.push(search);
 }
 
@@ -360,7 +371,7 @@ Status CodeSearchImpl::Search(ServerContext* context, const ::Query* request, ::
             search = new code_searcher::search_thread(cs_);
         add_match::line_set ls;
         add_match cb(&ls, response);
-        search->match(q, cb, cb, &stats);
+        search->match(q, cb, cb, cb, &stats);
         pool_.push(search);
     } else {
         if (tagdata_ == NULL)
