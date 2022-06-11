@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"math/rand"
 	"net/http"
 	"path"
 	"regexp"
@@ -120,45 +119,6 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 			SampleRepo: sampleRepo,
 		},
 	})
-}
-
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
-
-func (s *server) ServeAvailableRepos(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	var bk *Backend
-	for _, bk = range s.bk {
-		break
-	}
-
-	rand.Seed(time.Now().UnixNano())
-	fakeTrees := make([]Tree, 5000)
-	for i := 0; i < 5000; i++ {
-		fakeTrees[i] = Tree{
-			Name: randSeq(25),
-		}
-	}
-
-	bk.I.Lock()
-	s.renderPage(ctx, w, r, "repos.html", &page{
-		Title:         "available repos",
-		IncludeHeader: true,
-		ScriptName:    "availablerepos",
-		ScriptData:    "",
-		Data: struct {
-			Repos []Tree
-		}{
-			Repos: append(bk.I.Trees, fakeTrees...),
-		},
-	})
-	bk.I.Unlock()
 }
 
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -462,7 +422,6 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
-	m.Add("GET", "/repos", srv.Handler(srv.ServeAvailableRepos))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 

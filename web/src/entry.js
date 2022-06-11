@@ -2,8 +2,7 @@ $ = require('jquery');
 
 pages = {
   codesearch: require('codesearch/codesearch_ui.js'),
-  fileview: require('fileview/fileview.js'),
-  availablerepos: require('./repos.js')
+  fileview: require('fileview/fileview.js')
 };
 
 $(function(){
