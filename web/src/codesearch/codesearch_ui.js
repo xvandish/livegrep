@@ -3,7 +3,6 @@ var Backbone = require('backbone');
 var Cookies = require('js-cookie');
 
 var Codesearch = require('codesearch/codesearch.js').Codesearch;
-// var RepoSelector = require('codesearch/repo_selector.js');
 
 var KeyCodes = {
   SLASH_OR_QUESTION_MARK: 191
@@ -869,7 +868,6 @@ var CodesearchUI = function() {
       CodesearchUI.view = new ResultView({model: CodesearchUI.state});
 
       CodesearchUI.input      = $('#searchbox');
-      // CodesearchUI.input_repos = $('#repos');
       CodesearchUI.input_backend = $('#backend');
       if (CodesearchUI.input_backend.length == 0)
         CodesearchUI.input_backend = null;
@@ -881,7 +879,6 @@ var CodesearchUI = function() {
           CodesearchUI.inputs_case.filter('[value=auto]').attr('checked', true);
       }
 
-      // CodesearchUI.update_repo_options();
       CodesearchUI._render_search_history();
 
       CodesearchUI.init_query();
@@ -895,15 +892,11 @@ var CodesearchUI = function() {
 
       CodesearchUI.inputs_case.change(CodesearchUI.keypress);
       CodesearchUI.input_regex.change(CodesearchUI.keypress);
-      // CodesearchUI.input_repos.change(CodesearchUI.keypress);
       CodesearchUI.input_context.change(CodesearchUI.toggle_context);
 
       CodesearchUI.input_regex.change(function(){
         CodesearchUI.set_pref('regex', CodesearchUI.input_regex.prop('checked'));
       });
-      // CodesearchUI.input_repos.change(function(){
-      //   CodesearchUI.set_pref('repos', CodesearchUI.input_repos.val());
-      // });
       CodesearchUI.input_context.change(function(){
         CodesearchUI.set_pref('context', CodesearchUI.input_context.prop('checked'));
       });
@@ -1039,11 +1032,6 @@ var CodesearchUI = function() {
         }
       }
 
-      // var repos = [];
-      // if (parms.repo)
-      //   repos = repos.concat(parms.repo);
-      // if (parms['repo[]'])
-      //   repos = repos.concat(parms['repo[]']);
     },
     init_controls_from_prefs: function() {
       var prefs = Cookies.getJSON('prefs');
@@ -1053,11 +1041,6 @@ var CodesearchUI = function() {
       if (prefs['regex'] !== undefined) {
         CodesearchUI.input_regex.prop('checked', prefs['regex']);
       }
-      // if (prefs['repos'] !== undefined) {
-      //   RepoSelector.updateSelected(prefs['repos']);
-      // } else if (CodesearchUI.defaultSearchRepos !== undefined) {
-      //   RepoSelector.updateSelected(CodesearchUI.defaultSearchRepos);
-      // }
       if (prefs['context'] !== undefined) {
         CodesearchUI.input_context.prop('checked', prefs['context']);
       }
@@ -1095,15 +1078,8 @@ var CodesearchUI = function() {
     select_backend: function() {
       if (!CodesearchUI.input_backend)
         return;
-      // CodesearchUI.update_repo_options();
       CodesearchUI.keypress();
     },
-    // update_repo_options: function(repos) {
-    //   if (!CodesearchUI.input_backend)
-    //     return;
-    //   var backend = CodesearchUI.input_backend.val();
-    //   RepoSelector.updateOptions(_.keys(CodesearchUI.repo_urls[backend]));
-    // },
     keypress: function() {
       CodesearchUI.clear_timer();
       CodesearchUI.timer = setTimeout(CodesearchUI.newsearch, 100);
@@ -1114,7 +1090,6 @@ var CodesearchUI = function() {
         q: CodesearchUI.input.val(),
         fold_case: CodesearchUI.inputs_case.filter(':checked').val(),
         regex: CodesearchUI.input_regex.is(':checked'),
-        // repo: CodesearchUI.input_repos.val()
       };
       if (CodesearchUI.input_backend)
         search.backend = CodesearchUI.input_backend.val();

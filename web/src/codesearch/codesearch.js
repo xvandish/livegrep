@@ -96,8 +96,7 @@ var Codesearch = function() {
       var q = {
         q: opts.q,
         fold_case: opts.fold_case,
-        regex: opts.regex,
-        repo: opts.repo
+        regex: opts.regex
       };
 
       url = url + "?" + $.param(q);
