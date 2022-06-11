@@ -115,6 +115,8 @@ button:hover {
 
 .search-option {
     white-space: nowrap;
+    display: flex;
+    align-items: center;
 }
 
 #live-status-main-info-container {

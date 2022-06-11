@@ -57,7 +57,7 @@
         </select>
         {{if ne (.I.Name) "-"}}
           <div class="search-option">
-            <span class="label">Searching:</span>
+            <span class="label" style="margin-right:5px">Searching:</span>
             {{.I.Name}}
           </div>
         {{end}}
@@ -70,7 +70,7 @@
       <label for='context'>on</label>
     </div>
     
-    <div class="search-option">
+    <div>
       <div id="live-status-main-info-container">
         <span id="live-status-dot" class="live-dot" data-status="up" ></span>
         <span id="live-status-text">Connected</span>
