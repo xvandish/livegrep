@@ -1,0 +1,54 @@
+{{define "release_notes_v1.5.0" }}
+
+<div id="whats-new" data-id="v1.5.0">
+    <div class="header">
+        <h2>What's New</h2>
+        <button id="dismiss-release-notes">Dismiss Release Notes</button>
+    </div>
+    <p>Release x.x.x</p>
+
+    <ul>
+        <li>
+            <div>
+                <p>Added the ability to search repos. Examples:</p>
+                <ul>
+                    <li>
+                        <code>repo:test</code> To search all repos with `test` in their name.
+                    </li>
+                    <li>
+                        <code>repo:.* max_matches:6000</code> To view all indexed repos. Note regex MUST be enabled for the `.*` operator to work.
+                    </li>
+                </ul>
+            </div>
+        </li>
+        <li>
+            Clarified the use of the overloaded <code>path</code> and <code>repo</code> special query terms in the
+            helparea below. <code>repo:searchTerm</code> and <code>path:searchTerm</code> will look only through repo and file names 
+            respectively. Examples included below.
+        </li>
+        <li>
+            Recent Searches and Special Query Terms are shown side-by-side now.
+        </li>
+        <li>
+            <p>
+            Removed the Repo Dropdown Selector. It was causing some usability issues, and removing it enabled us to remove a lot of frontend complexity. The same functionality can be achieved just by using the <code>repo:</code> special term. Here are some examples:</p>
+            <ul>
+                <li>
+
+                <code>repo:eventtracker- help max_matches:200</code>. Will search for the term `help` in all repos starting with `eventtracker-`, with a max of 200 matches.
+                </li>
+                <li>
+
+                <code>repo:dti-analytics|eventtracker-server help</code>. Will search for the term `help` in repos containing `dti-analytics` OR `eventtracker-server` in their names.
+                </li>
+            </ul>
+        <li>
+            General UI Tweaks.
+            <ul>
+                <li>Fonts and colors updated. More contrast in helparea items</li>
+                <li>Fixed overflow issue for long code lines without whitespace in search results.</li>
+            </ul> 
+        </li>
+    </ul>
+</div>
+{{ end }}

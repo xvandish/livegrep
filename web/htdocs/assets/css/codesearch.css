@@ -29,6 +29,31 @@ button:hover {
     cursor: pointer;
 }
 
+#whats-new {
+    width: 60em;
+    margin: auto;
+    margin-top: 2rem;
+    padding: 10px;
+    border: 2px solid #FFB932; /* dumb but for now */
+}
+
+#whats-new .header {
+    text-align: center;
+}
+
+#whats-new ul {
+    line-height: 1.3rem;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+#whats-new code {
+    background: #eaeaea;
+    font-style: normal;
+    margin: 0px 1px;
+    padding: 1px 3px;
+}
+
 #searcharea {
     width: 100%;
     max-width: 1200px;
