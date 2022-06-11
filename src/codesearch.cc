@@ -605,7 +605,7 @@ void code_searcher::index_filenames() {
 }
 
 void code_searcher::index_treenames() {
-    log("Build treename index...");
+    log("Building treename index...");
     treename_positions_.reserve(trees_.size());
 
     size_t treename_data_size = 0;
