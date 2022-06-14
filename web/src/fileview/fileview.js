@@ -105,7 +105,8 @@ function init(initData) {
     }
 
     if (scopeToRepo) {
-      url.searchParams.set('repo', initData.repo_info.name);
+      var repoTerm = 'repo:' + initData.repo_info.name;
+      url.searchParams.set('q', repoTerm + " " + query);
     };
 
     // url.toString() will encode our query params
