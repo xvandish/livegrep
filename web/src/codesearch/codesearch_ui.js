@@ -474,8 +474,7 @@ var SearchState = Backbone.Model.extend({
         cur.q === search.q &&
         cur.fold_case === search.fold_case &&
         cur.regex === search.regex &&
-        cur.backend === search.backend &&
-        _.isEqual(cur.repo, search.repo)) {
+        cur.backend === search.backend) {
       return false;
     }
     var id = this.next_id();
@@ -484,8 +483,7 @@ var SearchState = Backbone.Model.extend({
       q: search.q,
       fold_case: search.fold_case,
       regex: search.regex,
-      backend: search.backend,
-      repo: search.repo
+      backend: search.backend
     };
     if (!search.q.length) {
       this.set('displaying', id);
@@ -506,7 +504,6 @@ var SearchState = Backbone.Model.extend({
       q.fold_case = current.fold_case;
       q.regex = current.regex;
       q.context = this.get('context');
-      q.repo = current.repo;
     }
 
     if (current.backend) {
