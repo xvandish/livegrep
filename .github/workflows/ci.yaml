@@ -1,11 +1,9 @@
 on:
   pull_request:
     branches:
-      - main
       - my_main
   push:
     branches:
-      - main
       - my_main
   schedule:
     # Run in cron every 5 days at midnight to keep the cache warm.
