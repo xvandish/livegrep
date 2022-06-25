@@ -450,8 +450,10 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 				Header:  s,
 				HunkNum: hunkNum,
 			}
+			continue
 		} else if strings.HasPrefix(s, "@@") {
 			currDif.ChunkLine = s
+			continue
 		}
 
 		// If we haven't seen the @@ line yet, then add to header info

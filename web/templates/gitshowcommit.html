@@ -34,7 +34,7 @@
           <tbody>
             {{ range $sL := .StatLines }}
               <tr>
-                <td><a href="{{ printf "%s%s" "hunk" $sL.HunkNum }}">{{$sL.Path}}</a></td>
+                <td><a href="{{ printf "#%s%d" "hunk" $sL.HunkNum }}">{{$sL.Path}}</a></td>
                 <td> | </td>
                 <td>{{$sL.LinesChanged}}</td>
                 <td>{{$sL.GraphString}}</td>
@@ -47,6 +47,21 @@
       </div>
     {{ end }}
 
+  </div>
+
+  <div class="diff-data">
+    {{ range $diff := .Diffs }}
+      <pre id="{{ printf "%s%d" "hunk" $diff.HunkNum }}">
+      {{ $diff.Header }}
+        {{ range $hL := $diff.HeaderLines }}
+          {{ $hL }}
+        {{ end }}
+      {{ $diff.ChunkLine }}
+      {{ range $line := $diff.Lines }}
+        {{ $line }}
+      {{ end }}
+      </pre>
+    {{ end }}
   </div>
 
   {{end}}
