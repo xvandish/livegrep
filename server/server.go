@@ -128,9 +128,9 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	commit := r.URL.Query().Get("commit")
-	if commit == "" {
-		commit = "HEAD"
+	firstParent := r.URL.Query().Get("firstParent")
+	if firstParent == "" {
+		firstParent = "HEAD"
 	}
 
 	if len(s.repos) == 0 {
@@ -144,10 +144,15 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	data, err := buildSimpleGitLogData(path, repo)
+	data, err := buildSimpleGitLogData(path, firstParent, repo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
 		return
+	}
+
+	if !data.MaybeLastPage {
+		w.Header().Set("X-next-parent", data.NextParent)
+		w.Header().Set("X-maybe-last", fmt.Sprintf("%v", data.MaybeLastPage))
 	}
 
 	s.renderPage(ctx, w, r, "simplegitlog.html", &page{

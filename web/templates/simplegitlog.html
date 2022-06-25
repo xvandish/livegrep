@@ -1,9 +1,17 @@
 
-{{template "layout" .}}
+<!-- we don't include anything but the table for pagination reqs -->
+<!-- although at this point we should just make a seperet template lmao -->
+{{ if not .Data.IsPaginationReq }}
+  {{template "layout" .}}
+{{ end }}
+
 
 <!-- start with table, move to divs with <flex if useful -->
 {{ with .Data }}
+
+
 <table id="log-table">
+  {{ if not .IsPaginationReq }}
   <thead>
     <tr>
       <th>Short Hash</th>
@@ -12,6 +20,7 @@
       <th>Subject</th>
     </tr>
   </thead>
+  {{ end }}
   <tbody>
     {{range $commit := .Commits }}
       <tr>
@@ -37,12 +46,53 @@
     {{ end }}
   </tbody>
 </table>
-{{end}}
+{{ if not .IsPaginationReq }}
+  {{ if not .MaybeLastPage }}
+  <button type="button" id="next-page-fetcher" data-action="getNextPage" value={{ .NextParent }}>Load More</button>
+  {{ end }}
+{{ end }}
 
+{{ if not .IsPaginationReq }}
 <script>
   const functionMap = {
-    "expandText": expandText
+    "expandText": expandText,
+    "getNextPage": getNextCommits
   };
+
+  const loadMoreBtn = document.getElementById('next-page-fetcher');
+
+  // we can request a server-rendered-page and then embed-the html that
+  // comes back.
+  // how do we deal with the next button? replace it on every-render so
+  // that its state is correct?
+  async function getNextCommits(event) {
+    loadMoreBtn.disabled = true; // don't allow a click while one in flight
+
+    // we need to get the hash of the currently displayed last commit
+    // it would be nice if something computed it for us. 
+    const new_url = new URL(window.location.href);
+    new_url.searchParams.set('firstParent', event.target.value);
+
+    let enableBtn = false;
+    var resp = await fetch(new_url)
+        .then((r) => {
+          const nextParent = r.headers.get("X-next-parent");
+          enableBtn = r.headers.get("X-maybe-last") === "false";  
+          loadMoreBtn.value = nextParent;
+          
+          return r.text();  
+         })
+        .then((html) => {
+          console.log({ html });
+          loadMoreBtn.insertAdjacentHTML("beforebegin", html);
+        });
+
+    if (enableBtn) {
+      loadMoreBtn.disabled = false;
+    }
+
+    // TODO: add listeneres to the new values somehow
+  }
 
   function expandText(event) {
     // Get the row that triggered this click
@@ -59,4 +109,9 @@
   }
 
   document.getElementById('log-table').addEventListener('click', dealWithClick, false);
+  document.getElementById('next-page-fetcher').addEventListener('click', dealWithClick, false);
 </script>
+
+{{ end }}
+{{end}}
+
