@@ -316,9 +316,6 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	}
 
 	simpleGitLog.MaybeLastPage = len(simpleGitLog.Commits) < 1000
-	fmt.Printf("len(simpleGitLog.Commits): %d\n", len(simpleGitLog.Commits))
-	fmt.Printf("len(simpleGitLog.Commits) < 1000: %v\n", len(simpleGitLog.Commits) < 1000)
-
 	simpleGitLog.IsPaginationReq = firstParent != "HEAD"
 	simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
 

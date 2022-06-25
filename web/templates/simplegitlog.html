@@ -5,25 +5,19 @@
   {{linkTag .Nonce "stylesheet" "/assets/css/gitlog.min.css" .AssetHashes}}
   {{scriptTag .Nonce "/assets/js/gitlog.js" .AssetHashes}}
 </head>
-<!-- we don't include anything but the table for pagination reqs -->
-<!-- although at this point we should just make a seperet template lmao -->
-
-
 <body>
 <!-- start with table, move to divs with <flex if useful -->
 <section class="simple-git-log">
-{{ with .Data }}
+  {{ with .Data }}
 
-{{ template "gitlogtable" . }}
 
-{{ if not .IsPaginationReq }}
-  {{ if not .MaybeLastPage }}
-  <button type="button" id="next-page-fetcher" data-action="getNextPage" value={{ .NextParent }}>Load More</button>
-  {{ end }}
-{{ end }}
+    {{ template "gitlogtable" . }}
 
-{{end}}
+    {{ if not .MaybeLastPage }}
+    <button type="button" id="next-page-fetcher" data-action="getNextPage" value={{ .NextParent }}>Load More</button>
+    {{ end }}
+
+  {{end}}
 <section/>
 </body>
-
 </html>

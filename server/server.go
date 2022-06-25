@@ -159,15 +159,20 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 
 	// we render a partial page rather than the whole thing
 	// eventually we'll probably want this as a seperate route
-	if r.Header.Get("partial") == "true" {
-		templateName := "gitlogtable.html"
+	if r.URL.Query().Get("partial") == "true" {
+		templateName := "simplegitlogpaginated.html"
 		t, ok := s.Templates[templateName]
 		if !ok {
 			log.Printf(ctx, "Error: no template named %v", templateName)
 			return
 		}
 
-		err := t.ExecuteTemplate(w, templateName, data)
+		err := t.ExecuteTemplate(w, templateName, struct {
+			Data interface{}
+		}{
+			Data: data,
+		})
+
 		if err != nil {
 			log.Printf(ctx, "Error rendering %v: %s", templateName, err)
 			return
