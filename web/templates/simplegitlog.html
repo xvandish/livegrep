@@ -90,8 +90,6 @@
     if (enableBtn) {
       loadMoreBtn.disabled = false;
     }
-
-    // TODO: add listeneres to the new values somehow
   }
 
   function expandText(event) {
@@ -108,7 +106,16 @@
     functionMap[event.target.dataset.action](event);
   }
 
-  document.getElementById('log-table').addEventListener('click', dealWithClick, false);
+  // We use a global handler, since we dynamically add commit-rows on
+  // pagination
+  document.addEventListener('click', function(e) {
+    if (event.target.getAttribute('data-action') != "expandText") {
+        return;
+    }
+
+    expandText(e);
+  });
+
   document.getElementById('next-page-fetcher').addEventListener('click', dealWithClick, false);
 </script>
 
