@@ -20,6 +20,7 @@ webpack_build(
     ]),
     outs = [
         "htdocs/assets/js/bundle.js",
+        "htdocs/assets/js/gitlog.js",
     ],
     config = "webpack.config.js",
     deps = [

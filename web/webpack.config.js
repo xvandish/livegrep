@@ -7,9 +7,12 @@ env = dbxBazelUtils.initBazelEnv(__dirname);
 var webpack = require('webpack');
 
 module.exports = {
-  entry: 'entry.js',
+  entry: {
+    bundle: 'entry.js',
+    gitlog: 'gitlog.js',
+  },
   output: {
-    filename: 'htdocs/assets/js/bundle.js',
+    filename: 'htdocs/assets/js/[name].js',
     path: env.outputRoot,
   },
 

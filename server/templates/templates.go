@@ -53,9 +53,14 @@ func LoadTemplates(base string, templates map[string]*template.Template) error {
 		return err
 	}
 	for _, path := range paths {
+		fmt.Printf("loading with path: %s\n", path)
 		t := template.Must(common.Clone())
 		t = template.Must(t.ParseFiles(path))
 		templates[filepath.Base(path)] = t
+	}
+
+	for tn, _ := range templates {
+		fmt.Printf("tempalte with name: %s found", tn)
 	}
 	return nil
 }
