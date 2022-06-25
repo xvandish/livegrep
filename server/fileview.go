@@ -267,19 +267,30 @@ type Commit struct {
 }
 
 // Add more as we need it
+// Next parent needs to be fixed up so that we don't get the first commit of a paged
+// response with the same commit as the last commit as the prev response: e.g.
+// commit x
+// commit y
+// commit y
+// commit z
 type SimpleGitLog struct {
-	Commits []*Commit
+	Commits         []*Commit
+	MaybeLastPage   bool
+	IsPaginationReq bool
+	NextParent      string // hash of the commit
 }
 
 // We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
-func buildSimpleGitLogData(relativePath string, repo config.RepoConfig) (*SimpleGitLog, error) {
+func buildSimpleGitLogData(relativePath string, firstParent string, repo config.RepoConfig) (*SimpleGitLog, error) {
 	cleanPath := path.Clean(relativePath)
-	out, err := exec.Command("git", "-C", repo.Path, "log", "-z", "--pretty="+customGitLogFormat, "HEAD", "--", cleanPath).Output()
+	start := time.Now()
+	out, err := exec.Command("git", "-C", repo.Path, "log", "-n", "100", "-z", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath).Output()
+	fmt.Printf("took %s to get git log\n", time.Since(start))
 	if err != nil {
 		return nil, err
 	}
 	// Null terminate our thing
-	start := time.Now()
+	start = time.Now()
 	out = append(out, byte(rune(0)))
 	fmt.Printf("took %s to append rune\n", time.Since(start))
 	err = os.WriteFile("./tmp-log", out, 0644)
@@ -303,6 +314,13 @@ func buildSimpleGitLogData(relativePath string, repo config.RepoConfig) (*Simple
 			Body:        string(match[7]),
 		}
 	}
+
+	simpleGitLog.MaybeLastPage = len(simpleGitLog.Commits) < 100
+	fmt.Printf("len(simpleGitLog.Commits): %d\n", len(simpleGitLog.Commits))
+	fmt.Printf("len(simpleGitLog.Commits) < 100: %v\n", len(simpleGitLog.Commits) < 100)
+
+	simpleGitLog.IsPaginationReq = firstParent != "HEAD"
+	simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
 
 	return &simpleGitLog, nil
 }
