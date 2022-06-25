@@ -123,6 +123,50 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	})
 }
 
+func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	repoName, filePath, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/git-show/")
+
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	// given /git-show/repo/some/path/here/commit/{commitHash}
+	// TODO: We should think about restructuring the URL patterns so that
+	// our modifiers come after.
+	// E.g
+	// /repo/some/path/commit/x
+	// /repo/some/path/log
+	commit := path.Base(r.URL.Path)
+
+	if commit == "" {
+		http.Error(w, "commit is empty", 500)
+		return
+	}
+
+	data, err := gitShowCommit(filePath, repo, commit)
+
+	if err != nil {
+		http.Error(w, "error doing git-show", 500)
+		return
+	}
+
+	log.Printf(ctx, "data is: %v\n", data)
+
+	w.Write([]byte("hello"))
+}
+
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/simple-git-log/")
 	if err != nil {
@@ -490,6 +534,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))

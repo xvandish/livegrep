@@ -1,0 +1,19 @@
+<!-- this template will show detailed information about a commit -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Git show</title>
+
+{{linkTag .Nonce "stylesheet" "/assets/css/gitlog.css" .AssetHashes}}
+{{scriptTag .Nonce "/assets/js/gitlog.js" .AssetHashes}}
+</head>
+<body>
+<!-- start with table, move to divs with <flex if useful -->
+<section class="git-show">
+  {{ with .Data }}
+
+
+  {{end}}
+<section/>
+</body>
+</html>

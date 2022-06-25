@@ -257,13 +257,15 @@ var gitLogRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?
 
 // Later on when we add support for CommitCommiter we can abstract Author to it's own struct
 type Commit struct {
-	Hash        string
-	ShortHash   string
-	AuthorName  string
-	AuthorEmail string
-	Date        string
-	Subject     string
-	Body        string
+	Hash            string
+	ShortHash       string
+	ParentHash      string
+	ParentShortHash string
+	AuthorName      string
+	AuthorEmail     string
+	Date            string
+	Subject         string
+	Body            string
 }
 
 // Add more as we need it
@@ -322,10 +324,150 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	return &simpleGitLog, nil
 }
 
-// Given a specific commitHash, get detailed info (--numstat or --shortstat)
-// func getDetailedGitLogForCommit(relativePath string, repo config.RepoConfig, commit string) {
+// Add more as we need it
+// Next parent needs to be fixed up so that we don't get the first commit of a paged
+// response with the same commit as the last commit as the prev response: e.g.
+// commit x
+// commit y
+// commit y
+// commit z
 
-// }
+// When we get fancier/decide what to do, we can make add to this
+type Diff struct {
+	Header      string
+	HeaderLines []string
+	ChunkLine   string // may not be necessary to have a special ref to it
+	Lines       []string
+	HunkNum     int
+}
+
+// src/whatever/whatever.c | 15 +++++++-----
+type StatLine struct {
+	Path         string // src/whatever/whatever.c
+	LinesChanged string // 15
+	GraphString  string // +++++------
+	HunkNum      int    // used to link to say, #h0, which is the diff of this path
+}
+
+type DiffStat struct {
+	StatLines   []*StatLine
+	SummaryLine string // 4 files changed, 50 insertions(+), 6 deletions(-)
+}
+
+type GitShow struct {
+	Commit   *Commit // basic commit info
+	Diffs    []*Diff
+	DiffStat *DiffStat
+}
+
+// var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
+var customShowFormat = "format:commit %H <%h>%nparent %P <%p>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
+var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
+
+// used to parse src/whatever/whatever.c | 15 +++++++-----
+var diffStatLineRegex = regexp.MustCompile("(.*)\\s\\|\\s(\\d*)\\s(.*)")
+
+// Given a specific commitHash, get detailed info (--numstat or --shortstat)
+func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (*GitShow, error) {
+
+	// git show 74846d35b24b6efd61bb88a0a750b6bb257e6e78 --patch-with-stat -z > out.txt
+	out, err := exec.Command("git", "-C", repo.Path, "show", commit, "--patch-with-stat", "--pretty="+customShowFormat, "-z").Output()
+
+	if err != nil {
+		return nil, err
+	}
+
+	match := gitShowRegex.FindSubmatch(out)
+
+	gitShow := GitShow{}
+
+	gitCommit := Commit{
+		Hash:            string(match[1]),
+		ShortHash:       string(match[2]),
+		ParentHash:      string(match[3]),
+		ParentShortHash: string(match[4]),
+		AuthorName:      string(match[5]),
+		AuthorEmail:     string(match[6]),
+		Subject:         string(match[7]),
+		Date:            string(match[8]),
+		Body:            string(match[9]),
+	}
+
+	diffStat := DiffStat{}
+	diffStatBytes := match[10]
+	buf := bytes.NewBuffer(diffStatBytes)
+	hunkNum := 0
+	for {
+		line, err := buf.ReadBytes('\n')
+
+		if err != nil {
+			break
+		}
+
+		match := diffStatLineRegex.FindSubmatch(line)
+
+		if len(match) == 0 {
+			diffStat.SummaryLine = string(line)
+			break
+		}
+
+		statLine := StatLine{
+			HunkNum:      hunkNum,
+			Path:         string(match[1]),
+			LinesChanged: string(match[2]),
+			GraphString:  string(match[3]),
+		}
+
+		diffStat.StatLines = append(diffStat.StatLines, &statLine)
+		hunkNum += 1
+	}
+
+	diffText := match[11]
+	// We'll have to see how this behaves with long lines
+	diffBuf := bytes.NewBuffer(diffText)
+	var currDif *Diff
+	hunkNum = 0
+
+	// 	diff --git a/arch/x86/kernel/cpu/perf_event_intel.c b/arch/x86/kernel/cpu/perf_event_intel.
+	// index 224c952071f9..c135ed735b22 100644
+	// --- a/arch/x86/kernel/cpu/perf_event_intel.c
+	// +++ b/arch/x86/kernel/cpu/perf_event_intel.c
+	// @@ -767,
+	for {
+		line, err := diffBuf.ReadBytes('\n')
+
+		if err != nil {
+			break
+		}
+
+		s := string(line)
+		if strings.HasPrefix(s, "diff") {
+			if currDif != nil { // end the prev diff
+				gitShow.Diffs = append(gitShow.Diffs, currDif)
+				hunkNum += 1
+			}
+			currDif = &Diff{
+				Header:  s,
+				HunkNum: hunkNum,
+			}
+		} else if strings.HasPrefix(s, "@@") {
+			currDif.ChunkLine = s
+		}
+
+		// If we haven't seen the @@ line yet, then add to header info
+		if currDif.ChunkLine == "" {
+			currDif.HeaderLines = append(currDif.HeaderLines, s)
+		} else {
+			currDif.Lines = append(currDif.Lines, s)
+		}
+
+	}
+
+	gitShow.DiffStat = &diffStat
+	gitShow.Commit = &gitCommit
+
+	return &gitShow, nil
+}
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
 	commitHash := commit
