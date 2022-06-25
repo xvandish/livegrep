@@ -4,14 +4,50 @@
 <head>
   <title>Git show</title>
 
-{{linkTag .Nonce "stylesheet" "/assets/css/gitlog.min.css" .AssetHashes}}
-{{scriptTag .Nonce "/assets/js/gitlog.js" .AssetHashes}}
 </head>
 <body>
-<!-- start with table, move to divs with <flex if useful -->
 <section class="git-show">
   {{ with .Data }}
 
+  <div class="commit-metadata">
+  
+    {{ with .Commit }}
+      <div>
+        <div><span>commit </span> {{ .Hash }}</div>
+        <div><span>parent </span> {{ .ParentHash }}</div>
+        <div><span>Author </span> {{ .AuthorName }} {{ .AuthorEmail}}</div>
+        <div><span>Date </span> {{ .Date }}</div>
+      </div>
+
+      <div class="body-&-subject">
+        <pre>
+          {{ .Subject }}
+          {{ .Body }}
+        </pre>
+      </div>
+    {{ end }}
+
+    {{ with .DiffStat }}
+      <div class="diffstat">
+    
+        <table>
+          <tbody>
+            {{ range $sL := .StatLines }}
+              <tr>
+                <td><a href="{{ printf "%s%s" "hunk" $sL.HunkNum }}">{{$sL.Path}}</a></td>
+                <td> | </td>
+                <td>{{$sL.LinesChanged}}</td>
+                <td>{{$sL.GraphString}}</td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+
+        <span>{{.SummaryLine}}</span>
+      </div>
+    {{ end }}
+
+  </div>
 
   {{end}}
 <section/>
