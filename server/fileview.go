@@ -284,7 +284,7 @@ type SimpleGitLog struct {
 func buildSimpleGitLogData(relativePath string, firstParent string, repo config.RepoConfig) (*SimpleGitLog, error) {
 	cleanPath := path.Clean(relativePath)
 	start := time.Now()
-	out, err := exec.Command("git", "-C", repo.Path, "log", "-n", "100", "-z", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath).Output()
+	out, err := exec.Command("git", "-C", repo.Path, "log", "-n", "1000", "-z", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath).Output()
 	fmt.Printf("took %s to get git log\n", time.Since(start))
 	if err != nil {
 		return nil, err
@@ -315,9 +315,9 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 		}
 	}
 
-	simpleGitLog.MaybeLastPage = len(simpleGitLog.Commits) < 100
+	simpleGitLog.MaybeLastPage = len(simpleGitLog.Commits) < 1000
 	fmt.Printf("len(simpleGitLog.Commits): %d\n", len(simpleGitLog.Commits))
-	fmt.Printf("len(simpleGitLog.Commits) < 100: %v\n", len(simpleGitLog.Commits) < 100)
+	fmt.Printf("len(simpleGitLog.Commits) < 1000: %v\n", len(simpleGitLog.Commits) < 1000)
 
 	simpleGitLog.IsPaginationReq = firstParent != "HEAD"
 	simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
