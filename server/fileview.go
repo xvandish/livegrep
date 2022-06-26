@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -369,7 +370,7 @@ type GitShow struct {
 
 // var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
 var customShowFormat = "format:commit %H <%h>%nparent %P <%p>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
-var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
+var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n?---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
 
 // used to parse src/whatever/whatever.c | 15 +++++++-----
 var diffStatLineRegex = regexp.MustCompile("([^\\s]*)\\s*\\|\\s*(\\d*)\\s*(.*)")
@@ -387,6 +388,11 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 	match := gitShowRegex.FindSubmatch(out)
 
 	gitShow := GitShow{}
+
+	if len(match) == 0 {
+		fmt.Printf("out is: %v\n", string(out))
+		return nil, errors.New("failed to parse git-show output")
+	}
 
 	gitCommit := Commit{
 		Hash:            string(match[1]),
