@@ -333,20 +333,27 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 // commit z
 
 // When we get fancier/decide what to do, we can make add to this
+
+type DiffLine struct {
+	Line     string
+	LineType string // can be one of "context", "insert", "delete"
+}
+
 type Diff struct {
 	Header      string
 	HeaderLines []string
 	ChunkLine   string // may not be necessary to have a special ref to it
-	Lines       []string
+	Lines       []*DiffLine
 	HunkNum     int
 }
 
 // src/whatever/whatever.c | 15 +++++++-----
 type StatLine struct {
-	Path         string // src/whatever/whatever.c
-	LinesChanged string // 15
-	GraphString  string // +++++------
-	HunkNum      int    // used to link to say, #h0, which is the diff of this path
+	Path             string // src/whatever/whatever.c
+	LinesChanged     string // 15
+	GraphStringPlus  string // +++++
+	GraphStringMinus string // ----
+	HunkNum          int    // used to link to say, #h0, which is the diff of this path
 }
 
 type DiffStat struct {
@@ -365,7 +372,7 @@ var customShowFormat = "format:commit %H <%h>%nparent %P <%p>%nauthor <%an> <%ae
 var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
 
 // used to parse src/whatever/whatever.c | 15 +++++++-----
-var diffStatLineRegex = regexp.MustCompile("(.*)\\s\\|\\s(\\d*)\\s(.*)")
+var diffStatLineRegex = regexp.MustCompile("([^\\s]*)\\s*\\|\\s*(\\d*)\\s*(.*)")
 
 // Given a specific commitHash, get detailed info (--numstat or --shortstat)
 func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (*GitShow, error) {
@@ -411,11 +418,29 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 			break
 		}
 
+		for m := range match {
+			fmt.Printf("match[%d]: %s\n", m, string(match[m]))
+		}
+
+		graphString := string(match[3])
+		var graphStringPlus, graphStringMinus string
+		fIdxOfPlus := strings.Index(graphString, "+")
+		fIdxOfMinus := strings.Index(graphString, "-")
+
+		if fIdxOfPlus > -1 {
+			graphStringPlus = graphString[fIdxOfPlus : strings.LastIndex(graphString, "+")+1]
+		}
+
+		if fIdxOfMinus > -1 {
+			graphStringMinus = graphString[fIdxOfMinus : strings.LastIndex(graphString, "-")+1]
+		}
+
 		statLine := StatLine{
-			HunkNum:      hunkNum,
-			Path:         string(match[1]),
-			LinesChanged: string(match[2]),
-			GraphString:  string(match[3]),
+			HunkNum:          hunkNum,
+			Path:             string(match[1]),
+			LinesChanged:     string(match[2]),
+			GraphStringPlus:  graphStringPlus,
+			GraphStringMinus: graphStringMinus,
 		}
 
 		diffStat.StatLines = append(diffStat.StatLines, &statLine)
@@ -437,6 +462,10 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 		line, err := diffBuf.ReadBytes('\n')
 
 		if err != nil {
+			// assuming we've hit an EOL
+			if currDif != nil {
+				gitShow.Diffs = append(gitShow.Diffs, currDif)
+			}
 			break
 		}
 
@@ -460,7 +489,17 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 		if currDif.ChunkLine == "" {
 			currDif.HeaderLines = append(currDif.HeaderLines, s)
 		} else {
-			currDif.Lines = append(currDif.Lines, s)
+			firstChar := s[0:1]
+			var diffLine DiffLine
+			if firstChar == "+" {
+				diffLine.LineType = "insert"
+			} else if firstChar == "-" {
+				diffLine.LineType = "delete"
+			} else {
+				diffLine.LineType = "context"
+			}
+			diffLine.Line = s
+			currDif.Lines = append(currDif.Lines, &diffLine)
 		}
 
 	}
