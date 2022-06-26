@@ -4,6 +4,26 @@
 <head>
   <title>Git show</title>
 
+<style>
+.body {
+  font-size: 1rem;
+}
+.diff-data span[data-line-type="insert"] {
+    color: green;
+}
+
+.diff-data span[data-line-type="delete"] {
+    color: red;
+}
+
+.green {
+  color: green;
+}
+
+.red {
+  color: red;
+}
+</style>
 </head>
 <body>
 <section class="git-show">
@@ -13,17 +33,29 @@
   
     {{ with .Commit }}
       <div>
-        <div><span>commit </span> {{ .Hash }}</div>
-        <div><span>parent </span> {{ .ParentHash }}</div>
-        <div><span>Author </span> {{ .AuthorName }} {{ .AuthorEmail}}</div>
-        <div><span>Date </span> {{ .Date }}</div>
+        <div>
+          <span>commit </span>
+          <a href="../commit/{{ .Hash }}">{{ .Hash }}</a>
+        </div>
+        <div>
+          <span>parent </span> 
+          <a href="../commit/{{.ParentHash}}">{{ .ParentHash }}</a>
+        </div>
+        <div>
+          <span>Author </span> 
+          <span>{{ .AuthorName }}
+          &lt;<a href="mailto:{{.AuthorEmail}}">{{ .AuthorEmail}}</a>&gt;
+          </span>
+        </div>
+        <div>
+          <span>Date </span> 
+          {{ .Date }}</div>
       </div>
 
       <div class="body-&-subject">
-        <pre>
-          {{ .Subject }}
-          {{ .Body }}
-        </pre>
+        <!-- TODO: add emphasis to subject -->
+        <pre>{{ .Subject }}</pre>
+        <pre>{{ .Body }}</pre>
       </div>
     {{ end }}
 
@@ -37,7 +69,10 @@
                 <td><a href="{{ printf "#%s%d" "hunk" $sL.HunkNum }}">{{$sL.Path}}</a></td>
                 <td> | </td>
                 <td>{{$sL.LinesChanged}}</td>
-                <td>{{$sL.GraphString}}</td>
+                <td>
+                  <span class="green">{{$sL.GraphStringPlus}}</span>
+                  <span class="red">{{$sL.GraphStringMinus}}</span>
+                </td>
               </tr>
             {{ end }}
           </tbody>
@@ -51,16 +86,9 @@
 
   <div class="diff-data">
     {{ range $diff := .Diffs }}
-      <pre id="{{ printf "%s%d" "hunk" $diff.HunkNum }}">
-      {{ $diff.Header }}
-        {{ range $hL := $diff.HeaderLines }}
-          {{ $hL }}
-        {{ end }}
-      {{ $diff.ChunkLine }}
-      {{ range $line := $diff.Lines }}
-        {{ $line }}
-      {{ end }}
-      </pre>
+<pre id="{{ printf "%s%d" "hunk" $diff.HunkNum }}">
+<b>{{ $diff.Header }}</b>{{ range $hL := $diff.HeaderLines }}{{ $hL }}{{ end }}{{ $diff.ChunkLine }}{{ range $line := $diff.Lines }}<span data-line-type="{{ $line.LineType }}">{{ $line.Line }}</span>{{ end }}
+</pre>
     {{ end }}
   </div>
 
