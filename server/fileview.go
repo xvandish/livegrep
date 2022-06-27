@@ -1,8 +1,8 @@
 package server
 
 import (
+	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -368,49 +368,109 @@ type GitShow struct {
 }
 
 // var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
-var customShowFormat = "format:commit %H <%h>%nparent %P <%p>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
-var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n?---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
+var customShowFormat = "format:%H %h%x00%P %% %p%x00%an %% %ae%x00%s%x00%ai%x00%b%x00"
+
+// var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n?---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
 
 // used to parse src/whatever/whatever.c | 15 +++++++-----
 var diffStatLineRegex = regexp.MustCompile("([^\\s]*)\\s*\\|\\s*(\\d*)\\s*(.*)")
+
+// dropCR drops a terminal \r from the data.
+func dropCR(data []byte) []byte {
+	if len(data) > 0 && data[len(data)-1] == '\r' {
+		return data[0 : len(data)-1]
+	}
+	return data
+}
+
+func ScanGitShowEntry(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\x00'); i >= 0 {
+		// we have a full non-terminated line
+		return i + 1, dropCR(data[0:i]), nil
+	}
+	// If we're at EOF, we have a final, non-terminated line. Return it
+	if atEOF {
+		return len(data), dropCR(data), nil
+	}
+	// request more data
+	return 0, nil, nil
+}
 
 // Given a specific commitHash, get detailed info (--numstat or --shortstat)
 func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (*GitShow, error) {
 
 	// git show 74846d35b24b6efd61bb88a0a750b6bb257e6e78 --patch-with-stat -z > out.txt
-	out, err := exec.Command("git", "-C", repo.Path, "show", commit, "--patch-with-stat", "--pretty="+customShowFormat, "-z").Output()
+	cmd := exec.Command("git", "-C", repo.Path, "show", commit,
+		// this is a shorthand for --patch and --stat
+		"--patch-with-stat",
+		"--pretty="+customShowFormat,
+
+		// print a null byte to seperate the initial information from the diffs
+		"-z",
+
+		// treat a merge commit as a diff against the first parent
+		"--first-parent",
+	)
+
+	stdout, err := cmd.StdoutPipe()
 
 	if err != nil {
 		return nil, err
 	}
 
-	match := gitShowRegex.FindSubmatch(out)
-
-	gitShow := GitShow{}
-
-	if len(match) == 0 {
-		fmt.Printf("out is: %v\n", string(out))
-		return nil, errors.New("failed to parse git-show output")
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
 	}
 
-	gitCommit := Commit{
-		Hash:            string(match[1]),
-		ShortHash:       string(match[2]),
-		ParentHash:      string(match[3]),
-		ParentShortHash: string(match[4]),
-		AuthorName:      string(match[5]),
-		AuthorEmail:     string(match[6]),
-		Subject:         string(match[7]),
-		Date:            string(match[8]),
-		Body:            string(match[9]),
-	}
+	scanner := bufio.NewScanner(stdout)
+
+	const maxCapacity = 100 * 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+	scanner.Split(ScanGitShowEntry) // read null byte delimited
+
+	var gitCommit Commit
+	var gitShow GitShow
+
+	scanner.Scan()
+	commitInfo := bytes.Split(scanner.Bytes(), []byte(" "))
+	gitCommit.Hash = string(commitInfo[0])
+	gitCommit.ShortHash = string(commitInfo[1])
+
+	scanner.Scan()
+	parentCommits := bytes.Split(scanner.Bytes(), []byte(" % "))
+	gitCommit.ParentHash = string(parentCommits[0]) // TODO: This is actually multiple pars
+	gitCommit.ShortHash = string(parentCommits[1])
+
+	scanner.Scan()
+	authorInfo := bytes.Split(scanner.Bytes(), []byte(" % "))
+	gitCommit.AuthorName = string(authorInfo[0])
+	gitCommit.AuthorEmail = string(authorInfo[1])
+
+	scanner.Scan()
+	gitCommit.Subject = string(scanner.Bytes())
+
+	scanner.Scan()
+	gitCommit.Date = string(scanner.Bytes())
+
+	scanner.Scan()
+	gitCommit.Body = string(scanner.Bytes())
+
+	// Add the commit in
+	gitShow.Commit = &gitCommit
+
+	scanner.Scan()
 
 	diffStat := DiffStat{}
-	diffStatBytes := match[10]
-	buf := bytes.NewBuffer(diffStatBytes)
+	diffStatBuff := bytes.NewBuffer(scanner.Bytes())
+	diffStatBuff.ReadBytes('\n') // we read the first useless line, which is ---\n
 	hunkNum := 0
 	for {
-		line, err := buf.ReadBytes('\n')
+		line, err := diffStatBuff.ReadBytes('\n')
 
 		if err != nil {
 			break
@@ -452,9 +512,10 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 		hunkNum += 1
 	}
 
-	diffText := match[11]
+	scanner.Scan()
+
 	// We'll have to see how this behaves with long lines
-	diffBuf := bytes.NewBuffer(diffText)
+	diffBuf := bytes.NewBuffer(scanner.Bytes())
 	var currDif *Diff
 	hunkNum = 0
 

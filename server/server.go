@@ -156,7 +156,7 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 	data, err := gitShowCommit(filePath, repo, commit)
 
 	if err != nil {
-		http.Error(w, "error doing git-show", 500)
+		http.Error(w, fmt.Sprintf("error doing git-show: %v\n", err), 500)
 		return
 	}
 
