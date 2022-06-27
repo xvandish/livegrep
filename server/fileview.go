@@ -258,15 +258,15 @@ var gitLogRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?
 
 // Later on when we add support for CommitCommiter we can abstract Author to it's own struct
 type Commit struct {
-	Hash            string
-	ShortHash       string
-	ParentHash      string
-	ParentShortHash string
-	AuthorName      string
-	AuthorEmail     string
-	Date            string
-	Subject         string
-	Body            string
+	Hash              string
+	ShortHash         string
+	ParentHashes      []string
+	ParentShortHashes []string
+	AuthorName        string
+	AuthorEmail       string
+	Date              string
+	Subject           string
+	Body              string
 }
 
 // Add more as we need it
@@ -369,7 +369,15 @@ type GitShow struct {
 }
 
 // var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
-var customShowFormat = "format:%H %h%x00%P %% %p%x00%an %% %ae%x00%s%x00%ai%x00%b%x00"
+var customShowFormat = "format:%H%x00" +
+	"%h%x00" +
+	"%P%x00" +
+	"%p%x00" +
+	"%an%x00" +
+	"%ae%x00" +
+	"%s%x00" +
+	"%ai%x00" +
+	"%b%x00"
 
 // var gitShowRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nparent\s(?P<parentHash>\w*)\s<(?P<shortParentHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\n?---\n(?P<diffStat>.*)\x00(?P<diffText>.*)`)
 
@@ -438,19 +446,28 @@ func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (
 	var gitShow GitShow
 
 	scanner.Scan()
-	commitInfo := bytes.Split(scanner.Bytes(), []byte(" "))
-	gitCommit.Hash = string(commitInfo[0])
-	gitCommit.ShortHash = string(commitInfo[1])
+	gitCommit.Hash = string(scanner.Bytes())
 
 	scanner.Scan()
-	parentCommits := bytes.Split(scanner.Bytes(), []byte(" % "))
-	gitCommit.ParentHash = string(parentCommits[0]) // TODO: This is actually multiple pars
-	gitCommit.ShortHash = string(parentCommits[1])
+	gitCommit.ShortHash = string(scanner.Bytes())
 
 	scanner.Scan()
-	authorInfo := bytes.Split(scanner.Bytes(), []byte(" % "))
-	gitCommit.AuthorName = string(authorInfo[0])
-	gitCommit.AuthorEmail = string(authorInfo[1])
+	parentCommits := bytes.Split(scanner.Bytes(), []byte(" "))
+	for _, pc := range parentCommits {
+		gitCommit.ParentHashes = append(gitCommit.ParentHashes, string(pc))
+	}
+
+	scanner.Scan()
+	parentShortCommits := bytes.Split(scanner.Bytes(), []byte(" "))
+	for _, psc := range parentShortCommits {
+		gitCommit.ParentShortHashes = append(gitCommit.ParentShortHashes, string(psc))
+	}
+
+	scanner.Scan()
+	gitCommit.AuthorName = string(scanner.Bytes())
+
+	scanner.Scan()
+	gitCommit.AuthorEmail = string(scanner.Bytes())
 
 	scanner.Scan()
 	gitCommit.Subject = string(scanner.Bytes())

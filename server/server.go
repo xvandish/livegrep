@@ -162,7 +162,7 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	log.Printf(ctx, "data is: %v\n", data)
+	// log.Printf(ctx, "data is: %v\n", data)
 
 	templateName := "gitshowcommit.html"
 	t, ok := s.Templates[templateName]
