@@ -38,8 +38,10 @@
           <a href="../commit/{{ .Hash }}">{{ .Hash }}</a>
         </div>
         <div>
-          <span>parent </span> 
-          <a href="../commit/{{.ParentHash}}">{{ .ParentHash }}</a>
+          <span>parent(s) </span> 
+          {{ range $ph := .ParentHashes }}
+            <a href="../commit/{{$ph}}">{{ $ph }}</a>
+          {{ end }}
         </div>
         <div>
           <span>Author </span> 
