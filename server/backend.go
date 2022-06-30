@@ -10,6 +10,8 @@ import (
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+
+	"github.com/livegrep/livegrep/server/config"
 )
 
 type Tree struct {
@@ -41,15 +43,21 @@ type Backend struct {
 	Up         *Availability
 }
 
-func NewBackend(id string, addr string) (*Backend, error) {
-	client, err := grpc.Dial(addr, grpc.WithInsecure())
+func NewBackend(bk *config.Backend) (*Backend, error) {
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+	if bk.MaxMessageSize == 0 {
+		bk.MaxMessageSize = 10 << 20 // default to 10MiB
+	}
+	opts = append(opts, grpc.MaxCallRecvMsgSize(bk.MaxMessageSize))
+
+	client, err := grpc.Dial(bk.Addr, opts...)
 	if err != nil {
 		return nil, err
 	}
 	bk := &Backend{
-		Id:         id,
-		Addr:       addr,
-		I:          &I{Name: id},
+		Id:         bk.Id,
+		Addr:       bk.Addr,
+		I:          &I{Name: bk.Id},
 		Codesearch: pb.NewCodeSearchClient(client),
 		Up:         &Availability{},
 	}
