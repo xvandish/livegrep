@@ -48,7 +48,7 @@ func NewBackend(be config.Backend) (*Backend, error) {
 	if be.MaxMessageSize == 0 {
 		be.MaxMessageSize = 10 << 20 // default to 10MiB
 	}
-	opts = append(opts, grpc.MaxCallRecvMsgSize(be.MaxMessageSize))
+	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(be.MaxMessageSize)))
 
 	client, err := grpc.Dial(be.Addr, opts...)
 	if err != nil {
