@@ -392,7 +392,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	for _, bk := range srv.config.Backends {
-		be, e := NewBackend(*bk)
+		be, e := NewBackend(bk)
 		if e != nil {
 			return nil, e
 		}
