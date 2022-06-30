@@ -43,7 +43,7 @@ type Backend struct {
 	Up         *Availability
 }
 
-func NewBackend(be *config.Backend) (*Backend, error) {
+func NewBackend(be config.Backend) (*Backend, error) {
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 	if be.MaxMessageSize == 0 {
 		be.MaxMessageSize = 10 << 20 // default to 10MiB
