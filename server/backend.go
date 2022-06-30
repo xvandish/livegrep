@@ -43,21 +43,21 @@ type Backend struct {
 	Up         *Availability
 }
 
-func NewBackend(bk *config.Backend) (*Backend, error) {
+func NewBackend(be *config.Backend) (*Backend, error) {
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	if bk.MaxMessageSize == 0 {
-		bk.MaxMessageSize = 10 << 20 // default to 10MiB
+	if be.MaxMessageSize == 0 {
+		be.MaxMessageSize = 10 << 20 // default to 10MiB
 	}
-	opts = append(opts, grpc.MaxCallRecvMsgSize(bk.MaxMessageSize))
+	opts = append(opts, grpc.MaxCallRecvMsgSize(be.MaxMessageSize))
 
-	client, err := grpc.Dial(bk.Addr, opts...)
+	client, err := grpc.Dial(be.Addr, opts...)
 	if err != nil {
 		return nil, err
 	}
 	bk := &Backend{
-		Id:         bk.Id,
-		Addr:       bk.Addr,
-		I:          &I{Name: bk.Id},
+		Id:         be.Id,
+		Addr:       be.Addr,
+		I:          &I{Name: be.Id},
 		Codesearch: pb.NewCodeSearchClient(client),
 		Up:         &Availability{},
 	}
