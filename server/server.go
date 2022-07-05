@@ -556,6 +556,23 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
 
+	// no matter what, the structure of urls for repos is
+	// /project|user|org/repo
+	//
+	// For directories
+	// /org/repo/tree/{commitHash}|{branchName}/path...
+	//
+	// For blobs
+	// /org/repo/blob/{commitHash}|{branchName}/path...
+	//
+	// GitLab uses a seperator /-/tree/main between the reponame and the tree/blob
+
+	// we can loop through repos to get the allowed prefixes, and the allowed suffixes
+	// we can make it a map
+	// {
+	//    "parent": ["repo1", "repo2", "repo3" ]
+	//  }
+
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/bkstatus/:backend", http.HandlerFunc(srv.ServeBackendStatus))
