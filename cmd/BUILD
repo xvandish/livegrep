@@ -6,6 +6,7 @@ pkg_tar(
         "//cmd/{}:{}".format(cmd, cmd)
         for cmd in [
             "lg",
+            "lgiap",
             "livegrep",
             "livegrep-fetch-reindex",
             "livegrep-github-reindex",
