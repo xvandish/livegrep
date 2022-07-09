@@ -283,10 +283,11 @@ type Commit struct {
 // commit y
 // commit z
 type SimpleGitLog struct {
-	Commits         []*Commit
-	MaybeLastPage   bool
-	IsPaginationReq bool
-	NextParent      string // hash of the commit
+	Commits          []*Commit
+	MaybeLastPage    bool
+	IsPaginationReq  bool
+	NextParent       string // hash of the commit
+	CommitLinkPrefix string // like xvandish/livegrep xvandish=parent livegrep=repo
 }
 
 // We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
@@ -415,7 +416,7 @@ func ScanGitShowEntry(data []byte, atEOF bool) (advance int, token []byte, err e
 }
 
 // Given a specific commitHash, get detailed info (--numstat or --shortstat)
-func gitShowCommit(relativePath string, repo config.RepoConfig, commit string) (*GitShow, error) {
+func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 
 	// git show 74846d35b24b6efd61bb88a0a750b6bb257e6e78 --patch-with-stat -z > out.txt
 	cmd := exec.Command("git", "-C", repo.Path, "show", commit,
