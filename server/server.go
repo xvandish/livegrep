@@ -123,19 +123,19 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 }
 
 func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	repoName, filePath, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/git-show/")
-
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
+	// repoName, filePath, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/git-show/")
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	commit := r.URL.Query().Get(":commitHash")
+	repoName := parent + "/" + repo
+	// rev := r.URL.Query().Get(":rev")
 
 	if len(s.repos) == 0 {
 		http.Error(w, "File browsing and git commands not enabled", 404)
 		return
 	}
 
-	repo, ok := s.repos[repoName]
+	repoConfig, ok := s.repos[repoName]
 	if !ok {
 		http.Error(w, "No such repo", 404)
 		return
@@ -147,14 +147,13 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 	// E.g
 	// /repo/some/path/commit/x
 	// /repo/some/path/log
-	commit := path.Base(r.URL.Path)
 
 	if commit == "" {
 		http.Error(w, "commit is empty", 500)
 		return
 	}
 
-	data, err := gitShowCommit(filePath, repo, commit)
+	data, err := gitShowCommit(repoConfig, commit)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error doing git-show: %v\n", err), 500)
@@ -217,6 +216,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
 		return
 	}
+	data.CommitLinkPrefix = "/view/" + parent + "/" + repo
 
 	if !data.MaybeLastPage {
 		w.Header().Set("X-next-parent", data.NextParent)
@@ -590,6 +590,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
 	m.Add("GET", "/view/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/view/:parent/:repo/commit/:commitHash/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))

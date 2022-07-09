@@ -35,12 +35,12 @@
       <div>
         <div>
           <span>commit </span>
-          <a href="../commit/{{ .Hash }}">{{ .Hash }}</a>
+          <a href="../{{ .Hash }}">{{ .Hash }}</a>
         </div>
         <div>
           <span>parent(s) </span> 
           {{ range $ph := .ParentHashes }}
-            <a href="../commit/{{$ph}}">{{ $ph }}</a>
+            <a href="../{{$ph}}">{{ $ph }}</a>
           {{ end }}
         </div>
         <div>

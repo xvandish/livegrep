@@ -13,7 +13,7 @@
   <tbody>
     {{range $commit := .Commits }}
       <tr>
-        <td>{{$commit.ShortHash}}</td>
+        <td><a href="{{$.CommitLinkPrefix}}/commit/{{$commit.Hash}}">{{$commit.ShortHash}}</a></td>
         <td>{{$commit.AuthorName}}</td>
         <td>{{$commit.Date}}</td>
         <td>
