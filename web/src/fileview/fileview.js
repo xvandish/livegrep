@@ -249,6 +249,9 @@ function init(initData) {
       if (selectedText) {
         window.find(selectedText, false /* case sensitive */, goBackwards);
       }
+    } else if (String.fromCharCode(event.which) == 'L') {
+      $('#commit-history').focus();
+      window.location = $('#commit-history').attr('href');
     }
     return true;
   }

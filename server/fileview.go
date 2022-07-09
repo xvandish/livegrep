@@ -101,6 +101,7 @@ type fileViewerContext struct {
 	ExternalDomain string
 	Permalink      string
 	Headlink       string
+	LogLink        string
 }
 
 type sourceFileContent struct {
@@ -605,6 +606,8 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	}
 	obj := commitHash + ":" + cleanPath
 	pathSplits := strings.Split(cleanPath, "/")
+
+	fmt.Printf("repo.path=%s commitHash=%s cleanPath=%s obj=%s pathSplits=%v\n", repo.Path, commitHash, cleanPath, obj, pathSplits)
 
 	var fileContent *sourceFileContent
 	var dirContent *directoryContent

@@ -19,6 +19,9 @@
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
       </li>,
+      <li class="header-action">
+        <a id="commit-history" data-action-name="" title="View commit history at. Keyboard shortcut: l" href="{{.LogLink}}">commits [<span class='shortcut'>l</span>]</a>
+      </li>,
       {{if .Permalink}}
       <li class="header-action">
         <a id="permalink" title="Permalink. Keyboard shortcut: y" href="{{.Permalink}}">permalink [<span class='shortcut'>y</span>]</a>

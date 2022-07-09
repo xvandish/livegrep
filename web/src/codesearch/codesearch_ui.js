@@ -92,7 +92,7 @@ function url(tree, version, path, lno) {
 
 function internalUrl(tree, path, lno) {
   path = path.replace(/^\/+/, '');  // Trim any leading slashes
-  var url = "/view/" + tree + "/" + path;
+  var url = "/view/" + tree + "/blob" + "/HEAD/" + path;
   if (lno !== undefined) {
     url += "#L" + lno;
   }
