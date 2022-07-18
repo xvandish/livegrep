@@ -76,6 +76,14 @@
         {{ template "filecontent" . }}
       {{end}}
   </div>
+  <!-- Idealized reqs:
+    1. Collapsible/expandable
+    2. Resizable
+  -->
+  <div id="history-pane">
+    <span>TODO</span>
+    <button id="load-more-history-btn">Load more</button>
+  </div>
 
   <section class="help-screen u-modal-overlay hidden">
     <div class="help-screen-card u-modal-content">
@@ -102,5 +110,34 @@
 <script{{.Nonce}}>
   Prism.plugins.autoloader.languages_path =
   'https://cdnjs.cloudflare.com/ajax/libs/prism/1.14.0/components/';
+</script>
+<script>
+  
+function getGitHistory() {
+  // Should we load in rendered HTML or na?
+  // For now, lets
+  var logLink = document.getElementById('commit-history');
+  logLink = logLink.getAttribute('href');
+  console.log("logLink: ", logLink)
+
+  var historyPane = document.getElementById("history-pane");
+  var historyGetBtn = document.getElementById("load-more-history-btn");
+
+  // make fetch call here
+  fetch(logLink)
+    .then(function (r) {
+        // var nextParent = r.headers.get("X-next-parent");
+        // enableBtn = r.headers.get("X-maybe-last") === "false";  
+        // event.target.value = nextParent;
+        return r.text();  
+    })
+    .then(function (html) {
+        historyGetBtn.insertAdjacentHTML("beforebegin", html);
+        // if (enableBtn) {
+        //   event.target.disabled = false;
+        // }
+    });
+}
+  window.addEventListener("load", function() { getGitHistory(); });
 </script>
 {{end}}

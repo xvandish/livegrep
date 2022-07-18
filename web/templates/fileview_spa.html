@@ -1,0 +1,22 @@
+{{ with .Data }}
+  {{with .DirContent}}
+    <div class="dir-viewer-wrapper">
+      <ul class="file-list">
+          {{range $child := .Entries}}
+          <li class="file-list-entry{{if $child.IsDir}} is-directory{{end}}{{if $child.SymlinkTarget}} is-symlink{{end}}">
+            {{if $child.Path}}<a href="{{$child.Path}}">{{$child.Name}}{{if $child.IsDir}}/{{end}}</a>{{else}}{{$child.Name}}{{end}}
+            {{if .SymlinkTarget}}&rarr; (<span class="symlink-target">{{.SymlinkTarget}}</span>){{end}}
+          </li>
+          {{end}}
+      </ul>
+      {{ with .ReadmeContent }}
+        <div style="width:80%;">
+          {{ template "filecontent" . }}
+        </div>
+      {{end}}
+    </div>
+  {{end}}
+  {{with .FileContent}}
+    {{ template "filecontent" . }}
+  {{end}}
+{{end}}

@@ -92,7 +92,36 @@ function expandRangeToElement(element) {
   }
 }
 
+// loadGitLog??
+function getGitHistory() {
+  // Should we load in rendered HTML or na?
+  // For now, lets
+  var logLink = document.getElementById('commit-history');
+  logLink = logLink.getAttribute('href');
+  console.log("logLink: ", logLink)
+
+  var historyPane = document.getElementById("history-pane");
+  var historyGetBtn = document.getElementById("load-more-history-btn");
+
+  // make fetch call here
+  fetch(logLink)
+    .then(function (r) {
+        // var nextParent = r.headers.get("X-next-parent");
+        // enableBtn = r.headers.get("X-maybe-last") === "false";  
+        // event.target.value = nextParent;
+        return r.text();  
+    })
+    .then(function (html) {
+        historyGetBtn.insertAdjacentHTML("beforebegin", html);
+        // if (enableBtn) {
+        //   event.target.disabled = false;
+        // }
+    });
+}
+
 function init(initData) {
+
+  getGitHistory();
   var root = $('.file-content');
   var lineNumberContainer = root.find('.line-numbers');
   var helpScreen = $('.help-screen');
@@ -252,6 +281,8 @@ function init(initData) {
     } else if (String.fromCharCode(event.which) == 'L') {
       $('#commit-history').focus();
       window.location = $('#commit-history').attr('href');
+    } else if (String.fromCharCode(event.which) == 'X') {
+      getGitHistory();
     }
     return true;
   }

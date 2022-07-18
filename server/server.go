@@ -355,7 +355,8 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		RepoInfo config.RepoConfig `json:"repo_info"`
 		FilePath string            `json:"file_path"`
 		Commit   string            `json:"commit"`
-	}{repo, path, commit}
+		LogLink  string            `json:"log_link"`
+	}{repo, path, commit, data.LogLink}
 
 	s.renderPage(ctx, w, r, "fileview.html", &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
@@ -364,6 +365,54 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		IncludeHeader: false,
 		Data:          data,
 	})
+}
+
+func (s *server) ServeFileContent(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/view/")
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	commit := r.URL.Query().Get("commit")
+	if commit == "" {
+		commit = "HEAD"
+	}
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := buildFileData(path, repo, commit)
+	if err != nil {
+		http.Error(w, "Error reading file", 500)
+		return
+	}
+
+	templateName := "fileview_spa.html"
+	t, ok := s.Templates[templateName]
+	if !ok {
+		log.Printf(ctx, "Error: no template named %v", templateName)
+		return
+	}
+
+	err = t.ExecuteTemplate(w, templateName, struct {
+		Data interface{}
+	}{
+		Data: data,
+	})
+
+	if err != nil {
+		log.Printf(ctx, "Error rendering %v: %s", templateName, err)
+		return
+	}
 }
 
 func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.Request) {

@@ -404,16 +404,22 @@ a:hover {
     margin: 0;
     line-height: 1.2;
     width: 100%;
-    overflow: visible; /* Allow code content to overflow */
+    /* overflow: visible; /1* Allow code content to overflow *1/ */
     font-family: "Menlo", "Consolas", "Monaco", monospace;
     font-size: 12px;
+
+    display: grid;
+    grid-template-rows: 1fr 80% 17%;
+    grid-auto-flow: row;
+    height: 100vh;
+    window.addEventListener("load", function() { getGitHistory(); });
 }
 
 .file-viewer .header {
-    position: fixed;
-    top: 0;
+    /* position: fixed; */
+    /* top: 0; */
     width: 100%;
-    z-index: 1;
+    /* z-index: 1; */
 
     padding-top: 8px;
     padding-right: 5px;
@@ -446,7 +452,8 @@ a:hover {
 .file-viewer .content-wrapper {
     /* Offset the content so that the overlapping header doesn't occlude it. */
     position: relative;
-    margin-top: 5em;
+    overflow: auto;
+    /* margin-top: 5em; */
 }
 
 .file-viewer .dir-viewer-wrapper {
@@ -505,7 +512,7 @@ a:hover {
     top: 0;
     left: 75px;
     width: 30%;
-    overflow: visible;
+    /* overflow: visible; */
     margin: 0 0 0 20px;
     white-space: pre;
 }
@@ -800,4 +807,14 @@ div.example {
     background: rgba(175,184,193,0.2);
     border: 0;
     border-radius: 1px;
+}
+
+#history-pane {
+    /* position: fixed; */
+    bottom: 0;
+    /* height: 100px; */
+    background-color: white;
+    /* z-index: 1; */
+    width: 100%;
+    overflow: auto;
 }
