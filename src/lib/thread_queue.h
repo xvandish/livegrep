@@ -49,11 +49,6 @@ public:
         return true;
     }
 
-    size_t size() {
-        std::unique_lock<std::mutex> locked(mutex_);
-        return queue_.size();
-    }
-
  protected:
     thread_queue(const thread_queue&);
     thread_queue operator=(const thread_queue &);

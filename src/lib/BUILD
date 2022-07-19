@@ -4,7 +4,6 @@ cc_library(
         "debug.cc",
         "metrics.cc",
         "radix_sort.cc",
-        "rlimits.cc",
     ] + select({
         "@bazel_tools//src/conditions:linux_x86_64": ["fs_linux.cc"],
         "//conditions:default": ["fs_default.cc"],
