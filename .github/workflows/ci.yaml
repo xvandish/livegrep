@@ -74,8 +74,6 @@ jobs:
           path: "builds/${{ env.build_output_file_name }}.tgz"
           retention-days: 1
       - name: Build images
-        # livegrep/livegrep already contains built images that match whats in refs/heads/main - don't rebuild
-        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
         run: |
           docker build -t $BASE_IMAGE_NAME --file docker/base/Dockerfile --build-arg "livegrep_version=$build_output_file_name"  .
           docker build -t $INDEXER_IMAGE_NAME . --file docker/indexer/Dockerfile
@@ -110,3 +108,21 @@ jobs:
           docker push $NGINX_IMAGE_ID:latest
           docker push $BASE_IMAGE_ID:latest
           docker push $INDEXER_IMAGE_ID:latest
+      - name: Push PR images
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          BASE_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$BASE_IMAGE_NAME
+          INDEXER_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$INDEXER_IMAGE_NAME
+          NGINX_IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$NGINX_IMAGE_NAME
+
+          # tag each image with GHCRID:VERSION
+          VERSION=$(git rev-parse HEAD | head -c10)
+          docker tag $BASE_IMAGE_NAME $BASE_IMAGE_ID:PR-"${{github.event.number}}"-$VERSION
+          docker tag $INDEXER_IMAGE_NAME $INDEXER_IMAGE_ID:PR-"${{github.event.number}}"-$VERSION
+          docker tag $NGINX_IMAGE_NAME $NGINX_IMAGE_ID:PR-"${{github.event.number}}"-$VERSION
+
+          docker push $NGINX_IMAGE_ID:PR-"${{github.event.number}}"-$VERSION
+          docker push $BASE_IMAGE_ID:PR-"${{github.event.number}}"-$VERSION
+          docker push $INDEXER_IMAGE_ID:PR-"${{github.event.number}}"-$VERSION
