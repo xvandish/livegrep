@@ -348,7 +348,16 @@ var TreeMatch = Backbone.Model.extend({
   },
 
   url: function() {
+    var tree = this.get('name');
+
+    // We configure our own version of url() since the externalUrl() function
+    // it calls does not work with trees. Generally people set up index_config
+    // to work with blobs only
+    if (tree in CodesearchUI.internalViewRepos) {
+      return internalUrl(tree, '', undefined);
+    } else {
       return this.get('metadata').external_url;
+    }
   }
 });
 
