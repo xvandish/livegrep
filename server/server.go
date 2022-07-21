@@ -87,6 +87,9 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	// Used to display a connection status. Default selected is first backend.
 	firstBkShortStatus := ""
 	firstBkStatus := ""
+	// for the purposes of the frontend, we only care about precense/whether a repo is in this. We
+	// don't actually use its value
+	internalRepos := make(map[string]int, 100)
 	for idx, bkId := range s.bkOrder {
 		bk := s.bk[bkId]
 		backends = append(backends, bk)
@@ -97,7 +100,9 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 			if sampleRepo == "" {
 				sampleRepo = r.Name
 			}
-			m[r.Name] = r.Url
+			m[r.Name] = r.Metadata.UrlPattern
+			// TODO: only do this if some metadata indicated that we're ok with it
+			internalRepos[r.Name] = 1
 		}
 		if idx == 0 {
 			firstBkShortStatus, firstBkStatus = bk.getTextStatus()
@@ -397,7 +402,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	for _, bk := range srv.config.Backends {
-		be, e := NewBackend(bk)
+		be, e := NewBackend(bk, srv)
 		if e != nil {
 			return nil, e
 		}
@@ -453,6 +458,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	return srv, nil
 }
 
+// ARGH. We need to rebuild this anytime a backend changes, in case there are new repos
+// TODO ^^
 func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {
 	// Sort in descending order of length so most specific match is selected by regex engine
 	sort.Slice(repoNames, func(i, j int) bool {

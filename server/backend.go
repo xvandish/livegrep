@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -20,11 +19,12 @@ type Tree struct {
 	Name    string
 	Version string
 	Url     string
+	Path    string
 }
 
 type I struct {
 	Name  string
-	Trees []Tree
+	Trees []*pb.Tree
 	sync.Mutex
 	IndexTime time.Time
 	IndexAge  time.Duration
@@ -45,7 +45,7 @@ type Backend struct {
 	Up         *Availability
 }
 
-func NewBackend(be config.Backend) (*Backend, error) {
+func NewBackend(be config.Backend, s *server) (*Backend, error) {
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 	if be.MaxMessageSize == 0 {
 		be.MaxMessageSize = 10 << 20 // default to 10MiB
@@ -188,21 +188,11 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
-		for _, r := range info.Trees {
-			pattern := r.Metadata.UrlPattern
-			if v := r.Metadata.Github; v != "" {
-				value := v
-				base := ""
-				_, err := url.ParseRequestURI(value)
-				if err != nil {
-					base = "https://github.com/" + value
-				} else {
-					base = value
-				}
-				pattern = base + "/blob/{version}/{path}#L{lno}"
-			}
-			bk.I.Trees = append(bk.I.Trees,
-				Tree{r.Name, r.Version, pattern})
-		}
+		bk.I.Trees = append(bk.I.Trees, info.Trees...)
+		// for _, r := range info.Trees {
+		// 	bk.I.Trees = append(bk.I.Trees, r)
+		// }
 	}
+
+	// Now, we should make a new map of trees
 }

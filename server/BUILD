@@ -25,6 +25,7 @@ go_library(
         "//server/log:go_default_library",
         "//server/reqid:go_default_library",
         "//server/templates:go_default_library",
+        "//src/proto:go_config_proto",
         "//src/proto:go_proto",
         "@com_github_bmizerany_pat//:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
