@@ -1,0 +1,7 @@
+.diff-data > span[data-line-type="insert"] {
+    color: green;
+}
+
+.diff-data > span[data-line-type="delete"] {
+    color: red;
+}
