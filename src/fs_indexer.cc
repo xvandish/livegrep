@@ -19,7 +19,7 @@ fs_indexer::fs_indexer(code_searcher *cs,
                        const string& name,
                        const Metadata &metadata)
     : cs_(cs), repopath_(repopath), name_(name) {
-    tree_ = cs->open_tree(name, metadata, "");
+    tree_ = cs->open_tree(name, metadata, "", repopath_);
 }
 
 fs_indexer::~fs_indexer() {

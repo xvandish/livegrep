@@ -53,7 +53,7 @@ void git_indexer::walk(const string& ref) {
     string version = FLAGS_revparse ?
         strdup(git_oid_tostr(oidstr, sizeof(oidstr), git_commit_id(commit))) : ref;
 
-    idx_tree_ = cs_->open_tree(name_, metadata_, version);
+    idx_tree_ = cs_->open_tree(name_, metadata_, version, repopath_);
     walk_tree("", FLAGS_order_root, tree);
 }
 

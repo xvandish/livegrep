@@ -91,6 +91,7 @@ Status CodeSearchImpl::Info(ServerContext* context, const ::InfoRequest* request
         insert->set_name(it->name);
         insert->set_version(it->version);
         insert->mutable_metadata()->CopyFrom(it->metadata);
+        insert->set_path(it->path);
     }
     response->set_has_tags(tagdata_ != nullptr);
     response->set_index_time(cs_->index_timestamp());

@@ -62,13 +62,15 @@ message SearchStats {
     ExitReason exit_reason = 6;
 }
 
+message Tree {
+    string name = 1;
+    string version = 2;
+    Metadata metadata = 3;
+    string path = 4;
+}
+
 message ServerInfo {
     string name = 1;
-    message Tree {
-        string name = 1;
-        string version = 2;
-        Metadata metadata = 3;
-    }
     repeated Tree trees = 2;
     bool has_tags = 3;
     // unix timestamp (seconds)

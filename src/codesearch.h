@@ -79,6 +79,7 @@ struct indexed_tree {
     string name;
     Metadata metadata;
     string version;
+    string path;
 };
 
 struct indexed_file {
@@ -141,8 +142,8 @@ public:
     void dump_index(const string& path);
     void load_index(const string& path);
 
-    const indexed_tree *open_tree(const string &name, const Metadata &meta, const string& version);
-    const indexed_tree *open_tree(const string &name, const string& version);
+    const indexed_tree *open_tree(const string &name, const Metadata &meta, const string& version, const string &path);
+    const indexed_tree *open_tree(const string &name, const string& version, const string &path);
 
     void index_file(const indexed_tree *tree,
                     const string& path,

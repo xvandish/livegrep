@@ -654,18 +654,21 @@ vector<indexed_tree> code_searcher::trees() const {
 
 const indexed_tree* code_searcher::open_tree(const string &name,
                                              const Metadata &metadata,
-                                             const string &version) {
+                                             const string &version,
+                                             const string &path) {
     auto tree = std::make_unique<indexed_tree>();
     tree->name = name;
     tree->version = version;
     tree->metadata = metadata;
+    tree->path = path;
     trees_.push_back(move(tree));
     return trees_.back().get();
 }
 
 const indexed_tree* code_searcher::open_tree(const string &name,
-                                             const string &version) {
-    return open_tree(name, Metadata(), version);
+                                             const string &version,
+                                             const string &path) {
+    return open_tree(name, Metadata(), version, path);
 }
 
 void code_searcher::index_file(const indexed_tree *tree,
