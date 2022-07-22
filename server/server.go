@@ -348,6 +348,21 @@ func (s *server) Handler(f func(c context.Context, w http.ResponseWriter, r *htt
 	return handler(f)
 }
 
+// Takes a search query, performs the search, then renders the results into HTML and serves it
+func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	data, statusCode, errorMsg, errorMsgLong := s.ServerSideAPISearchV2(ctx, w, r)
+
+	if (statusCode) > 200 {
+		log.Printf(ctx, "> 200: %s %s", errorMsg, errorMsgLong)
+		return
+	}
+
+	s.renderPage(ctx, w, r, "searchresults_partial.html", &page{
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
 		config: cfg,
@@ -429,6 +444,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/bkstatus/:backend", http.HandlerFunc(srv.ServeBackendStatus))
 	m.Add("GET", "/api/v1/bkstatus/", http.HandlerFunc(srv.ServeBackendStatus))
+
+	m.Add("GET", "/api/v2/getRenderedSearchResults/:backend", srv.Handler(srv.ServeRenderedSearchResults))
 
 	var h http.Handler = m
 

@@ -1,0 +1,66 @@
+<div id="file-results">
+  <div class="initially-visible-file-links">
+  {{range $i, $e := (slice .Data.FileResults 0 10)}}
+    <div class="cr-header">
+      <div class="links">
+        <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+        <span>/</span>
+        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+          {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+              <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+        </a>
+      </div>
+    </div>
+  {{end}}
+  </div>
+  <div class="initially-hidden-file-links" style="display:none;">
+  {{range $i, $e := (slice .Data.FileResults 10 )}}
+      <div class="cr-header">
+        <div class="links">
+          <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+          <span>/</span>
+          <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+            {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+                <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+          </a>
+        </div>
+      </div>
+  {{end}}
+  </div>
+  {{ if gt (len .Data.FileResults) 10 }}
+    <a>Show more</a>
+  {{ end }}
+</div>
+
+<div id="code-results">
+  {{range .Data.Results}}
+  {{$repo := .Tree}}
+  {{$path := .Path}}
+  <div class="code-result">
+    <div class="cr-header">
+      <div class="links">
+        <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+        <span>/</span>
+        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">{{.Path}}</a>
+      </div>
+    </div>
+    <div class="cr-lines">
+      {{range .Lines}}
+        <div class="code-line">
+          <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="num-link">
+            <span class="num">{{.LineNumber}}</span>
+          </a>
+          <div class="line">
+            {{ if gt (len .Bounds) 0}}
+              {{ $lineParts := splitCodeLineIntoParts .Line .Bounds}}
+              <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+            {{ else }}
+            <span>{{.Line}}</span>
+            {{ end }}
+          </div>
+        </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
