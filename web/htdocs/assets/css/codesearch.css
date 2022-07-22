@@ -926,8 +926,8 @@ div.example {
 }
 
 .code-line:hover .num-link {
-    transform: scale(1.07);
-    transition: 0.1s ease-in-out;
+    /* transform: scale(1.07); */
+    /* transition: 0.1s ease-in-out; */
 }
 
 .code-line .num-link {
@@ -938,8 +938,8 @@ div.example {
 }
 
 .code-line .num-link:hover {
-    transform: scale(1.05);
-    transition: 0.1s ease-in-out;
+    /* transform: scale(1.05); */
+    /* transition: 0.1s ease-in-out; */
     text-decoration: underline;
 }
 
@@ -962,6 +962,16 @@ div.example {
 
 .code-line .line .highlighted {
     background-color: rgba(255, 234, 170, 0.75);
+}
+
+.blank-line {
+    background-color: aliceblue;
+}
+
+.blank-line .num-dots {
+    max-width: 27px;
+    color: #71b1e3;
+    margin-left: 10px;
 }
 
 .regex-toggle {
