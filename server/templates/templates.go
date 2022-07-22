@@ -33,12 +33,40 @@ func scriptTag(nonce template.HTMLAttr, s string, m map[string]string) template.
 	))
 }
 
+type lineParts struct {
+	Prefix      string
+	Highlighted string
+	Suffix      string
+}
+
+func splitCodeLineIntoParts(line string, bounds []int) lineParts {
+	if strings.Contains(line, "MHI_PCI_DEV_SUSPENDED") {
+		fmt.Printf("line: %s, bounds: %v\n", line, bounds)
+	}
+	start := bounds[0]
+	end := bounds[1]
+
+	p := lineParts{
+		Prefix:      line[0:start],
+		Highlighted: line[start:end],
+		Suffix:      line[end:],
+	}
+
+	if strings.Contains(line, "MHI_PCI_DEV_SUSPENDED") {
+		fmt.Printf("lineParts: %+v\n", p)
+	}
+
+	return p
+
+}
+
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
-		"toLineNum": func(n int) int { return n + 1 },
-		"linkTag":   linkTag,
-		"scriptTag": scriptTag,
+		"loop":                   func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum":              func(n int) int { return n + 1 },
+		"linkTag":                linkTag,
+		"scriptTag":              scriptTag,
+		"splitCodeLineIntoParts": splitCodeLineIntoParts,
 	}
 }
 

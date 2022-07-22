@@ -1,5 +1,4 @@
-<div id="file-results">
-  <div class="initially-visible-file-links">
+<div class="path-results">
   {{range $i, $e := (slice .Data.FileResults 0 10)}}
     <div class="cr-header">
       <div class="links">
@@ -12,27 +11,30 @@
       </div>
     </div>
   {{end}}
-  </div>
-  <div class="initially-hidden-file-links" style="display:none;">
-  {{range $i, $e := (slice .Data.FileResults 10 )}}
-      <div class="cr-header">
-        <div class="links">
-          <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
-          <span>/</span>
-          <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
-            {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
-                <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
-          </a>
-        </div>
-      </div>
-  {{end}}
-  </div>
+
   {{ if gt (len .Data.FileResults) 10 }}
-    <a>Show more</a>
+    <div class="extra-results hidden">
+    {{range $i, $e := (slice .Data.FileResults 10 )}}
+        <div class="cr-header">
+          <div class="links">
+            <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+            <span>/</span>
+            <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+              {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+                  <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+            </a>
+          </div>
+        </div>
+    {{end}}
+    </div>
+    <button id="showMoreFilematchesBtn" class="show-more-filematches-btn">
+      <span id="toggle-btn-text">Show all</span>
+      <img src="/assets/img/chevron-down.svg" />
+    </button>
   {{ end }}
 </div>
 
-<div id="code-results">
+<div class="code-results">
   {{range .Data.Results}}
   {{$repo := .Tree}}
   {{$path := .Path}}

@@ -446,6 +446,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v1/bkstatus/", http.HandlerFunc(srv.ServeBackendStatus))
 
 	m.Add("GET", "/api/v2/getRenderedSearchResults/:backend", srv.Handler(srv.ServeRenderedSearchResults))
+	m.Add("GET", "/api/v2/getRenderedSearchResults/", srv.Handler(srv.ServeRenderedSearchResults))
 
 	var h http.Handler = m
 
