@@ -1,8 +1,8 @@
 <div class="path-results">
-  {{range $i, $e := (slice .Data.FileResults 0 10)}}
+  {{range $i, $e := getFirstNFiles .Data.FileResults 10 }}
     <div class="cr-header">
       <div class="links">
-        <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
+        <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
         <span>/</span>
         <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
           {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
@@ -12,7 +12,7 @@
     </div>
   {{end}}
 
-  {{ if gt (len .Data.FileResults) 10 }}
+  {{ if ge (len .Data.FileResults) 10 }}
     <div class="extra-results hidden">
     {{range $i, $e := (slice .Data.FileResults 10 )}}
         <div class="cr-header">
@@ -38,6 +38,8 @@
   {{range .Data.Results}}
   {{$repo := .Tree}}
   {{$path := .Path}}
+  {{$numLines := len .Lines }}
+  {{$lines := .Lines }}
   <div class="code-result">
     <div class="cr-header">
       <div class="links">
@@ -47,7 +49,13 @@
       </div>
     </div>
     <div class="cr-lines">
-      {{range .Lines}}
+      {{range $i, $e := .Lines}}
+        {{ if shouldInsertBlankLine $i $lines }}
+          <div class="blank-line">
+            <span class="num">…</span>
+            <span />
+          </div>
+        {{ end }}
         <div class="code-line">
           <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="num-link">
             <span class="num">{{.LineNumber}}</span>
@@ -57,7 +65,7 @@
               {{ $lineParts := splitCodeLineIntoParts .Line .Bounds}}
               <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
             {{ else }}
-            <span>{{.Line}}</span>
+              <span>{{.Line}}</span>
             {{ end }}
           </div>
         </div>

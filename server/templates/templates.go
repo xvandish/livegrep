@@ -9,6 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/livegrep/livegrep/server/api"
+	// "github.com/xvandish/livegrep/server/api"
 )
 
 func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
@@ -57,7 +60,29 @@ func splitCodeLineIntoParts(line string, bounds []int) lineParts {
 	}
 
 	return p
+}
 
+// used to cap slice iteration
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// returns [:min(n|len(T))]
+func getFirstNFiles(s []*api.FileResult, n int) []*api.FileResult {
+	c := min(n, len(s))
+	return s[:c]
+}
+
+func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
+	prevIdx := currIdx - 1
+	if prevIdx < 0 {
+		return false
+	}
+
+	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
 }
 
 func getFuncs() map[string]interface{} {
@@ -67,6 +92,9 @@ func getFuncs() map[string]interface{} {
 		"linkTag":                linkTag,
 		"scriptTag":              scriptTag,
 		"splitCodeLineIntoParts": splitCodeLineIntoParts,
+		"min":                    min,
+		"getFirstNFiles":         getFirstNFiles,
+		"shouldInsertBlankLine":  shouldInsertBlankLine,
 	}
 }
 
