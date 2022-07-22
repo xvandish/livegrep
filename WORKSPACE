@@ -70,7 +70,7 @@ go_externals()
 
 go_rules_dependencies()
 
-go_register_toolchains(version = "1.17.6")
+go_register_toolchains(version = "1.18.4")
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
