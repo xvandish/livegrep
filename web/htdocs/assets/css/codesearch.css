@@ -934,7 +934,7 @@ div.example {
   min-width: 40px;
   user-select: text;
   text-decoration: none;
-  color: #3d464d;
+  color: #71b1e3;
 }
 
 .code-line .num-link:hover {
@@ -948,9 +948,16 @@ div.example {
 }
 
 .code-line .line {
-    white-space: pre-wrap;
+    /* white-space: pre-wrap; */
     /* font-family: "Menlo", "Consolas", "Monaco", monospace; */
     font-size: 12px;
+}
+
+/* This works, but not sure why the line-height if I set pre-wrap for .line is
+ * so high... */
+.code-line .line span {
+    white-space: pre-wrap;
+    font-size: 1rem;
 }
 
 .code-line .line .highlighted {
