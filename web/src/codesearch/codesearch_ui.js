@@ -17,7 +17,9 @@ var caseSelect;
 var regexToggle;
 var autocompleteMenu; // used for search suggestions
 var autocompleteMenuItems;
-var currAutocompleteIdx = 0; // used to keep track of which menu item is focused
+// used to keep track of which menu item is focused. -1 indicates the search bar
+// is highlighted
+var currAutocompleteIdx = -1; 
 
 var searchResults; // giant HTML string
 
@@ -153,32 +155,35 @@ function init(initData) {
     autocompleteMenu.style.display = "none";
   });
   searchBox.addEventListener('keydown', function(e) {
-    var prevIdx = currAutocompleteIdx - 1;
-    if (prevIdx == -1) { // prev was the last elem
-      prevIdx = autocompleteMenuItems.length - 1;
-    }
 
     // let's leave list cycling out of this for the moment. or maybe not
     if (e.keyCode == KeyCodes.UP_ARROW) {
       
     } else if (e.keyCode == KeyCodes.DOWN_ARROW) {
-      console.log('prevIdx: ', prevIdx);
-      console.log('currIdx: ', currAutocompleteIdx);
+
       // unfocus the current element
-      if (prevIdx >= 0) {
-        autocompleteMenuItems[prevIdx].classList.remove('focused');
+      if (currAutocompleteIdx >= 0) {
+        autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused');
+      }
+
+      var nextIdx = currAutocompleteIdx + 1;
+
+      if (nextIdx >= autocompleteMenuItems.length) {
+        currAutocompleteIdx = -1; // roll over
+        return;
       }
 
       // focus the next element, and se the text content of the search box to it
-      var currItem = autocompleteMenuItems[currAutocompleteIdx];
+      var currItem = autocompleteMenuItems[nextIdx];
       currItem.classList.add('focused');
-      this.value = currItem.innerText;
-      currAutocompleteIdx += 1;
 
-      // reset to the start
-      if (currAutocompleteIdx == autocompleteMenuItems.length) {
-        currAutocompleteIdx = 0;
-      }
+      // We don't want this. Since we do search as you type, we don't want to
+      // launch a bunch of searches just from scrolling the list.
+        // this.value = currItem.innerText;
+      // what we should do instead if have a "Enter" span that indicated you
+      // press enter to search.
+
+      currAutocompleteIdx = nextIdx;
     }
   });
 
