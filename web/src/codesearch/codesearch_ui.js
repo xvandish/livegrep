@@ -113,6 +113,8 @@ function initStateFromQueryParams() {
     context: sp.get('context') || true,
     case: caseVal,
   };
+
+  doSearch();
 }
 
 function toggleMoreFileMatches(e) {
