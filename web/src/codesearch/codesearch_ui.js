@@ -4,6 +4,9 @@ var KeyCodes = {
   UP_ARROW: 38,
   RIGHT_ARROW: 39,
   DOWN_ARROW: 40,
+  ENTER: 13,
+  ESCAPE: 27,
+  BACKSPACE: 8,
 };
 
 function getSelectedText() {
@@ -133,6 +136,20 @@ function toggleMoreFileMatches(e) {
   e.currentTarget.querySelector('img').classList.toggle('open');
 }
 
+function isAutocompleteMenuOpen() {
+  return autocompleteMenu.style.display == 'initial';
+}
+
+function openAutcompleteMenu() {
+  autocompleteMenu.style.display = 'initial';
+}
+
+function clearCurAutocompleteSelectionHighlight() {
+  if (currAutocompleteIdx >= 0 && currAutocompleteIdx <= autocompleteMenuItems.length - 1) {
+    autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused');
+  }
+}
+
 function init(initData) {
   "use strict"
   console.log('initData: ', initData);
@@ -145,6 +162,12 @@ function init(initData) {
   autocompleteMenu = document.getElementById("autocomplete-menu");
   autocompleteMenuItems = autocompleteMenu.querySelectorAll("li");
 
+  autocompleteMenu.addEventListener('mouseover', function (e) {
+    console.log('e.target.type', e.target.type);
+    // clearCurAutocompleteSelectionHighlight();
+    // currAutocompleteIdx = -1;
+  });
+
   regexToggle.addEventListener('click', toggleControlButton);
   searchBox.addEventListener('input', updateQuery);
   searchBox.addEventListener('focusin', function() {
@@ -154,12 +177,69 @@ function init(initData) {
     var menu = document.getElementById("autocomplete-menu");
     autocompleteMenu.style.display = "none";
   });
-  searchBox.addEventListener('keydown', function(e) {
+  searchBox.addEventListener('input', function (e) {
+      // The user is typing something. Filter out "suggestions" that don't match
+      // also, set the currAutocompleteIdx to -1
+      clearCurAutocompleteSelectionHighlight();
+      currAutocompleteIdx = -1; 
 
-    // let's leave list cycling out of this for the moment. or maybe not
-    if (e.keyCode == KeyCodes.UP_ARROW) {
-      if (currAutocompleteIdx >= 0) {
-        autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused');
+      // we don't use this.value, since we're in the keydown handler, we fire
+      // before the value actually changes.
+      var currText = this.value;
+      var exp = e.target.value;
+      
+      // rather than split the logic into two handlers, one that tracks addition
+      // with 'input' events, and one that tracks deletion with 'onkeydown'
+      // events, we just do a brute force traversal of all li, without regard to
+      // whether they were shown/hidden before. With n < 10 suggestions, this is
+      // fine.
+
+      var allItems = autocompleteMenu.querySelectorAll('li');
+      console.log(allItems);
+      for (var i = 0; i < allItems.length; i++) {
+        var item = allItems[i];
+        console.log('item is: ', item);
+        if (currText.length > item.innerText.length) {
+          console.log('currText len is greater');
+          item.dataset.hidden = 'true';
+          continue;
+        }
+
+        var c = item.innerText.slice(0, currText.length);
+        console.log('c: ', c);
+        console.log('currText: ', currText);
+        if (c != currText) {
+          item.dataset.hidden = 'true';
+        } else {
+          item.dataset.hidden = 'false';
+        }
+      }
+  });
+
+  // we handle opening, closing and iterating through the autocomplete list here
+  // HOWEVER - we handle filtering the list based on input in another handler,
+  // since 'keydown' doesn't get us access to the currentText of the input
+  searchBox.addEventListener('keydown', function(e) {
+    if (e.keyCode == KeyCodes.ENTER) {
+      console.log('enter pressed');
+      // If the key is enter, and we have a selected history item, fill the
+      // search with it and cose the autocomplete box
+      if (currAutocompleteIdx >= 0 && currAutocompleteIdx <= autocompleteMenuItems.length - 1) {
+        this.value = autocompleteMenuItems[currAutocompleteIdx].innerText;
+        autocompleteMenu.style.display = 'none';
+        this.dispatchEvent(new Event('input')); // trigger the search
+        this.blur();
+        // reset the autocomplete index 
+        autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused'); 
+        currAutocompleteIdx = -1;
+      }
+    } else if (e.keyCode == KeyCodes.UP_ARROW) {
+      clearCurAutocompleteSelectionHighlight();
+
+      if (!isAutocompleteMenuOpen()) {
+        currAutocompleteIdx = -1;
+        openAutcompleteMenu();
+        return;
       }
 
       var nextIdx = currAutocompleteIdx - 1;
@@ -177,10 +257,12 @@ function init(initData) {
       currAutocompleteIdx = nextIdx;
       
     } else if (e.keyCode == KeyCodes.DOWN_ARROW) {
+      clearCurAutocompleteSelectionHighlight(); 
 
-      // unfocus the current element
-      if (currAutocompleteIdx >= 0) {
-        autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused');
+      if (!isAutocompleteMenuOpen()) {
+        currAutocompleteIdx = -1;
+        openAutcompleteMenu();
+        return;
       }
 
       var nextIdx = currAutocompleteIdx + 1;
@@ -201,6 +283,10 @@ function init(initData) {
       // press enter to search.
 
       currAutocompleteIdx = nextIdx;
+    } else if (e.keyCode == KeyCodes.ESCAPE) { // if the user wants to close the dialog.
+      clearCurAutocompleteSelectionHighlight();
+      currAutocompleteIdx = -1;
+      autocompleteMenu.style.display = 'none';
     }
   });
 

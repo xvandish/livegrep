@@ -1066,8 +1066,17 @@ div.example {
 
 #autocomplete-menu li:hover {
     background-color: #eaeaea;
+    cursor: pointer;
 }
 
 #autocomplete-menu li.focused {
     background-color: #eaeaea;
+}
+
+#autocomplete-menu li[data-hidden='true'] {
+    display: none;
+}
+
+#autocomplete-menu li[data-hidden='false'] {
+    display: block;
 }
