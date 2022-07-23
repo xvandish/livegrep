@@ -150,6 +150,37 @@ function clearCurAutocompleteSelectionHighlight() {
   }
 }
 
+function createSearchHistory() {
+  var currHistory = localStorage.getItem('search-history') || '[]';
+      try {
+        currHistory = JSON.parse(currHistory);
+      } catch (err) {
+        console.error('error parsing localStorage search history. Resetting it.');
+        currHistory = [];
+      }
+
+  var c = autocompleteMenu.querySelector('ul');
+
+  // empty the container. Note we can't replaceChildren(historyElems)
+  // because the current UglifyJs plugin used by webpack doesn't support the
+  // .../spread operator and replaceChildren expects a comma delimited list
+  // of nodes
+  c.replaceChildren();
+
+  for (var i = 0; i < currHistory.length; i++) {
+        var searchText = currHistory[i];
+        var elem = document.createElement('li');
+        elem.dataset.hidden = 'false'; // TODO: show/hide based on query
+        elem.title = 'Do search for: ' + searchText;
+        elem.innerText = searchText;
+        elem.addEventListener('click', function (e) {
+          searchBox.value = e.target.innerText;
+          searchBox.dispatchEvent(new Event('input')); // trigger the search
+        });
+        c.appendChild(elem);
+  }
+}
+
 function init(initData) {
   "use strict"
   console.log('initData: ', initData);
@@ -160,7 +191,6 @@ function init(initData) {
   caseSelect = document.querySelector('#case-sensitivity-toggle');
   regexToggle = document.querySelector('button[id=toggle-regex]');
   autocompleteMenu = document.getElementById("autocomplete-menu");
-  autocompleteMenuItems = autocompleteMenu.querySelectorAll("li");
 
   autocompleteMenu.addEventListener('mouseover', function (e) {
     console.log('e.target.type', e.target.type);
@@ -176,6 +206,32 @@ function init(initData) {
   searchBox.addEventListener('focusout', function() {
     var menu = document.getElementById("autocomplete-menu");
     autocompleteMenu.style.display = "none";
+  });
+  // add search events to recent searches
+  searchBox.addEventListener('blur', function (e) {
+
+    if (e.target.value.trim() == '') {
+      return
+    };
+
+    var currHistory = localStorage.getItem('search-history') || '[]';
+      try {
+        currHistory = JSON.parse(currHistory);
+      } catch (err) {
+        console.error('error parsing localStorage search history. Resetting it.');
+        currHistory = [];
+      }
+
+    var dedupedHistory = currHistory.filter(function (hElem) {
+        return hElem !== e.target.value;
+      });
+
+    dedupedHistory.unshift(e.target.value); // Add the new item to the front
+    dedupedHistory = dedupedHistory.slice(0, 5); // Only keep the last 5 entries
+
+    localStorage.setItem('search-history', JSON.stringify(dedupedHistory));
+    createSearchHistory();
+    // delete the current list, and swap in the new list.
   });
   searchBox.addEventListener('input', function (e) {
       // The user is typing something. Filter out "suggestions" that don't match
@@ -220,6 +276,8 @@ function init(initData) {
   // HOWEVER - we handle filtering the list based on input in another handler,
   // since 'keydown' doesn't get us access to the currentText of the input
   searchBox.addEventListener('keydown', function(e) {
+    autocompleteMenuItems = autocompleteMenu.querySelectorAll('li[data-hidden="false"]');
+    console.log('in keydown handler');
     if (e.keyCode == KeyCodes.ENTER) {
       console.log('enter pressed');
       // If the key is enter, and we have a selected history item, fill the
@@ -300,6 +358,7 @@ function init(initData) {
   });
 
   initStateFromQueryParams();
+  createSearchHistory();
   // var caseInput = document.querySelector(
   // Get the search input and each of the search options
   //
