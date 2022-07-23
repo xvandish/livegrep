@@ -223,6 +223,7 @@ button:hover {
     margin-top: 50px;
     margin-bottom: 100px;
     font-family: monospace;
+    font-size: 0.8em;
 }
 
 .helpsection {
@@ -238,7 +239,7 @@ button:hover {
     display: grid;
     grid-template-columns: 30% 1fr;
     gap: 50px;
-    width: 100em;
+    max-width: 100em;
     margin: auto;
 }
 
@@ -300,6 +301,7 @@ button:hover {
 #results {
     margin-top: 10px;
     outline: none; /* despite 'tabindex' that lets it receive keystrokes */
+    font-family: ui-monospace,"Cascadia Mono","Segoe UI Mono","Liberation Mono",Menlo,Monaco,Consolas,monospace
 }
 
 #results #file-results {
@@ -315,7 +317,7 @@ button:hover {
     align-items: center;
     gap: 10px;
     margin-top: 10px;
-    background-color: #fafafa;
+    background-color: #eaeaea;
     border-radius: 3px;
     padding: 5px;
     border: none;
@@ -514,7 +516,7 @@ button:hover {
 }
 
 #resultarea {
-    /* display: none; */
+    font-size: 0.75em;
 }
 
 /* File viewer */
@@ -865,7 +867,7 @@ div.example {
 
 .code-result .cr-header {
     background-color: rgba(19, 61, 153, 0.09);
-    padding: 10px;
+    padding: 6px;
 }
 
 .code-result .cr-header .matches {
@@ -895,12 +897,12 @@ div.example {
 }
 
 .cr-header .links .repo-link {
-    color: rgba(0, 0, 0, 0.5); 
+    color: #3d464d; 
     white-space: nowrap;
 }
 
 .cr-header .links .path-link {
-    color: #3d464d;
+    color: #224a6d;
     font-weight: bold;
 }
 
@@ -918,11 +920,10 @@ div.example {
   align-items: center;
   text-decoration: none;
   padding: 1px 4px;
-  border-radius: 5px;
 }
 
 .code-line:hover {
-    background-color: #FAFAFA;
+    background-color: #EAEAEA;
 }
 
 .code-line:hover .num-link {
@@ -934,7 +935,7 @@ div.example {
   min-width: 40px;
   user-select: text;
   text-decoration: none;
-  color: #71b1e3;
+  color: #185890;
 }
 
 .code-line .num-link:hover {
@@ -950,14 +951,14 @@ div.example {
 .code-line .line {
     /* white-space: pre-wrap; */
     /* font-family: "Menlo", "Consolas", "Monaco", monospace; */
-    font-size: 12px;
+    /* font-size: 12px; */
 }
 
 /* This works, but not sure why the line-height if I set pre-wrap for .line is
  * so high... */
 .code-line .line span {
     white-space: pre-wrap;
-    font-size: 1rem;
+    /* font-size: 1rem; */
 }
 
 .code-line .line .highlighted {
@@ -965,7 +966,12 @@ div.example {
 }
 
 .blank-line {
-    background-color: aliceblue;
+    background-color: #f9f9fa;
+}
+
+.blank-line:hover {
+    background-color: #EAEAEA;
+
 }
 
 .blank-line .num-dots {
