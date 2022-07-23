@@ -286,7 +286,9 @@ function init(initData) {
         this.value = autocompleteMenuItems[currAutocompleteIdx].innerText;
         autocompleteMenu.style.display = 'none';
         this.dispatchEvent(new Event('input')); // trigger the search
-        this.blur();
+        
+        // for now, don't blur the input box, to let the users keep refining the
+        // search if they want to
         // reset the autocomplete index 
         autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused'); 
         currAutocompleteIdx = -1;
