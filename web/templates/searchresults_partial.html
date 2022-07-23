@@ -3,7 +3,7 @@
     <div class="cr-header">
       <div class="links">
         <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
-        <span>/</span>
+        <span>›</span>
         <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
           {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
               <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
@@ -18,7 +18,7 @@
         <div class="cr-header">
           <div class="links">
             <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
-            <span>/</span>
+            <span>›</span>
             <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
               {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
                   <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
@@ -44,7 +44,7 @@
     <div class="cr-header">
       <div class="links">
         <a class="repo-link" href="/view/{{.Tree}}">{{.Tree}}</a>
-        <span>/</span>
+        <span>›</span>
         <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">{{.Path}}</a>
       </div>
     </div>
