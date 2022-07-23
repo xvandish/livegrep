@@ -158,6 +158,23 @@ function init(initData) {
 
     // let's leave list cycling out of this for the moment. or maybe not
     if (e.keyCode == KeyCodes.UP_ARROW) {
+      if (currAutocompleteIdx >= 0) {
+        autocompleteMenuItems[currAutocompleteIdx].classList.remove('focused');
+      }
+
+      var nextIdx = currAutocompleteIdx - 1;
+
+      if (nextIdx == -1) {
+        currAutocompleteIdx = -1;
+        return;
+      } if (nextIdx == -2) {
+        nextIdx = autocompleteMenuItems.length - 1; // roll to the start of the list
+      }
+
+      var currItem = autocompleteMenuItems[nextIdx];
+      currItem.classList.add('focused');
+
+      currAutocompleteIdx = nextIdx;
       
     } else if (e.keyCode == KeyCodes.DOWN_ARROW) {
 
