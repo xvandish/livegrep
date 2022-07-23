@@ -46,6 +46,7 @@ function updateSearchParamState() {
 function doSearch() {
   if (searchOptions.q === '') {
     helpArea.style.display = "initial";
+    resultsContainer.innerHTML = "";
     return;
   };
   console.time('query');
