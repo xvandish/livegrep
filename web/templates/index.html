@@ -35,13 +35,6 @@
             </g>
           </svg>
         </button>
-        <button type="button" class="regex-toggle" id="toggle-context" on:click={toggleContext} data-selected="true" name="context">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-align-center"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
-        </button>
-
-        <button type="button" class="clear-input" on:click={clearQuery}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
       </div>
       <div class="query-input-wrapper">
         <input type="text" bind:value={query} use:blurOnEscape on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
@@ -52,13 +45,21 @@
       <span id='errortext'></span>
     </div>
 
-    <div class='query-hint'>
-      Special terms:
-      <code>path:</code>
-      <code>-path:</code>
-      <code>repo:</code>
-      <code>-repo:</code>
-      <code>max_matches:</code>
+    <div class='query-hint-and-index-info'>
+      <div>
+        <span>Special terms:</span>
+        <code>path:</code>
+        <code>-path:</code>
+        <code>repo:</code>
+        <code>-repo:</code>
+        <code>max_matches:</code>
+      </div>
+      <div>
+        <div id="live-status-main-info-container">
+          <span id="live-status-dot" class="live-dot" data-status="{{ .Data.FirstBackendShortStatus}}"></span>
+          <span id="live-status-text">{{ .Data.FirstBackendStatus }}</span>
+        </div>
+      </div>
     </div>
 
     <div class="search-options">
@@ -76,12 +77,6 @@
           <select id='backend' style='display: none;'>
             <option value="{{.Id}}">{{.I.Name}}</option>
           </select>
-          {{if ne (.I.Name) "-"}}
-            <div class="search-option">
-              <span class="label">Searching:</span>
-              {{.I.Name}}
-            </div>
-          {{end}}
         {{end}}
       {{end}}
     </div>

@@ -9,6 +9,7 @@ import (
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	texttemplate "text/template"
 	"time"
@@ -84,7 +85,10 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
 	sampleRepo := ""
-	for _, bkId := range s.bkOrder {
+	// Used to display a connection status. Default selected is first backend.
+	firstBkShortStatus := ""
+	firstBkStatus := ""
+	for idx, bkId := range s.bkOrder {
 		bk := s.bk[bkId]
 		backends = append(backends, bk)
 		bk.I.Lock()
@@ -95,6 +99,9 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 				sampleRepo = r.Name
 			}
 			m[r.Name] = r.Url
+		}
+		if idx == 0 {
+			firstBkShortStatus, firstBkStatus = bk.getTextStatus()
 		}
 		bk.I.Unlock()
 	}
@@ -112,11 +119,15 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		ScriptData:    script_data,
 		IncludeHeader: true,
 		Data: struct {
-			Backends   []*Backend
-			SampleRepo string
+			Backends                []*Backend
+			SampleRepo              string
+			FirstBackendShortStatus string
+			FirstBackendStatus      string
 		}{
-			Backends:   backends,
-			SampleRepo: sampleRepo,
+			Backends:                backends,
+			SampleRepo:              sampleRepo,
+			FirstBackendShortStatus: firstBkShortStatus,
+			FirstBackendStatus:      firstBkStatus,
 		},
 	})
 }
@@ -238,22 +249,8 @@ func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	bk.Up.Lock()
-	if bk.Up.IsUp {
-		// 0s -> 0m and anthing0s -> anything
-		normalizedAge := fmt.Sprintf("%s", bk.I.IndexAge)
-		if "0s" == normalizedAge {
-			normalizedAge = "0m"
-		} else {
-			normalizedAge = strings.TrimSuffix(normalizedAge, "0s")
-		}
-
-		io.WriteString(w, fmt.Sprintf("0,%s", normalizedAge))
-	} else {
-		secondsDown := time.Since(bk.Up.DownSince).Round(time.Second)
-		io.WriteString(w, fmt.Sprintf("%d,%s", bk.Up.DownCode, secondsDown))
-	}
-	bk.Up.Unlock()
+	statusCode, age := bk.getStatus()
+	io.WriteString(w, fmt.Sprintf("%d,%s", statusCode, age))
 }
 
 func (s *server) requestProtocol(r *http.Request) string {
@@ -357,10 +354,13 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 		return
 	}
 
+	start := time.Now()
+	w.Header().Add("num_results", strconv.Itoa(data.NumCodeMatches))
 	s.renderPage(ctx, w, r, "searchresults_partial.html", &page{
 		IncludeHeader: false,
 		Data:          data,
 	})
+	log.Printf(ctx, "took %s to render searchresults_partial", time.Since(start))
 }
 
 func New(cfg *config.Config) (http.Handler, error) {

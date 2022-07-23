@@ -31,13 +31,13 @@ button:hover {
 
 #searcharea {
     width: 100%;
-    max-width: 1200px;
-    margin-top: 30px;
+    max-width: 800px;
     margin-bottom: 20px;
     margin-left: auto;
     margin-right: auto;
     /* position: relative; */
     padding: 20px;
+    padding-top: 10px;
     /* background: white; */
     /* display: flex; */
     /* flex-direction: row; */
@@ -69,9 +69,12 @@ button:hover {
 }
 
 .input-line .query-input-wrapper #searchbox:focus-visible {
-    border-color: #0761D1;
+    border-color: rgba(0, 126, 229, 0.50);
     outline: none;
-    background-color: white;
+    /* border-width: 2px; */
+    /* border-color: #0761D1; */
+    /* outline: none; */
+    /* background-color: white; */
 }
 
 .input-line .inline-search-options {
@@ -95,18 +98,19 @@ button:hover {
     margin-top: 3px;
 }
 
-.query-hint {
-    padding-top: 5px;
+.query-hint-and-index-info {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
     font-size: 11px;
     font-style: italic;
     color: rgba(0, 0, 0, 0.5);
     margin-bottom: 10px;
 }
 
-.query-hint code {
-    border: 1px solid rgba(0, 0, 0, 0.25);
+.query-hint-and-index-info code {
     border-radius: 3px;
-    background: #f8f8f8;
+    background-color: #f8f8f8;
     font-style: normal;
     margin: 0px 1px;
     padding: 1px 3px;
@@ -129,39 +133,36 @@ button:hover {
     display: none;
 }
 
-/* #live-status-main-info-container { */
-/*     display: flex; */
-/*     align-items: center; */
-/*     border-bottom: 1px solid #eaeaea; */
-/*     padding-bottom: 5px; */
-/*     margin-bottom: 5px; */
-/*     margin-top: 15px; */
-/*     color: #888; */
-/* } */
+#live-status-main-info-container {
+    display: flex;
+    align-items: center;
+    color: #888;
+    font-style: normal;
+}
 
-/* #live-status-sub-info { */
-/*     color: #888; */
-/* } */
+#live-status-sub-info {
+    color: #888;
+}
 
-/* .live-dot { */
-/*     height: 12px; */
-/*     width: 12px; */
-/*     border-radius: 50%; */
-/*     display: inline-block; */
-/*     margin-right: 10px; */
-/* } */
+.live-dot {
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 10px;
+}
 
-/* .live-dot[data-status='up'] { */
-/*     background-color: green; */
-/* } */
+.live-dot[data-status='up'] {
+    background-color: rgb(56, 142, 60);
+}
 
-/* .live-dot[data-status='down'] { */
-/*     background-color: red; */
-/* } */
+.live-dot[data-status='down'] {
+    background-color: red;
+}
 
-/* .live-dot[data-status='reloading'] { */
-/*     background-color: orange; */
-/* } */
+.live-dot[data-status='reloading'] {
+    background-color: orange;
+}
 
 #errortext {
     color: #DD3B38;
@@ -219,6 +220,8 @@ button:hover {
 #resultbox {
     padding: 1em 3em;
     width: 100%;
+    max-width: 1240px;
+    margin: auto;
     box-sizing: border-box;
 }
 
@@ -492,6 +495,8 @@ button:hover {
 
 #header ul {
     padding: 0;
+    color: #999;
+    margin-bottom: 30px;
 }
 
 #header li {
@@ -511,9 +516,12 @@ button:hover {
 
 #header .first {}
 
+#header h1 {
+    font-family: monospace;
+}
+
 #header {
     font-size: 12px;
-    color: #999;
     margin: 1em auto;
     width: 40em;
     text-align: center;
@@ -991,7 +999,8 @@ div.example {
 }
 
 .regex-toggle[data-selected="true"] {
-    background-color: #D3E5FF;
+    /* background-color: #D3E5FF; */
+    background-color: var(--hover-highlight-color);
 }
 
 .regex-toggle:hover {
@@ -999,7 +1008,7 @@ div.example {
 }
 
 .regex-toggle[data-selected="false"]:hover {
-    background-color: #D3E5FF;
+    background-color: var(--hover-highlight-color);
 }
 
 .clear-input {
@@ -1027,15 +1036,26 @@ div.example {
     align-items: end;
 }
 
+.select-with-icon-container:hover {
+    cursor: pointer;
+}
+
 .select-with-icon-container .icon {
     position: absolute;
     left: 2px;
+    bottom: -3px;
 }
 
 .select-with-icon-container select {
     padding: 5px;
     padding-left: 25px;
-    /* border-radius: 5px; */
+    border-radius: 5px;
     border: none;
-    border-bottom: 1px solid lightgray;
+    background-color: #fafafa;
+}
+
+.select-with-icon-container select:hover {
+    cursor: pointer;
+    /* background: #eaeaea; */
+    background-color: var(--hover-highlight-color);
 }
