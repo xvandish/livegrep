@@ -1,5 +1,9 @@
 var KeyCodes = {
-  SLASH_OR_QUESTION_MARK: 191
+  SLASH_OR_QUESTION_MARK: 191,
+  LEFT_ARROW: 37,
+  UP_ARROW: 38,
+  RIGHT_ARROW: 39,
+  DOWN_ARROW: 40,
 };
 
 function getSelectedText() {
@@ -11,13 +15,16 @@ var resultsContainer;
 var helpArea;
 var caseSelect;
 var regexToggle;
-var contextToggle;
+var autocompleteMenu; // used for search suggestions
+var autocompleteMenuItems;
+var currAutocompleteIdx = 0; // used to keep track of which menu item is focused
+
 var searchResults; // giant HTML string
 
 var searchOptions = {
   q: '',
   regex: false,
-  context: false,
+  context: true, // we don't have an option for disabling context. No one uses it
   case: 'auto',
 }
 
@@ -33,7 +40,6 @@ function updateSearchParamState() {
 
   sp.set('q', encodeURIComponent(searchOptions.q));
   sp.set('regex', searchOptions.regex);
-  sp.set('context', searchOptions.context);
   sp.set('fold_case', searchOptions.case);
   window.history.pushState({}, '', url);
 
@@ -134,11 +140,47 @@ function init(initData) {
   helpArea = document.querySelector('#helparea');
   caseSelect = document.querySelector('#case-sensitivity-toggle');
   regexToggle = document.querySelector('button[id=toggle-regex]');
-  contextToggle = document.querySelector('button[id=toggle-context]');
+  autocompleteMenu = document.getElementById("autocomplete-menu");
+  autocompleteMenuItems = autocompleteMenu.querySelectorAll("li");
 
   regexToggle.addEventListener('click', toggleControlButton);
-  contextToggle.addEventListener('click', toggleControlButton);
   searchBox.addEventListener('input', updateQuery);
+  searchBox.addEventListener('focusin', function() {
+    autocompleteMenu.style.display = "initial";
+  });
+  searchBox.addEventListener('focusout', function() {
+    var menu = document.getElementById("autocomplete-menu");
+    autocompleteMenu.style.display = "none";
+  });
+  searchBox.addEventListener('keydown', function(e) {
+    var prevIdx = currAutocompleteIdx - 1;
+    if (prevIdx == -1) { // prev was the last elem
+      prevIdx = autocompleteMenuItems.length - 1;
+    }
+
+    // let's leave list cycling out of this for the moment. or maybe not
+    if (e.keyCode == KeyCodes.UP_ARROW) {
+      
+    } else if (e.keyCode == KeyCodes.DOWN_ARROW) {
+      console.log('prevIdx: ', prevIdx);
+      console.log('currIdx: ', currAutocompleteIdx);
+      // unfocus the current element
+      if (prevIdx >= 0) {
+        autocompleteMenuItems[prevIdx].classList.remove('focused');
+      }
+
+      // focus the next element, and se the text content of the search box to it
+      var currItem = autocompleteMenuItems[currAutocompleteIdx];
+      currItem.classList.add('focused');
+      this.value = currItem.innerText;
+      currAutocompleteIdx += 1;
+
+      // reset to the start
+      if (currAutocompleteIdx == autocompleteMenuItems.length) {
+        currAutocompleteIdx = 0;
+      }
+    }
+  });
 
   document.addEventListener('click', function(e) {
     var clickedElem = event.target;

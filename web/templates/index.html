@@ -39,6 +39,47 @@
       <div class="query-input-wrapper">
         <input type="text" bind:value={query} use:blurOnEscape on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
       </div>
+      <div id="autocomplete-menu" style="
+          /* width: 100%; */
+          display: none;
+          background-color: white;
+          width: 750px;
+          min-height: 100px;
+          font-family: monospace;
+          padding-top: 10px;
+          /* display: none; */
+          z-index: 2;
+          position: absolute;
+          padding-left: 10px;
+          padding-bottom: 10px;
+          /* padding: 10px; */
+          box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+      ">
+    
+      <div class="query-hint query-hint-and-index-info" style="
+          padding-top: 2px;
+      ">
+          <div>
+              <span>Special terms:</span>
+              <code>path:</code>
+              <code>-path:</code>
+              <code>repo:</code>
+              <code>-repo:</code>
+              <code>max_matches:</code>
+            </div>
+      </div>
+          <p style="
+          margin-bottom: 10px;
+      ">Recent queries:</p>
+        <ul style="
+          list-style: none;
+          margin: 0;
+          padding: 0;
+      ">
+              <li>some random query</li>
+              <li>here's another query</li>
+          </ul>
+      </div>
     </div>
   </div>
     <div id='regex-error'>

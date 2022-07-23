@@ -1059,3 +1059,15 @@ div.example {
     /* background: #eaeaea; */
     background-color: var(--hover-highlight-color);
 }
+
+#autocomplete-menu li {
+    height: 25px;
+}
+
+#autocomplete-menu li:hover {
+    background-color: #eaeaea;
+}
+
+#autocomplete-menu li.focused {
+    background-color: #eaeaea;
+}
