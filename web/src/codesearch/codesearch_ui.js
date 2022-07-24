@@ -182,9 +182,8 @@ function toggleMoreFileMatches(e) {
   e.currentTarget.querySelector('img').classList.toggle('open');
 }
 
-function init(initData) {
+function init() {
   "use strict"
-  console.log('initData: ', initData);
 
   searchBox = document.getElementById('searchbox')
   resultsContainer = document.querySelector('#resultarea > #results');
