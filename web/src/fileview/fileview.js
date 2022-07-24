@@ -1,5 +1,3 @@
-$ = require('jquery');
-
 var KeyCodes = {
   ESCAPE: 27,
   ENTER: 13,
@@ -11,37 +9,54 @@ function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
 
-function scrollToRange(range, elementContainer) {
-  // - If we have a single line, scroll the viewport so that the element is
-  // at 1/3 of the viewport.
-  // - If we have a range, try and center the range in the viewport
-  // - If the range is to high to fit in the viewport, fallback to the single
-  //   element scenario for the first line
-  var viewport = $(window);
-  var viewportHeight = viewport.height();
+function getOffset(element){
+        if (!element.getClientRects().length)
+        {
+        return { top: 0, left: 0 };
+        }
 
-  var scrollOffset = Math.floor(viewport.height() / 3.0);
-
-  var firstLineElement = elementContainer.find("#L" + range.start);
-  if(!firstLineElement.length) {
-    // We were given a scroll offset to a line number that doesn't exist in the page, bail
-    return;
-  }
-  if(range.start != range.end) {
-    // We have a range, try and center the entire range. If it's to high
-    // for the viewport, fallback to revealing the first element.
-    var lastLineElement = elementContainer.find("#L" + range.end);
-    var rangeHeight = (lastLineElement.offset().top + lastLineElement.height()) - firstLineElement.offset().top;
-    if(rangeHeight <= viewportHeight) {
-      // Range fits in viewport, center it
-      scrollOffset = 0.5 * (viewportHeight - rangeHeight);
-    } else {
-      scrollOffset = firstLineElement.height() / 2; // Stick to (almost) the top of the viewport
+        var rect = element.getBoundingClientRect();
+        var win = element.ownerDocument.defaultView;
+        return (
+        {
+        top: rect.top + win.pageYOffset,
+        left: rect.left + win.pageXOffset
+        });   
     }
-  }
 
-  viewport.scrollTop(firstLineElement.offset().top - scrollOffset);
-}
+// Here we need some JS that we can probably abstract out
+    function scrollToRange(range, elementContainer) {
+        // - If we have a single line, scroll the viewport so that the element is
+        // at 1/3 of the viewport.
+        // - If we have a range, try and center the range in the viewport
+        // - If the range is to high to fit in the viewport, fallback to the single
+        //   element scenario for the first line
+        var viewport = window;
+        var viewportHeight = viewport.innerHeight;
+
+        var scrollOffset = Math.floor(viewportHeight / 3.0);
+
+        var firstLineElement = root.querySelector("#L" + range.start);
+        if(!firstLineElement) {
+            // We were given a scroll offset to a line number that doesn't exist in the page, bail
+            return;
+        }
+        if(range.start != range.end) {
+            // We have a range, try and center the entire range. If it's to high
+            // for the viewport, fallback to revealing the first element.
+            var lastLineElement = elementContainer.querySelector("#L" + range.end);
+            var rangeHeight = (getOffset(lastLineElement).top + lastLineElement.clientHeight) - getOffset(firstLineElement).top;
+            if(rangeHeight <= viewportHeight) {
+                // Range fits in viewport, center it
+                scrollOffset = 0.5 * (viewportHeight - rangeHeight);
+            } else {
+                scrollOffset = firstLineElement.clientHeight / 2; // Stick to (almost) the top of the viewport
+            }
+        }
+
+        // viewport.scrollTop(firstLineElement.offset().top - scrollOffset);
+        viewport.scrollTo({top: getOffset(firstLineElement).top - scrollOffset });
+    }
 
 function setHash(hash) {
   if(history.replaceState) {
@@ -52,165 +67,149 @@ function setHash(hash) {
 }
 
 function parseHashForLineRange(hashString) {
-  var parseMatch = hashString.match(/#L(\d+)(?:-L?(\d+))?/);
+    var parseMatch = hashString.match(/#L(\d+)(?:-L?(\d+))?/);
 
-  if(parseMatch && parseMatch.length === 3) {
-    // We have a match on the regex expression
-    var startLine = parseInt(parseMatch[1], 10);
-    var endLine = parseInt(parseMatch[2], 10);
-    if(isNaN(endLine) || endLine < startLine) {
-      endLine = startLine;
+    if(parseMatch && parseMatch.length === 3) {
+        // We have a match on the regex expression
+        var startLine = parseInt(parseMatch[1], 10);
+        var endLine = parseInt(parseMatch[2], 10);
+        if(isNaN(endLine) || endLine < startLine) {
+        endLine = startLine;
+        }
+        return {
+        start: startLine,
+        end: endLine
+        };
     }
-    return {
-      start: startLine,
-      end: endLine
-    };
-  }
 
-  return null;
+    return null;
 }
 
 function addHighlightClassesForRange(range, root) {
-  var idSelectors = [];
-  for(var lineNumber = range.start; lineNumber <= range.end; lineNumber++) {
-    idSelectors.push("#L" + lineNumber);
-  }
-  root.find(idSelectors.join(",")).addClass('highlighted');
-}
+        var idSelectors = [];
+        for(var lineNumber = range.start; lineNumber <= range.end; lineNumber++) {
+            root.querySelector("#L" + lineNumber).classList.add('highlighted');
+        }
+    }
+
 
 function expandRangeToElement(element) {
-  var range = parseHashForLineRange(document.location.hash);
-  if(range) {
-    var elementLine = parseInt(element.attr('id').replace('L', ''), 10);
-    if(elementLine < range.start) {
-      range.end = range.start;
-      range.start = elementLine;
-    } else {
-      range.end = elementLine;
-    }
-    setHash("#L" + range.start + "-" + range.end);
-  }
-}
-
-function init(initData) {
-  var root = $('.file-content');
-  var lineNumberContainer = root.find('.line-numbers');
-  var helpScreen = $('.help-screen');
-
-  function doSearch(query, newTab, scopeToRepo) {
-    var url = new URL('/search', window.location.href);
-
-    if (query !== null && query !== '') {
-      url.searchParams.set('q', query);
+        var range = parseHashForLineRange(document.location.hash);
+        if(range) {
+            var elementLine = parseInt(element.getAttribute('id').replace('L', ''), 10);
+            if(elementLine < range.start) {
+                range.end = range.start;
+                range.start = elementLine;
+            } else {
+                range.end = elementLine;
+            }
+            setHash("#L" + range.start + "-" + range.end);
+        }
     }
 
-    if (scopeToRepo) {
-      var repoTerm = 'repo:' + initData.repo_info.name;
-      url.searchParams.set('q', repoTerm + " " + query);
-    };
+function doSearch(query, newTab, scopeToRepo) {
+        var url = new URL('/search', window.location.href);
 
-    // url.toString() will encode our query params
-    if (newTab === true){
-      window.open(url);
-    } else {
-      window.location.href = url.toString();
-    }
-  }
+         if (query !== null && query !== '') {
+          url.searchParams.set('q', query);
+        }
 
-  function showHelp() {
-    helpScreen.removeClass('hidden').children().on('click', function(event) {
-      // Prevent clicks inside the element to reach the document
-      event.stopImmediatePropagation();
-      return true;
-    });
+        if (scopeToRepo) {
+          var repoTerm = 'repo:' + fullRepoName;
+          url.searchParams.set('q', repoTerm + " " + query);
+        };
 
-    $(document).on('click', hideHelp);
-  }
-
-  function hideHelp() {
-    helpScreen.addClass('hidden').children().off('click');
-    $(document).off('click', hideHelp);
-    return true;
-  }
-
-  function handleHashChange(scrollElementIntoView) {
-    if(scrollElementIntoView === undefined) {
-      scrollElementIntoView = true; // default if nothing was provided
+        if (newTab === true){
+            window.open(url);
+        } else {
+            window.location.href = url.toString();
+        if (query && query !== '') {
+            url = '/search?q=' + encodeURIComponent(query) + '&repo=' + encodeURIComponent(fullRepoName);
+        } else {
+            url = '/search';
+        }
+        }
     }
 
-    // Clear current highlights
-    lineNumberContainer.find('.highlighted').removeClass('highlighted');
+ function handleHashChange(scrollElementIntoView) {
+        if(scrollElementIntoView === undefined) {
+            scrollElementIntoView = true; // default if nothing was provided
+        }
 
-    // Highlight the current range from the hash, if any
-    var range = parseHashForLineRange(document.location.hash);
-    if(range) {
-      addHighlightClassesForRange(range, lineNumberContainer);
-      if(scrollElementIntoView) {
-        scrollToRange(range, root);
-      }
+        // Clear current highlights
+        lineNumberContainer.querySelectorAll('.highlighted').forEach(function (elem) {
+          elem.classList.remove('highlighted')
+        });
+
+        // Highlight the current range from the hash, if any
+        var range = parseHashForLineRange(document.location.hash);
+        if(range) {
+            addHighlightClassesForRange(range, lineNumberContainer);
+            if(scrollElementIntoView) {
+                scrollToRange(range, root);
+            }
+        }
+
+        // Update the external-browse link
+        document.getElementById('external-link').setAttribute('href', getExternalLink(range));
+        updateFragments(range, document.querySelectorAll('#permalink, #backToHead'));
     }
 
-    // Update the external-browse link
-    $('#external-link').attr('href', getExternalLink(range));
-    updateFragments(range, $('#permalink, #back-to-head'));
-  }
-
-  function getLineNumber(range) {
-    if (range == null) {
-      // Default to first line if no lines are selected.
-      return 1;
-    } else if (range.start == range.end) {
-      return range.start;
-    } else {
-      // We blindly assume that the external viewer supports linking to a
-      // range of lines. Github doesn't support this, but highlights the
-      // first line given, which is close enough.
-      return range.start + "-" + range.end;
-    }
-  }
-
-  function getExternalLink(range) {
-    var lno = getLineNumber(range);
-
-    var repoName = initData.repo_info.name;
-    var filePath = initData.file_path;
-
-    url = initData.repo_info.metadata['url_pattern'];
-
-    // If url not found, warn user and fail gracefully
-    if (!url) { // deal with both undefined and empty string
-        console.error("The index file you provided does not provide repositories[x].metadata.url_pattern. External links to file sources will not work. See the README for more information on file viewing.");
-        return;
+function getLineNumber(range) {
+        if (range == null) {
+            // Default to first line if no lines are selected.
+            return 1;
+        } else if (range.start == range.end) {
+            return range.start;
+        } else {
+            // We blindly assume that the external viewer supports linking to a
+            // range of lines. Github doesn't support this, but highlights the
+            // first line given, which is close enough.
+            return range.start + "-" + range.end;
+        }
     }
 
-    // If {path} already has a slash in front of it, trim extra leading
-    // slashes from `pathInRepo` to avoid a double-slash in the URL.
-    if (url.indexOf('/{path}') !== -1) {
-      filePath = filePath.replace(/^\/+/, '');
+function getExternalLink(range) {
+        var lno = getLineNumber(range);
+
+        var repoName = fullRepoName;
+        var transformedFilePath = filePath;
+
+        var url = urlPattern;
+
+        // If url not found, warn user and fail gracefully
+        if (!url) { // deal with both undefined and empty string
+            console.error("The index file you provided does not provide repositories[x].metadata.url_pattern. External links to file sources will not work. See the README for more information on file viewing.");
+            return;
+        }
+
+        // If {path} already has a slash in front of it, trim extra leading
+        // slashes from `pathInRepo` to avoid a double-slash in the URL.
+        if (url.indexOf('/{path}') !== -1) {
+            transformedFilePath = transformedFilePath.replace(/^\/+/, '');
+        }
+
+        // XXX code copied
+        url = url.replace('{lno}', lno);
+        url = url.replace('{version}', commit);
+        url = url.replace('{name}', repoName);
+        url = url.replace('{path}', transformedFilePath);
+        return url;
     }
 
-    // XXX code copied
-    url = url.replace('{lno}', lno);
-    url = url.replace('{version}', initData.commit);
-    url = url.replace('{name}', repoName);
-    url = url.replace('{path}', filePath);
-    return url;
-  }
 
-  function updateFragments(range, $anchors) {
-    $anchors.each(function() {
-      var $a = $(this);
-      var href = $a.attr('href').split('#')[0];
-      if (range !== null) {
-        href += '#L' + getLineNumber(range);
-      }
-      $a.attr('href', href);
-    });
+    function updateFragments(range, anchors) {
+        anchors.forEach(function (anchor) {
+            var href = anchor.getAttribute('href').split('#')[0];
+             if (range !== null) {
+                 href += '#L' + getLineNumber(range);
+             }
+             anchor.setAttribute('href', href);
+        });
   }
 
   function processKeyEvent(event) {
-    var selectedText = getSelectedText();
-
+      var selectedText = getSelectedText();
     if(event.which === KeyCodes.ENTER) {
       // Perform a new search with the selected text, if any
       if(selectedText) {
@@ -229,42 +228,44 @@ function init(initData) {
       doSearch(selectedText, false, true);
     } else if(event.which === KeyCodes.ESCAPE) {
       // Avoid swallowing the important escape key event unless we're sure we want to
-      if(!helpScreen.hasClass('hidden')) {
+      if(!helpScreen.classList.contains('hidden')) {
         event.preventDefault();
         hideHelp();
       }
-      $('#query').blur();
     } else if(String.fromCharCode(event.which) == 'V') {
       // Visually highlight the external link to indicate what happened
-      $('#external-link').focus();
-      window.location = $('#external-link').attr('href');
+      var externalLink = document.getElementById('external-link');
+      externalLink.focus();
+      window.location.href = externalLink.getAttribute('href');
     } else if (String.fromCharCode(event.which) == 'Y') {
-      var $a = $('#permalink');
-      var permalink_is_present = $a.length > 0;
-      if (permalink_is_present) {
-        $a.focus();
-        window.location = $a.attr('href');
+      var permalinkLink = document.getElementById('permalink');
+      if (permalinkLink) {
+        permalinkLink.focus();
+        window.location.href = permalinkLink.getAttribute('href'); // .attr('href');
       }
     } else if (String.fromCharCode(event.which) == 'N' || String.fromCharCode(event.which) == 'P') {
       var goBackwards = String.fromCharCode(event.which) === 'P';
+      var selectedText = getSelectedText();
       if (selectedText) {
-        window.find(selectedText, false /* case sensitive */, goBackwards);
+        // window.find(selectedText, false /* case sensitive */, goBackwards);
+        console.log('not implemented yet!')
       }
     }
     return true;
   }
 
-  function initializeActionButtons(root) {
+ function initializeActionButtons() {
     // Map out action name to function call, and automate the details of actually hooking
     // up the event handling.
     var ACTION_MAP = {
       searchGlobally: function() { return doSearch(null, false, false) },
-      searchInCurrRepo: function() { return doSearch(null, false, true) },
-      help: showHelp,
+      searchInCurrRepo: function() { return doSearch(null, false, true) }, 
+      help: showHelp
     };
 
     for(var actionName in ACTION_MAP) {
-      root.on('click auxclick', '[data-action-name="' + actionName + '"]',
+      console.log('actionName: ', actionName);
+      document.querySelector("a[data-action-name=" + actionName + "]").addEventListener('click',
         // We can't use the action mapped handler directly here since the iterator (`actioName`)
         // will keep changing in the closure of the inline function.
         // Generating a click handler on the fly removes the dependency on closure which
@@ -280,71 +281,106 @@ function init(initData) {
     }
   }
 
-  var showSelectionReminder = function () {
-    $('.without-selection').hide();
-    $('.with-selection').show();
+var showSelectionReminder = function () {
+    document.getElementsByClassName('without-selection')[0].style.display = 'none';
+    document.getElementsByClassName('with-selection')[0].style.display = 'block';
   }
 
   var hideSelectionReminder = function () {
-    $('.without-selection').show();
-    $('.with-selection').hide();
+    document.getElementsByClassName('without-selection')[0].style.display = 'block'
+    document.getElementsByClassName('with-selection')[0].style.display = 'none';
   }
 
-  function initializePage() {
+function initializePage(initData) {
+  console.log(initData);
+  console.log(initData.repo_info);
+    urlPattern = initData.repo_info.metadata['url_pattern'];
+    fullRepoName = initData.repo_info.name;
+    filePath = initData.file_path;
+    commit = initData.commit;
+
+    root = document.getElementsByClassName('file-content')[0];
+    lineNumberContainer = document.querySelector('.file-content > .line-numbers');
+    helpScreen = document.getElementsByClassName('help-screen')[0]; 
+
+    // The native browser handling of hashes in the location is to scroll
+    // to the element that has a name matching the id. We want to prevent
+    // this since we want to take control over scrolling ourselves, and the
+    // most reliable way to do this is to hide the elements until the page
+    // has loaded. We also need defer our own scroll handling since we can't
+    // access the geometry of the DOM elements until they are visible.
+    setTimeout(function() {
+        lineNumberContainer.style.display = "block"; //  css({display: 'block'});
+        initializeActionButtons();
+    }, 1);
+
     // Initial range detection for when the page is loaded
-    handleHashChange();
+    handleHashChange(false);
 
     // Allow shift clicking links to expand the highlight range
-    lineNumberContainer.on('click', 'a', function(event) {
-      event.preventDefault();
-      if(event.shiftKey) {
-        expandRangeToElement($(event.target), lineNumberContainer);
-      } else {
-        setHash($(event.target).attr('href'));
+    // rather than adding an event handler to all links, we just 
+    // add a handler to the container, then check if the target
+    // is a link
+    lineNumberContainer.addEventListener('click', function(event) {
+        if(event.target.tagName.toLowerCase() !== 'a') {
+            return;
+        }
+        event.preventDefault();
+        if (event.shiftKey) {
+                expandRangeToElement(event.target);
+        } else {
+            setHash(event.target.getAttribute('href'));
+        }
+        handleHashChange(false);
+    });
+    window.addEventListener('hashchange', function(event) {
+        event.preventDefault();
+        handleHashChange(true);
+    });
+
+    window.document.addEventListener('keydown', function (e) {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        processKeyEvent(e);
+    });
+    
+    window.document.addEventListener('selectionchange', function() {
+        var selectedText = getSelectedText();
+        if(selectedText) {
+          showSelectionReminder();
+        } else {
+          hideSelectionReminder();
+        }
+    });
+
+    window.document.addEventListener('click', function(event) {
+      var helpScreenCard = document.querySelector('.help-screen-card');
+      if (!helpScreen.classList.contains('hidden') && !helpScreenCard.contains(event.target)) { // check against card, not overlay
+        hideHelp();
       }
-      handleHashChange(false);
     });
 
-    $(window).on('hashchange', function(event) {
-      event.preventDefault();
-      // The url was updated with a new range
-      handleHashChange();
-    });
-
-    $(document).on('keydown', function(event) {
-      // Filter out key events when the user has focused an input field.
-      if($(event.target).is('input,textarea'))
-        return;
-      // Filter out key if a modifier is pressed.
-      if(event.altKey || event.ctrlKey || event.metaKey)
-        return;
-      processKeyEvent(event);
-    });
-
-    $(document).mouseup(function() {
-      var selectedText = getSelectedText();
-      if(selectedText) {
-        showSelectionReminder(selectedText);
-      } else {
-        hideSelectionReminder();
-      }
-    });
-
-    initializeActionButtons($('.header .header-actions'));
+    // initializeActionButtons($('.header .header-actions'));
   }
 
-  // The native browser handling of hashes in the location is to scroll
-  // to the element that has a name matching the id. We want to prevent
-  // this since we want to take control over scrolling ourselves, and the
-  // most reliable way to do this is to hide the elements until the page
-  // has loaded. We also need defer our own scroll handling since we can't
-  // access the geometry of the DOM elements until they are visible.
-  setTimeout(function() {
-    lineNumberContainer.css({display: 'block'});
-    initializePage();
-  }, 1);
-}
+    function showHelp() {
+        helpScreen.classList.remove('hidden');
+    }
+
+    function hideHelp() {
+        helpScreen.classList.add('hidden')
+    }
+
+var initData;
+var urlPattern;
+var commit;
+var fullRepoName;
+var filePath;
+
+var lineNumberContainer;
+var root;
+var helpScreen;
+
 
 module.exports = {
-  init: init
+  init: initializePage
 }
