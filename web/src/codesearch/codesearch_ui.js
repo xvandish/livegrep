@@ -174,11 +174,55 @@ function createSearchHistory() {
         elem.title = 'Do search for: ' + searchText;
         elem.innerText = searchText;
         elem.addEventListener('click', function (e) {
+          console.log('in click handler');
           searchBox.value = e.target.innerText;
           searchBox.dispatchEvent(new Event('input')); // trigger the search
         });
         c.appendChild(elem);
   }
+}
+
+// returns the number of "shown" items
+function filterShownAutocompleteItems() {
+      // The user is typing something. Filter out "suggestions" that don't match
+      // also, set the currAutocompleteIdx to -1
+      clearCurAutocompleteSelectionHighlight();
+      currAutocompleteIdx = -1; 
+
+      // we don't use this.value, since we're in the keydown handler, we fire
+      // before the value actually changes.
+      var currText = searchBox.value;
+      
+      // rather than split the logic into two handlers, one that tracks addition
+      // with 'input' events, and one that tracks deletion with 'onkeydown'
+      // events, we just do a brute force traversal of all li, without regard to
+      // whether they were shown/hidden before. With n < 10 suggestions, this is
+      // fine.
+
+      var allItems = autocompleteMenu.querySelectorAll('li');
+      var countShown = 0;
+      console.log(allItems);
+      for (var i = 0; i < allItems.length; i++) {
+        var item = allItems[i];
+        console.log('item is: ', item);
+        if (currText.length > item.innerText.length) {
+          console.log('currText len is greater');
+          item.dataset.hidden = 'true';
+          continue;
+        }
+
+        var c = item.innerText.slice(0, currText.length);
+        console.log('c: ', c);
+        console.log('currText: ', currText);
+        if (c != currText) {
+          item.dataset.hidden = 'true';
+        } else {
+          countShown += 1;
+          item.dataset.hidden = 'false';
+        }
+      }
+    return countShown;
+
 }
 
 function init(initData) {
@@ -191,16 +235,22 @@ function init(initData) {
   caseSelect = document.querySelector('#case-sensitivity-toggle');
   regexToggle = document.querySelector('button[id=toggle-regex]');
   autocompleteMenu = document.getElementById("autocomplete-menu");
-
-  autocompleteMenu.addEventListener('mouseover', function (e) {
-    console.log('e.target.type', e.target.type);
-    // clearCurAutocompleteSelectionHighlight();
-    // currAutocompleteIdx = -1;
+  
+  // we use mousedown instead of click so we can ensure this fire's before
+  // the focusout event that closes the autocompleteMenu
+  autocompleteMenu.addEventListener('mousedown', function (e) {
+    console.log('in click handler');
+    if (e.target.tagName == "LI") {
+      searchBox.value = e.target.innerText;
+      searchBox.dispatchEvent(new Event('input')); // trigger the search
+    }
   });
 
   regexToggle.addEventListener('click', toggleControlButton);
   searchBox.addEventListener('input', updateQuery);
   searchBox.addEventListener('focusin', function() {
+    var numShown = filterShownAutocompleteItems();
+    if (numShown == 0) return; // no point in opening the menu
     autocompleteMenu.style.display = "initial";
   });
   searchBox.addEventListener('focusout', function() {
@@ -234,42 +284,13 @@ function init(initData) {
     // delete the current list, and swap in the new list.
   });
   searchBox.addEventListener('input', function (e) {
-      // The user is typing something. Filter out "suggestions" that don't match
-      // also, set the currAutocompleteIdx to -1
-      clearCurAutocompleteSelectionHighlight();
-      currAutocompleteIdx = -1; 
-
-      // we don't use this.value, since we're in the keydown handler, we fire
-      // before the value actually changes.
-      var currText = this.value;
-      var exp = e.target.value;
-      
-      // rather than split the logic into two handlers, one that tracks addition
-      // with 'input' events, and one that tracks deletion with 'onkeydown'
-      // events, we just do a brute force traversal of all li, without regard to
-      // whether they were shown/hidden before. With n < 10 suggestions, this is
-      // fine.
-
-      var allItems = autocompleteMenu.querySelectorAll('li');
-      console.log(allItems);
-      for (var i = 0; i < allItems.length; i++) {
-        var item = allItems[i];
-        console.log('item is: ', item);
-        if (currText.length > item.innerText.length) {
-          console.log('currText len is greater');
-          item.dataset.hidden = 'true';
-          continue;
-        }
-
-        var c = item.innerText.slice(0, currText.length);
-        console.log('c: ', c);
-        console.log('currText: ', currText);
-        if (c != currText) {
-          item.dataset.hidden = 'true';
-        } else {
-          item.dataset.hidden = 'false';
-        }
-      }
+    var numShown = filterShownAutocompleteItems();
+    if (numShown == 0) {
+      autocompleteMenu.style.display = "none";
+    } else {
+      autocompleteMenu.style.display = "initial";
+    }
+    // if there are no shown items left, close the autocomplete
   });
 
   // we handle opening, closing and iterating through the autocomplete list here
