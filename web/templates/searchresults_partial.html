@@ -34,6 +34,17 @@
   {{ end }}
 </div>
 
+<div class="tree-results">
+  {{ range .Data.TreeResults }}
+    <div class="treename-match">
+      <a class="label header result-path" href="/view/{{.Name}}/">
+      {{ $lineParts := splitCodeLineIntoParts .Name (slice .Bounds) }}
+          <span>{{$lineParts.Prefix}}</span><span class="matchstr">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+      </a>
+    </div>
+  {{ end }}
+</div>
+
 <div class="code-results">
   {{range .Data.Results}}
   {{$repo := .Tree}}
