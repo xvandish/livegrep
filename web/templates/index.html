@@ -19,13 +19,13 @@
             </g>
           </svg>
           </div>
-        <select id="case-sensitivity-toggle" bind:value={caseSensitivity} on:change={updateSearchParamState}>
+        <select id="case-sensitivity-toggle"}>
           <option value="auto">auto</option>
           <option value="false">match</option>
           <option value="true">ignore</option>
         </select>
         </div>
-        <button type="button" class="regex-toggle" id="toggle-regex" on:click={toggleRegex} data-selected="false" title="TODO" name="regex">
+        <button type="button" class="regex-toggle" id="toggle-regex" data-selected="false" title="Toggle regex" name="regex">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
             <g id="regular-expression">
                     <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"/>
@@ -37,7 +37,7 @@
         </button>
       </div>
       <div class="query-input-wrapper">
-        <input type="text" bind:value={query} use:blurOnEscape on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
+        <input type="text" id='searchbox' tabindex="1" required="required" />
       </div>
   </div>
     <div id='regex-error'>
