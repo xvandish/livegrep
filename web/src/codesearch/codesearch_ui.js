@@ -46,11 +46,14 @@ function doSearch() {
     return;
   };
   console.time('query');
-  var searchResults = fetch("/api/v2/getRenderedSearchResults/?q=" + 
+  var time1 = performance.now();
+  var time2;
+  fetch("/api/v2/getRenderedSearchResults/?q=" + 
     searchOptions.q + "&fold_case=" + searchOptions.case + "&regex=" + searchOptions.regex + "&context=" + 
     searchOptions.context)
   .then(function(r) {
     console.timeEnd('query');
+    time2 = performance.now();
     if (!r.ok) {
       return Promise.reject(r.text());
     } else {
@@ -61,6 +64,10 @@ function doSearch() {
     helpArea.style.display = "none";
     resultsContainer.innerHTML = text;
     errorsBox.style.display = "none";
+
+    var timeTaken = ((time2 - time1) / 1000).toFixed(4);
+    document.getElementById('searchtime').innerText = timeTaken + "s";
+    document.getElementById('searchtimebox').style.display = "initial";
   })
   .catch(function (err) {
     err.then(function (errText) {

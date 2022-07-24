@@ -1,3 +1,12 @@
+<div id="countarea">
+  <span id="numresults">{{ .Data.Info.NumMatches }}{{ if .Data.Info.MoreAvail }}+{{end}}</span> matches found
+  <span id='searchtimebox'>
+    <span class='label'>&asymp;</span>
+    <!-- js will embed the time here -->
+    <span id='searchtime'></span>
+  </span>
+</div>
+
 <div class="path-results">
   {{range $i, $e := getFirstNFiles .Data.FileResults 10 }}
     <div class="cr-header">

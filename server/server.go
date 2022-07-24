@@ -9,7 +9,6 @@ import (
 	"path"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	texttemplate "text/template"
 	"time"
@@ -357,7 +356,6 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 	}
 
 	start := time.Now()
-	w.Header().Add("num_results", strconv.Itoa(data.NumCodeMatches))
 	s.renderPage(ctx, w, r, "searchresults_partial.html", &page{
 		IncludeHeader: false,
 		Data:          data,

@@ -238,6 +238,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 	if q.FilenameOnly {
 		reply.SearchType = "filename_only"
+	} else if q.TreenameOnly {
+		reply.SearchType = "treename_only"
 	}
 
 	// https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
@@ -296,7 +298,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	}
 
 	log.Printf(ctx, "dedup took %s", time.Since(dedupStart))
-	reply.NumCodeMatches = codeMatches
 
 	for _, dededupedResult := range dedupedResults {
 		// Change the lines over to an array then sort by LineNumber
@@ -336,6 +337,17 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		})
 	}
 
+	exitReason := search.Stats.ExitReason.String()
+	var numMatches int
+
+	if q.FilenameOnly {
+		numMatches = len(search.FileResults)
+	} else if q.TreenameOnly {
+		numMatches = len(search.TreeResults)
+	} else {
+		numMatches = codeMatches
+	}
+
 	reply.Info = &api.Stats{
 		RE2Time:     search.Stats.Re2Time,
 		GitTime:     search.Stats.GitTime,
@@ -343,7 +355,9 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		IndexTime:   search.Stats.IndexTime,
 		AnalyzeTime: search.Stats.AnalyzeTime,
 		TotalTime:   int64(time.Since(start) / time.Millisecond),
-		ExitReason:  search.Stats.ExitReason.String(),
+		ExitReason:  exitReason,
+		NumMatches:  numMatches,
+		MoreAvail:   exitReason != "NONE",
 	}
 	return reply, nil
 }

@@ -21,12 +21,11 @@ type ReplySearch struct {
 
 // api/v2/search/:backend
 type ReplySearchV2 struct {
-	Info           *Stats        `json:"info"`
-	Results        []*ResultV2   `json:"results"`
-	FileResults    []*FileResult `json:"file_results"`
-	TreeResults    []*TreeResult `json:"tree_results"`
-	SearchType     string        `json:"search_type"`
-	NumCodeMatches int           `json:"code_matches"`
+	Info        *Stats        `json:"info"`
+	Results     []*ResultV2   `json:"results"`
+	FileResults []*FileResult `json:"file_results"`
+	TreeResults []*TreeResult `json:"tree_results"`
+	SearchType  string        `json:"search_type"`
 }
 
 type Stats struct {
@@ -37,6 +36,8 @@ type Stats struct {
 	AnalyzeTime int64  `json:"analyze_time"`
 	TotalTime   int64  `json:"total_time"`
 	ExitReason  string `json:"why"`
+	NumMatches  int    `json:"num_matches"`
+	MoreAvail   bool   `json:"more_avail"`
 }
 
 type Metadata struct {
