@@ -21,11 +21,17 @@ type ReplySearch struct {
 
 // api/v2/search/:backend
 type ReplySearchV2 struct {
-	Info        *Stats        `json:"info"`
-	Results     []*ResultV2   `json:"results"`
-	FileResults []*FileResult `json:"file_results"`
-	TreeResults []*TreeResult `json:"tree_results"`
-	SearchType  string        `json:"search_type"`
+	Info        *Stats           `json:"info"`
+	Results     []*ResultV2      `json:"results"`
+	FileResults []*FileResult    `json:"file_results"`
+	TreeResults []*TreeResult    `json:"tree_results"`
+	SearchType  string           `json:"search_type"`
+	PopExts     []*FileExtension `json:"popular_extensions"` // at most 5 common extensions in search
+}
+
+type FileExtension struct {
+	Ext   string
+	Count int
 }
 
 type Stats struct {

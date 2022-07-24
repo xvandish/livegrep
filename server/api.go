@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -299,7 +300,11 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 	log.Printf(ctx, "dedup took %s", time.Since(dedupStart))
 
-	for _, dededupedResult := range dedupedResults {
+	extensionCounts := make(map[string]int, len(dedupedResults))
+	for treeAndPath, dededupedResult := range dedupedResults {
+		ext := filepath.Ext(treeAndPath)
+		extensionCounts[ext] += 1
+
 		// Change the lines over to an array then sort by LineNumber
 		dededupedResult.Lines = make([]*api.ResultLine, 0)
 		for _, line := range dededupedResult.ContextLines {
@@ -314,6 +319,25 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 		reply.Results = append(reply.Results, dededupedResult)
 	}
+
+	extensionArray := make([]*api.FileExtension, 0, len(extensionCounts))
+	idx := 0
+	for ext, count := range extensionCounts {
+		if ext == "" {
+			continue
+		}
+		extensionArray = append(extensionArray, &api.FileExtension{Ext: ext, Count: count})
+		idx += 1
+	}
+
+	sort.Slice(extensionArray, func(i, j int) bool {
+		return extensionArray[i].Count > extensionArray[j].Count
+	})
+	c := 5
+	if len(extensionArray) < 5 {
+		c = len(extensionArray)
+	}
+	reply.PopExts = extensionArray[:c]
 
 	for _, r := range search.FileResults {
 		reply.FileResults = append(reply.FileResults, &api.FileResult{

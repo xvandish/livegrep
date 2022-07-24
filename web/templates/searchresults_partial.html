@@ -7,6 +7,15 @@
   </span>
 </div>
 
+{{ if gt (len .Data.PopExts) 0 }}
+<div class="file-extensions">
+  <span>Narrow to:</span>
+  {{ range .Data.PopExts }}
+  <button class="file-extension">{{ .Ext }}</button> 
+  {{ end }}
+</div>
+{{ end }}
+
 <div class="path-results">
   {{range $i, $e := getFirstNFiles .Data.FileResults 10 }}
     <div class="cr-header">
