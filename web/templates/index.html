@@ -39,26 +39,8 @@
       <div class="query-input-wrapper">
         <input type="text" bind:value={query} use:blurOnEscape on:input={updateQuery} id='searchbox' tabindex="1" required="required" />
       </div>
-      <div id="autocomplete-menu" style="
-          /* width: 100%; */
-          display: none;
-          background-color: white;
-          width: 750px;
-          min-height: 100px;
-          font-family: monospace;
-          padding-top: 10px;
-          /* display: none; */
-          z-index: 2;
-          position: absolute;
-          padding-left: 10px;
-          padding-bottom: 10px;
-          /* padding: 10px; */
-          box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
-      ">
-    
-      <div class="query-hint query-hint-and-index-info" style="
-          padding-top: 2px;
-      ">
+      <div id="autocomplete-menu">
+        <div class="query-hint query-hint-and-index-info">
           <div>
               <span>Special terms:</span>
               <code>path:</code>
@@ -66,23 +48,48 @@
               <code>repo:</code>
               <code>-repo:</code>
               <code>max_matches:</code>
-            </div>
-            <div>
-              <span>Close with <code>Esc</code></span>
-            </div>
-      </div>
-          <p style="
-          margin-bottom: 10px;
-      ">Recent matching queries:</p>
-        <ul style="
-          list-style: none;
-          margin: 0;
-          padding: 0;
-      ">
-              <li data-hidden="false">test</li>
-              <li data-hidden="false">livegrep</li>
+          </div>
+        <div>
+          <span>Close with <code>Esc</code>. Open with <code>&#x2191;</code> or<code>&#x2193;</code></span>
+        </div>
+        </div>
+          <p id="suggestions-header">Example searches:</p>
+          <!-- these are shown if the user has no history in localStorage -->
+          <ul>
+            <li data-hidden="false" data-value="hello path:test">
+              <span>hello path:test</span>
+              <span class="explanation">Only include results from matching files.</span>
+            </li>
+            <li data-hidden="false" data-value="hello -path:test">
+              <span>hello -path:test</span>
+              <span class="explanation">Exclude results from matching files.</span>
+            </li>
+            <li data-hidden="false" data-value="path:test">
+              <span>path:test</span>
+              <span class="explanation">Only search filenames.</span>
+            </li>
+            <li data-hidden="false" data-value="hello repo:test">
+              <span>hello repo:test</span>
+              <span class="explanation">Only include results from matching repositories.</span>
+            </li>
+            <li data-hidden="false" data-value="hello -repo:test">
+              <span>hello -repo:test</span>
+              <span class="explanation">Exclude results from matching repositories.</span>
+            </li>
+            <li data-hidden="false" data-value="repo:test">
+              <span>repo:test</span>
+              <span class="explanation">Only search repo names.</span>
+            </li>
+            <li data-hidden="false" data-value="hello -max_matches:300">
+              <span>hello -max_matches:300</span>
+              <span class="explanation">Adjust the limit on number of matching lines returned.</span>
+            </li>
+            <li data-hidden="false" data-value="hello (file:)">
+              <span>hello (file:)</span>
+              <span class="explanation">Escape one of the above terms by wrapping it in parentheses (with regex enabled).</span>
+            </li>
           </ul>
-      </div>
+        </div>
     </div>
   </div>
     <div id='regex-error'>
@@ -129,12 +136,6 @@
 
 <div id='resultbox'>
 <div id='helparea'>
-  <div id="joined-stuff">  
-    <div id='recent-searches'>
-        <div class="helpsection"><h3>Recent Searches</h3></div>
-        <!-- js will populate this with history from localstorage -->
-        <div class="searches-container"></div>
-    </div>
     <div id="terms-wrapper">
         <div class='helpsection'>
             <h3>Special query terms</h3>
@@ -203,7 +204,6 @@
             </p>
         </div>
     </div>
-  </div>
 </div>
 <div id='resultarea'>
   <div id='countarea'>

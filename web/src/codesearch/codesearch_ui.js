@@ -159,6 +159,11 @@ function createSearchHistory() {
         currHistory = [];
       }
 
+  // we ship some default suggestions, so don't override those
+  if (currHistory.length == 0) {
+    return;
+  }
+
   var c = autocompleteMenu.querySelector('ul');
 
   // empty the container. Note we can't replaceChildren(historyElems)
@@ -173,13 +178,12 @@ function createSearchHistory() {
         elem.dataset.hidden = 'false'; // TODO: show/hide based on query
         elem.title = 'Do search for: ' + searchText;
         elem.innerText = searchText;
-        elem.addEventListener('click', function (e) {
-          console.log('in click handler');
-          searchBox.value = e.target.innerText;
-          searchBox.dispatchEvent(new Event('input')); // trigger the search
-        });
+        elem.dataset.value = searchText;
         c.appendChild(elem);
   }
+
+  var header = autocompleteMenu.querySelector('#suggestions-header');
+  header.innerText = "Recent searches:";
 }
 
 // returns the number of "shown" items
@@ -201,17 +205,24 @@ function filterShownAutocompleteItems() {
 
       var allItems = autocompleteMenu.querySelectorAll('li');
       var countShown = 0;
+      if (searchBox.value == "") {
+        for (var i = 0; i < allItems.length; i++) {
+          allItems[i].dataset.hidden = 'false';
+        }
+        return allItems.length;
+      }
       console.log(allItems);
       for (var i = 0; i < allItems.length; i++) {
         var item = allItems[i];
+        var itemText = item.dataset.value;
         console.log('item is: ', item);
-        if (currText.length > item.innerText.length) {
+        if (currText.length > itemText.length) {
           console.log('currText len is greater');
           item.dataset.hidden = 'true';
           continue;
         }
 
-        var c = item.innerText.slice(0, currText.length);
+        var c = itemText.slice(0, currText.length);
         console.log('c: ', c);
         console.log('currText: ', currText);
         if (c != currText) {
@@ -241,7 +252,7 @@ function init(initData) {
   autocompleteMenu.addEventListener('mousedown', function (e) {
     console.log('in click handler');
     if (e.target.tagName == "LI") {
-      searchBox.value = e.target.innerText;
+      searchBox.value = e.target.dataset.value;
       searchBox.dispatchEvent(new Event('input')); // trigger the search
     }
   });
@@ -284,6 +295,8 @@ function init(initData) {
     // delete the current list, and swap in the new list.
   });
   searchBox.addEventListener('input', function (e) {
+    console.log('input handler called');
+    console.log('text in input e.target.value=', e.target.value);
     var numShown = filterShownAutocompleteItems();
     if (numShown == 0) {
       autocompleteMenu.style.display = "none";
@@ -304,7 +317,7 @@ function init(initData) {
       // If the key is enter, and we have a selected history item, fill the
       // search with it and cose the autocomplete box
       if (currAutocompleteIdx >= 0 && currAutocompleteIdx <= autocompleteMenuItems.length - 1) {
-        this.value = autocompleteMenuItems[currAutocompleteIdx].innerText;
+        this.value = autocompleteMenuItems[currAutocompleteIdx].dataset.value;
         autocompleteMenu.style.display = 'none';
         this.dispatchEvent(new Event('input')); // trigger the search
         
