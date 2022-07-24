@@ -243,8 +243,11 @@ button:hover {
     width: 100%;
 }
 
-#helparea #terms-wrapper {
-    max-width: 70em;
+#helparea #joined-stuff {
+    display: grid;
+    grid-template-columns: 30% 1fr;
+    gap: 50px;
+    width: 100em;
     margin: auto;
 }
 
@@ -1056,59 +1059,4 @@ div.example {
     cursor: pointer;
     /* background: #eaeaea; */
     background-color: var(--hover-highlight-color);
-}
-
-#autocomplete-menu {
-    display: none;
-    background-color: white;
-    width: 99.5%;
-    min-height: 100px;
-    font-family: monospace;
-    padding-top: 10px;
-    z-index: 2;
-    position: absolute;
-    padding-left: 10px;
-    padding-bottom: 10px;
-    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
-}
-
-#autocomplete-menu .query-hint-and-index-info {
-    padding-top: 2px;
-}
-
-#autocomplete-menu ul {
-    font-size: 0.9em;
-    list-style: none;
-    padding: 5px;
-    margin: 0;
-}
-
-#autocomplete-menu li {
-    height: 25px;
-    padding: 3px;
-    display: flex;
-    justify-content: space-between;
-    margin-right: 5px;
-}
-
-#autocomplete-menu li:hover {
-    /* background-color: #e9f7ff; */
-    background-color: var(--hover-highlight-color);
-    cursor: pointer;
-}
-
-#autocomplete-menu li.focused {
-    background-color: var(--hover-highlight-color);
-}
-
-#autocomplete-menu li[data-hidden='true'] {
-    display: none;
-}
-
-#autocomplete-menu li[data-hidden='false'] {
-    /* display: block; */
-}
-
-#autocomplete-menu li .explanation {
-    color: rgba(0, 0, 0, 0.5);
 }
