@@ -204,7 +204,7 @@ function init(initData) {
   regexToggle = document.querySelector('button[id=toggle-regex]');
 
   caseSelect.addEventListener('change', function (e) {
-    var newVal = event.target.value;
+    var newVal = e.target.value;
     searchOptions['case'] = newVal;
     updateSearchParamState();
   });
