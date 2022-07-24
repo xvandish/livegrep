@@ -114,19 +114,20 @@ function initStateFromQueryParams() {
 
   var currentQ = decodeURIComponent(sp.get('q') || '');
   var caseVal = sp.get('fold_case') || 'auto'; 
+  var regexVal = sp.get('regex') || false;
 
   searchBox.value = currentQ;
   caseSelect.value = caseVal
+  regexToggle.dataset.selected = regexVal; 
   
 
   searchOptions = {
     q: currentQ,
-    regex: sp.get('regex') || false,
+    regex: regexVal,
     context: sp.get('context') || true,
     case: caseVal,
   };
 
-  
 
   doSearch();
 }
@@ -201,6 +202,12 @@ function init(initData) {
   helpArea = document.querySelector('#helparea');
   caseSelect = document.querySelector('#case-sensitivity-toggle');
   regexToggle = document.querySelector('button[id=toggle-regex]');
+
+  caseSelect.addEventListener('change', function (e) {
+    var newVal = event.target.value;
+    searchOptions['case'] = newVal;
+    updateSearchParamState();
+  });
   regexToggle.addEventListener('click', toggleControlButton);
   searchBox.addEventListener('input', updateQuery);
 
