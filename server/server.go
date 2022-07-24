@@ -105,17 +105,9 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		bk.I.Unlock()
 	}
 
-	script_data := &struct {
-		RepoUrls           map[string]map[string]string `json:"repo_urls"`
-		InternalViewRepos  map[string]config.RepoConfig `json:"internal_view_repos"`
-		DefaultSearchRepos []string                     `json:"default_search_repos"`
-		LinkConfigs        []config.LinkConfig          `json:"link_configs"`
-	}{urls, s.repos, s.config.DefaultSearchRepos, s.config.LinkConfigs}
-
 	s.renderPage(ctx, w, r, "index.html", &page{
 		Title:         "code search",
 		ScriptName:    "codesearch",
-		ScriptData:    script_data,
 		IncludeHeader: true,
 		Data: struct {
 			Backends                []*Backend
