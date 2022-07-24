@@ -333,9 +333,13 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	sort.Slice(extensionArray, func(i, j int) bool {
 		return extensionArray[i].Count > extensionArray[j].Count
 	})
+	// we want at most 5 exts, but if there are less than 2, no exts
 	c := 5
 	if len(extensionArray) < 5 {
 		c = len(extensionArray)
+	}
+	if c < 2 {
+		c = 0
 	}
 	reply.PopExts = extensionArray[:c]
 

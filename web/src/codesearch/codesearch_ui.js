@@ -182,6 +182,19 @@ function toggleMoreFileMatches(e) {
   e.currentTarget.querySelector('img').classList.toggle('open');
 }
 
+function handleFileExtBtnClick(e) {
+  var q = searchBox.value;
+  var ext = e.target.innerText;
+  if (regexToggle.dataset.selected == "true") {
+    q = 'path:\\' + ext + '$ ' + q;
+  }
+  else {
+    q = 'path:' + ext + ' ' + q;
+  }
+  searchBox.value = q;
+  searchBox.dispatchEvent(new Event('input'))
+}
+
 function init() {
   "use strict"
 
@@ -209,6 +222,8 @@ function init() {
     var btn = e.target.closest('button');
     if (btn && btn.id == "showMoreFilematchesBtn") {
       toggleMoreFileMatches(e);
+    } else if (btn && btn.classList.contains("file-extension")) {
+      handleFileExtBtnClick(e);
     }
   });
 
