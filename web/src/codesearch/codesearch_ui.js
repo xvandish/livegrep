@@ -246,7 +246,10 @@ function init() {
     event.preventDefault();
     searchBox.focus();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 
+  window.addEventListener('popstate', function (e) {
+    initStateFromQueryParams();
   });
 
   initStateFromQueryParams();
