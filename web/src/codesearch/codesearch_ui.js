@@ -216,6 +216,28 @@ function init(initData) {
     }
   });
 
+  // listen for the '/' key to trigger search input focus
+  // or, if text is selected, trigger a search for it
+  document.addEventListener('keyup', function (e) {
+     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      return;
+     if (event.key !== "/" || (searchBox === document.activeElement)) return;
+
+     // if there is some selected text, then start a new search for it
+    var selectedText = getSelectedText();
+    if (selectedText !== "") {
+      searchBox.value = selectedText;
+      searchBox.dispatchEvent(new Event('input'))
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return; // let this event be handled by _handleKey for now, until we remove all this JS 
+    }
+
+    event.preventDefault();
+    searchBox.focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  });
+
   initStateFromQueryParams();
   renderSearchHistory();
 }
