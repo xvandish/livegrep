@@ -1,14 +1,3 @@
-var KeyCodes = {
-  SLASH_OR_QUESTION_MARK: 191,
-  LEFT_ARROW: 37,
-  UP_ARROW: 38,
-  RIGHT_ARROW: 39,
-  DOWN_ARROW: 40,
-  ENTER: 13,
-  ESCAPE: 27,
-  BACKSPACE: 8,
-};
-
 function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
@@ -18,11 +7,6 @@ var resultsContainer;
 var helpArea;
 var caseSelect;
 var regexToggle;
-var autocompleteMenu; // used for search suggestions
-var autocompleteMenuItems;
-// used to keep track of which menu item is focused. -1 indicates the search bar
-// is highlighted
-var currAutocompleteIdx = -1; 
 
 var searchResults; // giant HTML string
 
@@ -48,7 +32,6 @@ function updateSearchParamState() {
   sp.set('fold_case', searchOptions.case);
   window.history.pushState({}, '', url);
 
-  // TODO - doSearch();
   doSearch();
 }
 
@@ -76,7 +59,6 @@ function doSearch() {
     helpArea.style.display = "none";
     resultsContainer.innerHTML = text;
   });
-  /* const inf = await res.json(); */
 
   // TODO: handle errors (404, 500 etc)
   /* sampleRes.results = [...inf.results]; */
