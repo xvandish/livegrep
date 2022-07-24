@@ -262,7 +262,7 @@ button:hover {
 }
 
 #query-terms-table tr:hover {
-    background-color: #eaeaea;
+    background-color: var(--hover-highlight-color);
 }
 
 #query-terms-table td {
@@ -999,9 +999,15 @@ div.example {
     border-radius: 5px;
 }
 
+/* we go to all this trouble so that hovering is noticable,
+ * a selected toggle/button is noticeable, and when hovering
+ * over a selected button, you notice when it's selected or not. */
 .regex-toggle[data-selected="true"] {
-    /* background-color: #D3E5FF; */
-    background-color: var(--hover-highlight-color);
+    background-color: #337ab7;
+}
+
+.regex-toggle[data-selected="true"] svg {
+    fill: white;
 }
 
 .regex-toggle:hover {
