@@ -45,14 +45,12 @@ function doSearch() {
     errorsBox.style.display = "none";
     return;
   };
-  console.time('query');
   var time1 = performance.now();
   var time2;
   fetch("/api/v2/getRenderedSearchResults/?q=" + 
     searchOptions.q + "&fold_case=" + searchOptions.case + "&regex=" + searchOptions.regex + "&context=" + 
     searchOptions.context)
   .then(function(r) {
-    console.timeEnd('query');
     time2 = performance.now();
     if (!r.ok) {
       return Promise.reject(r.text());
