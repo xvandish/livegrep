@@ -3,6 +3,7 @@ function getSelectedText() {
 }
 
 var searchBox;
+var errorsBox;
 var resultsContainer;
 var helpArea;
 var caseSelect;
@@ -41,6 +42,7 @@ function doSearch() {
   if (searchOptions.q === '') {
     helpArea.style.display = "initial";
     resultsContainer.innerHTML = "";
+    errorsBox.style.display = "none";
     return;
   };
   console.time('query');
@@ -50,7 +52,7 @@ function doSearch() {
   .then(function(r) {
     console.timeEnd('query');
     if (!r.ok) {
-      return "Error " + r.status + ": " + r.statusText;
+      return Promise.reject(r.text());
     } else {
       return r.text();
     }
@@ -58,17 +60,17 @@ function doSearch() {
   .then(function (text) {
     helpArea.style.display = "none";
     resultsContainer.innerHTML = text;
+    errorsBox.style.display = "none";
+  })
+  .catch(function (err) {
+    err.then(function (errText) {
+      // display the help area, clear previous results, and show the new error
+      helpArea.style.display="initial";
+      resultsContainer.innerHTML = "";
+      errorsBox.querySelector('#errortext').innerText = errText;
+      errorsBox.style.display = "initial";
+    });
   });
-
-  // TODO: handle errors (404, 500 etc)
-  /* sampleRes.results = [...inf.results]; */
-  /* sampleRes.fileResults = [...inf.file_results]; */
-  // sampleRes.stats = {
-  //   exitReason: "COOL",
-  //   totalTime: 200,
-  //   totalMatches: 200
-  // }
-
 }
 
 function updateQuery(inputEvnt) {
@@ -179,11 +181,12 @@ function init(initData) {
   "use strict"
   console.log('initData: ', initData);
 
-  searchBox = document.querySelector('#searchbox')
+  searchBox = document.getElementById('searchbox')
   resultsContainer = document.querySelector('#resultarea > #results');
-  helpArea = document.querySelector('#helparea');
-  caseSelect = document.querySelector('#case-sensitivity-toggle');
+  helpArea = document.getElementById('helparea');
+  caseSelect = document.getElementById('case-sensitivity-toggle');
   regexToggle = document.querySelector('button[id=toggle-regex]');
+  errorsBox = document.getElementById('regex-error');
 
   caseSelect.addEventListener('change', function (e) {
     var newVal = e.target.value;

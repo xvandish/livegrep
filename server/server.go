@@ -350,7 +350,9 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 	data, statusCode, errorMsg, errorMsgLong := s.ServerSideAPISearchV2(ctx, w, r)
 
 	if (statusCode) > 200 {
-		log.Printf(ctx, "> 200: %s %s", errorMsg, errorMsgLong)
+		w.WriteHeader(statusCode)
+		w.Write([]byte(errorMsgLong))
+		log.Printf(ctx, "error status=%d code=%s message=%s", statusCode, errorMsg, errorMsgLong)
 		return
 	}
 
