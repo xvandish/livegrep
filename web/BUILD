@@ -50,12 +50,12 @@ genrule(
 
 genrule(
     name = "test_genrule_two",
-    outs = ["htdocs/assets/js/bundle_new.js"],
+    outs = ["htdocs/assets/js/bundle_new.js", "htdocs/assets/css/codesearch.min.css"],
     srcs = glob([
         "src/**",
         "htdocs/assets/css/**",
     ]),
-    cmd = "$(location //web/cmd/build-web:build_web) > $@",
+    cmd = "$(location //web/cmd/build-web:build_web) -test=$(RULEDIR)",
     tools = ["//web/cmd/build-web:build_web"],
 )
 

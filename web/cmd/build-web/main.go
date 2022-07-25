@@ -3,7 +3,10 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 
@@ -34,7 +37,15 @@ func FilePathWalkDir(root string) ([]string, error) {
 // file - web/src/fileview/fileview.js
 
 func main() {
-	// fmt.Printf("this is being called!\n")
+
+	// outDir will be something like the below. It is populated
+	// by Bazels RULEDIR
+	// bazel-out/darwin_arm64-fastbuild/bin/web
+	outDir := flag.String("test", "", "directory to emit files to")
+	flag.Parse()
+
+	fmt.Println("outDir:", *outDir)
+	fmt.Println("outDir len:", len(*outDir))
 
 	m := minify.New()
 	m.AddFunc("text/css", css.Minify)
@@ -47,7 +58,7 @@ func main() {
 	// }
 	// fmt.Printf("dir: %s\n", dir)
 
-	// files, err := FilePathWalkDir("./")
+	// files, err := FilePathWalkDir(*outDir)
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
@@ -57,13 +68,14 @@ func main() {
 	// }
 
 	result := api.Build(api.BuildOptions{
-		EntryPoints:       []string{"web/src/entry.js"},
-		Outfile:           "bundle_new.js",
+		EntryPoints: []string{"web/src/entry.js"},
+		Outfile: path.Join(*outDir,
+			"htdocs", "assets", "js", "bundle_new.js"),
 		Bundle:            true,
 		MinifyWhitespace:  true,
 		MinifyIdentifiers: true,
 		MinifySyntax:      true,
-		Write:             false,
+		Write:             true,
 		LogLevel:          api.LogLevelInfo,
 	})
 
@@ -71,9 +83,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, file := range result.OutputFiles {
-		// fmt.Print("%+v", file)
-		os.Stdout.Write(file.Contents)
+	result = api.Build(api.BuildOptions{
+		EntryPoints:       []string{"web/htdocs/assets/css/codesearch.css"},
+		Bundle:            true,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		Outfile: path.Join(*outDir,
+			"htdocs", "assets", "css", "codesearch.min.css"),
+		LogLevel: api.LogLevelInfo,
+		Write:    true,
+	})
+
+	if len(result.Errors) > 0 {
+		os.Exit(1)
 	}
+
+	// for _, file := range result.OutputFiles {
+	// 	// fmt.Print("%+v", file)
+	// 	os.Stdout.Write(file.Contents)
+	// }
 
 }

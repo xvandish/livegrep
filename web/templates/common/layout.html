@@ -4,7 +4,7 @@
   <head>
     <title>{{.Title}}</title>
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
-    {{linkTag .Nonce "stylesheet" "/assets/css/codesearch.css" .AssetHashes}}
+    {{linkTag .Nonce "stylesheet" "/assets/css/codesearch.min.css" .AssetHashes}}
     {{if .ScriptData}}
     <script{{.Nonce}}>
       window.scriptData = {{.ScriptData}};
@@ -15,7 +15,6 @@
       window.page = {{.ScriptName}};
     </script>
     {{end}}
-    <!-- {{scriptTag .Nonce "/assets/js/bundle.js" .AssetHashes}} -->
     {{scriptTag .Nonce "/assets/js/bundle_new.js" .AssetHashes}}
 
     <link{{.Nonce}} rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="The New York Times Codesearch" />
