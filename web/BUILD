@@ -1,6 +1,5 @@
 package(default_visibility = ["//visibility:public"])
 
-load("@org_dropbox_rules_node//node:defs.bzl", "webpack_build")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 filegroup(
@@ -13,28 +12,10 @@ filegroup(
     srcs = glob(["htdocs/**"]),
 )
 
-webpack_build(
-    name = "webpack_build",
-    srcs = glob([
-        "src/**",
-    ]),
-    outs = [
-        "htdocs/assets/js/bundle.js",
-    ],
-    config = "webpack.config.js",
-    deps = [
-        "//web/3d:html",
-        "//web/npm/css-loader",
-        "//web/npm/style-loader",
-        "@org_dropbox_rules_node//node/dbx-bazel-utils",
-    ],
-)
-
 genrule(
     name = "asset_hashes",
     srcs = [
         "//web:htdocs",
-        "//web:webpack_build",
         "//web:test_genrule_two",
     ],
     outs = ["hashes.txt"],
@@ -65,7 +46,6 @@ pkg_tar(
         ":asset_hashes",
         ":htdocs",
         ":templates",
-        ":webpack_build",
         ":test_genrule_two",
     ],
     package_dir = "web/",
