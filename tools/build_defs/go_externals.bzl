@@ -53,6 +53,23 @@ _externals = [
     _github("facebookgo/muster", "fd3d7953fd52354a74b9f6b3d70d0c9650c4ec2a"),
     _github("facebookgo/limitgroup", "6abd8d71ec01451d7f1929eacaa263bbe2935d05"),
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
+    _github("evanw/esbuild", "8c6c39a05b7904bb49b072938146098f4a27f3b8"),
+    # _github("tdewolff/minify/v2", "f066c279bb780e9748f38259fe2b5c170028ce56"),
+    # _github("tdewolff/parse/v2", "4c5fc37e223fe27c33dfe2e71651a3bd9f500e54"),
+    # struct(
+    #     name = "com_github_tdewolff_minify_v2",
+    #     commit = "f066c279bb780e9748f38259fe2b5c170028ce56",
+    #     importpath = "github.com/tdewolff/minify",
+    #     remote = "https://github.com/tdewolff/minify",
+    #     vcs = "git",
+    # ),
+    # struct(
+    #     name = "com_github_tdewolff_parse_v2",
+    #     commit = "4c5fc37e223fe27c33dfe2e71651a3bd9f500e54",
+    #     importpath = "github.com/tdewolff/parse",
+    #     remote = "https://github.com/tdewolff/parse",
+    #     vcs = "git",
+    # ),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
     struct(
@@ -90,6 +107,23 @@ def go_externals():
         sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
         version = "v0.1.0",
     )
+
+    # TODO: bump these version up
+    go_repository(
+        name = "com_github_tdewolff_minify_v2",
+        importpath = "github.com/tdewolff/minify/v2",
+        sum = "h1:2Pv8pFRX/ZfjTRYX2xzcuNrkEJqU5TfriNJJYOeN3rI=",
+        version = "v2.9.16",
+    )
+
+    # Needed for tdewolff/minify.
+    go_repository(
+        name = "com_github_tdewolff_parse_v2",
+        importpath = "github.com/tdewolff/parse/v2",
+        sum = "h1:ADVB3h2AR2jkLhY1LttDqRj3FFPDgSa0RZUBq5+q/t8=",
+        version = "v2.5.16",
+    )
+
     for ext in _externals:
         if hasattr(ext, "vcs"):
             go_repository(

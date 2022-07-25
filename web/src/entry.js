@@ -1,6 +1,6 @@
 pages = {
-  codesearch: require('codesearch/codesearch_ui.js'),
-  fileview: require('fileview/fileview.js')
+  codesearch: require('./codesearch/codesearch_ui.js'),
+  fileview: require('./fileview/fileview.js')
 };
 
 (function(){
