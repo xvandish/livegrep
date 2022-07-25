@@ -109,7 +109,7 @@ func (bk *Backend) getTextStatus() (string, string) {
 		status = fmt.Sprintf("Connected. Index age: %s", age)
 	} else if statusCode == 14 {
 		oneWordStatus = "reloading"
-		status = fmt.Sprintf("Reloading.. (%s)", age)
+		status = fmt.Sprintf("Index reloading.. (%s)", age)
 	} else {
 		oneWordStatus = "down"
 		status = fmt.Sprintf("Disconnected. (%s)", age)

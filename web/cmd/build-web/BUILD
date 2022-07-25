@@ -7,10 +7,6 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_evanw_esbuild//pkg/api:go_default_library",
-        "@com_github_tdewolff_minify_v2//:go_default_library",
-        "@com_github_tdewolff_minify_v2//css:go_default_library",
-        "@com_github_tdewolff_minify_v2//html:go_default_library",
-        "@com_github_tdewolff_minify_v2//js:go_default_library",
     ],
 )
 

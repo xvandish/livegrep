@@ -247,7 +247,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// the following logic is mostly the same as the function linked above, and should be attributed to Kevin Lin
 	dedupedResults := make(map[string]*api.ResultV2)
 	codeMatches := 0
-	dedupStart := time.Now()
 	for _, r := range search.Results {
 		key := fmt.Sprintf("%s-%s", r.Tree, r.Path)
 		lineNumber := int(r.LineNumber)
@@ -263,7 +262,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		}
 
 		var contextLinesInit []string
-		// There has to be a better way?
 		contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
 		contextLinesInit = append(contextLinesInit, r.Line)
 		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
@@ -297,8 +295,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		}
 
 	}
-
-	log.Printf(ctx, "dedup took %s", time.Since(dedupStart))
 
 	extensionCounts := make(map[string]int, len(dedupedResults))
 	for treeAndPath, dededupedResult := range dedupedResults {

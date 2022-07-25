@@ -1,5 +1,5 @@
 pages = {
-  codesearch: require('./codesearch/codesearch_ui.js'),
+  codesearch: require('./codesearch/codesearch.js'),
   fileview: require('./fileview/fileview.js')
 };
 
