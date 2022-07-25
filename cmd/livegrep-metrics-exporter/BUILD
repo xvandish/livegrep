@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/livegrep/livegrep/cmd/livegrep-metrics-exporter",
     visibility = ["//visibility:private"],
     deps = [
-        "@in_gopkg_alexcesaro_statsd_v2//:go_default_library"
+        "@in_gopkg_alexcesaro_statsd_v2//:go_default_library",
     ],
 )
 

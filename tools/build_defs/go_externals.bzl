@@ -37,7 +37,6 @@ _externals = [
     _golang_x("net", "e204ce36a2ba698f7e949cbd2b13458cf51a8042"),
     _golang_x("text", "d1c84af989ab0f62cd853b5ae33b1b4db4f1e88b"),
     _golang_x("oauth2", "d3ed0bb246c8d3c75b63937d9a5eecff9c74d7fe"),
-    _golang_x("sys", "da31bd327af904dd4721b4eefa7c505bb3afd214"),
     _golang_x("crypto", "5e0467b6c7cee3ce8969a8b584d9e6ab01d074f7"),
     struct(
         name = "org_golang_google_appengine",
@@ -102,26 +101,79 @@ _externals = [
 
 def go_externals():
     go_repository(
+        name = "org_golang_x_sys",
+        importpath = "golang.org/x/sys",
+        sum = "h1:ntjMns5wyP/fN65tdBD4g8J5w8n015+iIIs9rtjXkY0=",
+        version = "v0.0.0-20220412211240-33da011f77ad",
+    )
+    go_repository(
         name = "com_google_cloud_go_compute",
         importpath = "cloud.google.com/go/compute",
         sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
         version = "v0.1.0",
     )
 
-    # TODO: bump these version up
     go_repository(
         name = "com_github_tdewolff_minify_v2",
         importpath = "github.com/tdewolff/minify/v2",
-        sum = "h1:2Pv8pFRX/ZfjTRYX2xzcuNrkEJqU5TfriNJJYOeN3rI=",
-        version = "v2.9.16",
+        sum = "h1:ZyvMKeciyR3vzJrK/oHyBcSmpttQ/V+ah7qOqTZclaU=",
+        version = "v2.12.0",
     )
 
-    # Needed for tdewolff/minify.
     go_repository(
         name = "com_github_tdewolff_parse_v2",
         importpath = "github.com/tdewolff/parse/v2",
-        sum = "h1:ADVB3h2AR2jkLhY1LttDqRj3FFPDgSa0RZUBq5+q/t8=",
-        version = "v2.5.16",
+        sum = "h1:RIfy1erADkO90ynJWvty8VIkqqKYRzf2iLp8ObG174I=",
+        version = "v2.6.1",
+    )
+
+    go_repository(
+        name = "com_github_tdewolff_test",
+        importpath = "github.com/tdewolff/test",
+        sum = "h1:8Vs0142DmPFW/bQeHRP3MV19m1gvndjUb1sn8yy74LM=",
+        version = "v1.0.7",
+    )
+
+    go_repository(
+        name = "com_github_cheekybits_is",
+        importpath = "github.com/cheekybits/is",
+        sum = "h1:SKI1/fuSdodxmNNyVBR8d7X/HuLnRpvvFO0AgyQk764=",
+        version = "v0.0.0-20150225183255-68e9c0620927",
+    )
+
+    go_repository(
+        name = "com_github_djherbis_atime",
+        importpath = "github.com/djherbis/atime",
+        sum = "h1:rgwVbP/5by8BvvjBNrbh64Qz33idKT3pSnMSJsxhi0g=",
+        version = "v1.1.0",
+    )
+
+    go_repository(
+        name = "com_github_dustin_go_humanize",
+        importpath = "github.com/dustin/go-humanize",
+        sum = "h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=",
+        version = "v1.0.0",
+    )
+
+    go_repository(
+        name = "com_github_fsnotify_fsnotify",
+        importpath = "github.com/fsnotify/fsnotify",
+        sum = "h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=",
+        version = "v1.5.4",
+    )
+
+    go_repository(
+        name = "com_github_matryer_try",
+        importpath = "github.com/matryer/try",
+        sum = "h1:JAEbJn3j/FrhdWA9jW8B5ajsLIjeuEHLi8xE4fk997o=",
+        version = "v0.0.0-20161228173917-9ac251b645a2",
+    )
+
+    go_repository(
+        name = "com_github_spf13_pflag",
+        importpath = "github.com/spf13/pflag",
+        sum = "h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=",
+        version = "v1.0.5",
     )
 
     for ext in _externals:
