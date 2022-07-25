@@ -43,6 +43,7 @@ type Backend struct {
 	I          *I
 	Codesearch pb.CodeSearchClient
 	Up         *Availability
+	srv        *server // used to trigger server changes on bk reload
 }
 
 func NewBackend(be config.Backend, s *server) (*Backend, error) {
@@ -62,6 +63,7 @@ func NewBackend(be config.Backend, s *server) (*Backend, error) {
 		I:          &I{Name: be.Id},
 		Codesearch: pb.NewCodeSearchClient(client),
 		Up:         &Availability{},
+		srv:        s,
 	}
 	return bk, nil
 }
@@ -176,7 +178,6 @@ func (bk *Backend) getInfo() {
 
 func (bk *Backend) refresh(info *pb.ServerInfo) {
 	bk.I.Lock()
-	defer bk.I.Unlock()
 
 	if info.Name != "" {
 		bk.I.Name = info.Name
@@ -195,4 +196,7 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	}
 
 	// Now, we should make a new map of trees
+	bk.I.Unlock() // rebuildRepoRegex locks bk.I
+
+	bk.srv.rebuildRepoRegex()
 }

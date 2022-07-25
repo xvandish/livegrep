@@ -458,8 +458,30 @@ func New(cfg *config.Config) (http.Handler, error) {
 	return srv, nil
 }
 
-// ARGH. We need to rebuild this anytime a backend changes, in case there are new repos
-// TODO ^^
+// when a backend reloads, this is called so that the new trees
+// bkN allows for can be viewed through the internal viewer.
+// This, of course, assumes that the repos are meant to be viewed
+// through the internal view. In our case, this is true.
+func (s *server) rebuildRepoRegex() {
+	ctx := context.Background()
+	repoNames := make([]string, 0, 1000)
+	for _, bk := range s.bk {
+		bk.I.Lock()
+		for _, r := range bk.I.Trees {
+			repoNames = append(repoNames, r.Name)
+		}
+		bk.I.Unlock()
+	}
+	newFilePathRegex, err := buildRepoRegex(repoNames)
+	if err != nil {
+		log.Printf(ctx, "err trying to rebuild repo regex")
+		return
+	}
+
+	s.serveFilePathRegex = newFilePathRegex
+	log.Printf(ctx, "Backend change detected. serveFilePathRegex rebuilt")
+}
+
 func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {
 	// Sort in descending order of length so most specific match is selected by regex engine
 	sort.Slice(repoNames, func(i, j int) bool {
