@@ -84,6 +84,7 @@ function updateSearchParamState() {
 
 // Take the present search options, perform a search
 // then update the 
+var urlFetching;
 function doSearch() {
   if (searchOptions.q === '') {
     helpArea.style.display = "initial";
@@ -93,9 +94,11 @@ function doSearch() {
   };
   var time1 = performance.now();
   var time2;
-  fetch("/api/v2/getRenderedSearchResults/?q=" + 
+  var urlToFetch = "/api/v2/getRenderedSearchResults/?q=" + 
     searchOptions.q + "&fold_case=" + searchOptions.case + "&regex=" + searchOptions.regex + "&context=" + 
-    searchOptions.context)
+    searchOptions.context;
+  urlFetching = urlToFetch;
+  fetch(urlToFetch)
   .then(function(r) {
     time2 = performance.now();
     if (!r.ok) {
@@ -105,6 +108,12 @@ function doSearch() {
     }
   })
   .then(function (text) {
+    if (urlToFetch != urlFetching) {
+      // don't display if the results are for an old query. This is hacky,
+      // but works just fine. TODO: use an abortController and fancier
+      // ids to keep track of in-flight searches
+      return; 
+    }
     helpArea.style.display = "none";
     resultsContainer.innerHTML = text;
     errorsBox.style.display = "none";
