@@ -16,8 +16,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/bmizerany/pat"
-	"github.com/tdewolff/minify/v2"
-	"github.com/tdewolff/minify/v2/html"
 	"gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/livegrep/livegrep/server/config"
@@ -53,7 +51,6 @@ type server struct {
 	statsd *statsd.Client
 
 	serveFilePathRegex *regexp.Regexp
-	minifer            *minify.M
 }
 
 func (s *server) loadTemplates() {
@@ -304,25 +301,10 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 		pageData.Nonce = template.HTMLAttr(fmt.Sprintf(` nonce="%s"`, nonce))
 	}
 
-	if s.minifer != nil {
-		buf := new(bytes.Buffer)
-		err := t.ExecuteTemplate(buf, templateName, pageData)
-		if err != nil {
-			log.Printf(ctx, "Error rendering %v: %s", templateName, err)
-			return
-		}
-
-		// read from where the template was writter and write to http w
-		if err := s.minifer.Minify("text/html", w, buf); err != nil {
-			panic(err)
-		}
-
-	} else {
-		err := t.ExecuteTemplate(w, templateName, pageData)
-		if err != nil {
-			log.Printf(ctx, "Error rendering %v: %s", templateName, err)
-			return
-		}
+	err := t.ExecuteTemplate(w, templateName, pageData)
+	if err != nil {
+		log.Printf(ctx, "Error rendering %v: %s", templateName, err)
+		return
 	}
 }
 
@@ -365,12 +347,10 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 		return
 	}
 
-	start := time.Now()
 	s.renderPage(ctx, w, r, "searchresults_partial.html", &page{
 		IncludeHeader: false,
 		Data:          data,
 	})
-	log.Printf(ctx, "took %s to render searchresults_partial", time.Since(start))
 }
 
 func New(cfg *config.Config) (http.Handler, error) {
@@ -469,12 +449,6 @@ func New(cfg *config.Config) (http.Handler, error) {
 	mux.Handle("/", h)
 
 	srv.inner = mux
-
-	if cfg.MinifyHTML {
-		log.Printf(context.Background(), "Enabling HTML template minifer")
-		srv.minifer = minify.New()
-		srv.minifer.AddFunc("text/html", html.Minify)
-	}
 
 	return srv, nil
 }

@@ -53,22 +53,6 @@ _externals = [
     _github("facebookgo/limitgroup", "6abd8d71ec01451d7f1929eacaa263bbe2935d05"),
     _github("facebookgo/clock", "600d898af40aa09a7a93ecb9265d87b0504b6f03"),
     _github("evanw/esbuild", "8c6c39a05b7904bb49b072938146098f4a27f3b8"),
-    # _github("tdewolff/minify/v2", "f066c279bb780e9748f38259fe2b5c170028ce56"),
-    # _github("tdewolff/parse/v2", "4c5fc37e223fe27c33dfe2e71651a3bd9f500e54"),
-    # struct(
-    #     name = "com_github_tdewolff_minify_v2",
-    #     commit = "f066c279bb780e9748f38259fe2b5c170028ce56",
-    #     importpath = "github.com/tdewolff/minify",
-    #     remote = "https://github.com/tdewolff/minify",
-    #     vcs = "git",
-    # ),
-    # struct(
-    #     name = "com_github_tdewolff_parse_v2",
-    #     commit = "4c5fc37e223fe27c33dfe2e71651a3bd9f500e54",
-    #     importpath = "github.com/tdewolff/parse",
-    #     remote = "https://github.com/tdewolff/parse",
-    #     vcs = "git",
-    # ),
     _gopkg("alexcesaro/statsd.v2", "7fea3f0d2fab1ad973e641e51dba45443a311a90"),
     _gopkg("check.v1", "20d25e2804050c1cd24a7eea1e7a6447dd0e74ec"),
     struct(
@@ -111,69 +95,6 @@ def go_externals():
         importpath = "cloud.google.com/go/compute",
         sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
         version = "v0.1.0",
-    )
-
-    go_repository(
-        name = "com_github_tdewolff_minify_v2",
-        importpath = "github.com/tdewolff/minify/v2",
-        sum = "h1:ZyvMKeciyR3vzJrK/oHyBcSmpttQ/V+ah7qOqTZclaU=",
-        version = "v2.12.0",
-    )
-
-    go_repository(
-        name = "com_github_tdewolff_parse_v2",
-        importpath = "github.com/tdewolff/parse/v2",
-        sum = "h1:RIfy1erADkO90ynJWvty8VIkqqKYRzf2iLp8ObG174I=",
-        version = "v2.6.1",
-    )
-
-    go_repository(
-        name = "com_github_tdewolff_test",
-        importpath = "github.com/tdewolff/test",
-        sum = "h1:8Vs0142DmPFW/bQeHRP3MV19m1gvndjUb1sn8yy74LM=",
-        version = "v1.0.7",
-    )
-
-    go_repository(
-        name = "com_github_cheekybits_is",
-        importpath = "github.com/cheekybits/is",
-        sum = "h1:SKI1/fuSdodxmNNyVBR8d7X/HuLnRpvvFO0AgyQk764=",
-        version = "v0.0.0-20150225183255-68e9c0620927",
-    )
-
-    go_repository(
-        name = "com_github_djherbis_atime",
-        importpath = "github.com/djherbis/atime",
-        sum = "h1:rgwVbP/5by8BvvjBNrbh64Qz33idKT3pSnMSJsxhi0g=",
-        version = "v1.1.0",
-    )
-
-    go_repository(
-        name = "com_github_dustin_go_humanize",
-        importpath = "github.com/dustin/go-humanize",
-        sum = "h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=",
-        version = "v1.0.0",
-    )
-
-    go_repository(
-        name = "com_github_fsnotify_fsnotify",
-        importpath = "github.com/fsnotify/fsnotify",
-        sum = "h1:jRbGcIw6P2Meqdwuo0H1p6JVLbL5DHKAKlYndzMwVZI=",
-        version = "v1.5.4",
-    )
-
-    go_repository(
-        name = "com_github_matryer_try",
-        importpath = "github.com/matryer/try",
-        sum = "h1:JAEbJn3j/FrhdWA9jW8B5ajsLIjeuEHLi8xE4fk997o=",
-        version = "v0.0.0-20161228173917-9ac251b645a2",
-    )
-
-    go_repository(
-        name = "com_github_spf13_pflag",
-        importpath = "github.com/spf13/pflag",
-        sum = "h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=",
-        version = "v1.0.5",
     )
 
     for ext in _externals:

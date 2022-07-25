@@ -24,7 +24,6 @@ var (
 	indexConfig = flag.String("index-config", "", "Codesearch index config file; provide to enable repo browsing")
 	reload      = flag.Bool("reload", false, "Reload template files on every request")
 	_           = flag.Bool("logtostderr", false, "[DEPRECATED] compatibility with glog")
-	minifyHTML  = flag.Bool("minify-html", false, "Minify rendered HTML templates on the fly")
 )
 
 func runfilesPath(sourcePath string) (string, error) {
@@ -87,8 +86,6 @@ func main() {
 			log.Fatalf("reading %s: %s", flag.Arg(0), err.Error())
 		}
 	}
-
-	cfg.MinifyHTML = *minifyHTML || cfg.MinifyHTML
 
 	handler, err := server.New(cfg)
 	if err != nil {
