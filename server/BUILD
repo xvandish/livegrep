@@ -15,7 +15,7 @@ go_library(
         "//web:asset_hashes",
         "//web:htdocs",
         "//web:templates",
-        "//web:test_genrule_two",
+        "//web:build_js_and_css",
     ],
     importpath = "github.com/livegrep/livegrep/server",
     visibility = ["//visibility:public"],

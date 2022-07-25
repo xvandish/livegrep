@@ -3,14 +3,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["main.go"],
-    importpath = "github.com/livegrep/livegrep/cmd/build-web",
+    importpath = "github.com/livegrep/livegrep/web/cmd/build-web",
     visibility = ["//visibility:private"],
     deps = [
+        "@com_github_evanw_esbuild//pkg/api:go_default_library",
         "@com_github_tdewolff_minify_v2//:go_default_library",
         "@com_github_tdewolff_minify_v2//css:go_default_library",
         "@com_github_tdewolff_minify_v2//html:go_default_library",
         "@com_github_tdewolff_minify_v2//js:go_default_library",
-	"@com_github_evanw_esbuild//pkg/api:go_default_library",
     ],
 )
 
