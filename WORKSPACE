@@ -106,15 +106,6 @@ git_repository(
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
 
-local_repository(
-    name = "org_dropbox_rules_node",
-    path = "tools/org_dropbox_rules_node",
-)
-
-load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
-
-node_repositories()
-
 # git_repository(
 #     name = "com_grail_bazel_compdb",
 #     commit = "7658de071fcd072163c24cc96d78e9891d4d81f5",
