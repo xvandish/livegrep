@@ -961,10 +961,9 @@ div.example {
     font-weight: bold;
 }
 
-.code-line .line {
-    /* white-space: pre-wrap; */
-    /* font-family: "Menlo", "Consolas", "Monaco", monospace; */
-    /* font-size: 12px; */
+.code-line .line > pre {
+    margin: 0px;
+    font-family: ui-monospace,"Cascadia Mono","Segoe UI Mono","Liberation Mono",Menlo,Monaco,Consolas,monospace
 }
 
 /* This works, but not sure why the line-height if I set pre-wrap for .line is

@@ -92,9 +92,9 @@
           <div class="line">
             {{ if gt (len .Bounds) 0}}
               {{ $lineParts := splitCodeLineIntoParts .Line .Bounds}}
-              <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+              <pre><span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span></pre>
             {{ else }}
-              <span>{{.Line}}</span>
+            <pre><span>{{.Line}}</span></pre>
             {{ end }}
           </div>
         </div>
