@@ -436,6 +436,17 @@ func (s *server) ServerSideAPISearchV2(ctx context.Context, w http.ResponseWrite
 		return nil, errCode, errorMsg, errorMsgLong
 	}
 
+	if s.statsd != nil {
+		s.statsd.Increment("api.search.v2.invocations")
+		s.statsd.Increment("api.search.v2.exit_reason." + reply.Info.ExitReason)
+		s.statsd.Timing("api.search.v2.re2_time", reply.Info.RE2Time)
+		s.statsd.Timing("api.search.v2.git_time", reply.Info.GitTime)
+		s.statsd.Timing("api.search.v2.sort_time", reply.Info.SortTime)
+		s.statsd.Timing("api.search.v2.index_time", reply.Info.IndexTime)
+		s.statsd.Timing("api.search.v2.analyze_time", reply.Info.AnalyzeTime)
+		s.statsd.Timing("api.search.v2.total_time", reply.Info.TotalTime)
+	}
+
 	log.Printf(ctx,
 		"responding success results=%d why=%s stats=%s",
 		len(reply.Results),
