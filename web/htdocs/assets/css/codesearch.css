@@ -35,13 +35,8 @@ button:hover {
     margin-bottom: 20px;
     margin-left: auto;
     margin-right: auto;
-    /* position: relative; */
     padding: 20px;
     padding-top: 10px;
-    /* background: white; */
-    /* display: flex; */
-    /* flex-direction: row; */
-    /* align-items: center; */
     box-sizing: border-box;
 }
 
@@ -55,7 +50,6 @@ button:hover {
     box-sizing: border-box;
     border: 1px solid #eaeaea;
     border-radius: 5px;
-    /* background: #FAFAFA; */
     padding-right: 150px;
     padding-left: 60px;
     padding-top: 12px;
@@ -71,10 +65,6 @@ button:hover {
 .input-line .query-input-wrapper #searchbox:focus-visible {
     border-color: rgba(0, 126, 229, 0.50);
     outline: none;
-    /* border-width: 2px; */
-    /* border-color: #0761D1; */
-    /* outline: none; */
-    /* background-color: white; */
 }
 
 .input-line .inline-search-options {
@@ -515,8 +505,6 @@ button:hover {
     content: ""
 }
 
-#header .first {}
-
 #header h1 {
     font-family: monospace;
 }
@@ -899,14 +887,6 @@ div.example {
     display: inline-flex;
     gap: 5px;
     flex-wrap: wrap;
-    /* max-width: 80%; */
-    /* overflow: hidden; */
-    /* white-space: nowrap; */
-}
-
-.cr-header .links a {
-    /* text-overflow: ellipsis; */
-    /* overflow: hidden; */
 }
 
 .cr-header .links .repo-link {
@@ -939,11 +919,6 @@ div.example {
     background-color: #EAEAEA;
 }
 
-.code-line:hover .num-link {
-    /* transform: scale(1.07); */
-    /* transition: 0.1s ease-in-out; */
-}
-
 .code-line .num-link {
   min-width: 40px;
   user-select: text;
@@ -952,8 +927,6 @@ div.example {
 }
 
 .code-line .num-link:hover {
-    /* transform: scale(1.05); */
-    /* transition: 0.1s ease-in-out; */
     text-decoration: underline;
 }
 
@@ -970,7 +943,6 @@ div.example {
  * so high... */
 .code-line .line span {
     white-space: pre-wrap;
-    /* font-size: 1rem; */
 }
 
 .code-line .line .highlighted {
@@ -1062,6 +1034,5 @@ div.example {
 
 .select-with-icon-container select:hover {
     cursor: pointer;
-    /* background: #eaeaea; */
     background-color: var(--hover-highlight-color);
 }
