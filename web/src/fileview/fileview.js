@@ -309,13 +309,11 @@ function initializePage(initData) {
     // most reliable way to do this is to hide the elements until the page
     // has loaded. We also need defer our own scroll handling since we can't
     // access the geometry of the DOM elements until they are visible.
-    setTimeout(function() {
-        lineNumberContainer.style.display = "block"; //  css({display: 'block'});
-        initializeActionButtons();
-    }, 1);
+    lineNumberContainer.style.display = "block"; //  css({display: 'block'});
+    initializeActionButtons();
 
     // Initial range detection for when the page is loaded
-    handleHashChange(false);
+    handleHashChange(true);
 
     // Allow shift clicking links to expand the highlight range
     // rather than adding an event handler to all links, we just 
@@ -359,7 +357,6 @@ function initializePage(initData) {
       }
     });
 
-    // initializeActionButtons($('.header .header-actions'));
   }
 
     function showHelp() {
@@ -380,7 +377,6 @@ var lineNumberContainer;
 var root;
 var helpScreen;
 
-
 module.exports = {
-  init: initializePage
+  init: initializePage, 
 }
