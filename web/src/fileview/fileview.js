@@ -247,8 +247,7 @@ function getExternalLink(range) {
       var goBackwards = String.fromCharCode(event.which) === 'P';
       var selectedText = getSelectedText();
       if (selectedText) {
-        // window.find(selectedText, false /* case sensitive */, goBackwards);
-        console.log('not implemented yet!')
+        window.find(selectedText, false /* case sensitive */, goBackwards);
       }
     }
     return true;
