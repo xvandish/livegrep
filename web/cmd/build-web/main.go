@@ -1,5 +1,3 @@
-// This file will read in the srcs, and output a file per input source
-// none of the files that we have import other things, so we don't need bundling
 package main
 
 import (

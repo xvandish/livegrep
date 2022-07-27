@@ -286,7 +286,7 @@ function init() {
 
   // listen for the '/' key to trigger search input focus
   // or, if text is selected, trigger a search for it
-  document.addEventListener('keyup', function (e) {
+  document.addEventListener('keyup', function (event) {
      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
       return;
      if (event.key !== "/" || (searchBox === document.activeElement)) return;

@@ -88,8 +88,6 @@ type Config struct {
 	DefaultSearchRepos []string `json:"default_search_repos"`
 
 	LinkConfigs []LinkConfig `json:"file_links"`
-
-	MinifyHTML bool `json:"minify_html"`
 }
 
 type IndexConfig struct {
