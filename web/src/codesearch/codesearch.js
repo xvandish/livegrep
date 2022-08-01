@@ -9,7 +9,6 @@ var helpArea;
 var caseSelect;
 var regexToggle;
 
-var searchResults; // giant HTML string
 var liveDot;
 var liveText;
 
@@ -25,7 +24,7 @@ function livePoll() {
       setInterval(function () {
         // Don't make network requests while tab is in background
         if (document.hidden) return;
-        var resp = fetch(url)
+        fetch(url)
          .then(function(r) {
           return r.text()
          })
@@ -148,11 +147,18 @@ function updateQuery(inputEvnt) {
   updateSearchParamState();
 }
 
-function toggleControlButton() {
-  var currValue = this.getAttribute('data-selected') === 'true';
-  this.setAttribute('data-selected', !currValue);
-  searchOptions[this.getAttribute('name')] = !currValue;
+function toggleControlButton(button) {
+  var currValue = button.getAttribute('data-selected') === 'true';
+  button.setAttribute('data-selected', !currValue);
+  searchOptions[button.getAttribute('name')] = !currValue;
   updateSearchParamState();
+}
+
+function hasParams() {
+  var url = new URL(document.location);
+  var sp = url.searchParams;
+
+  return sp.has('q') || sp.has('fold_case') || sp.has('regex'); 
 }
 
 // Set the textInput value and all selection controls
@@ -160,7 +166,7 @@ function toggleControlButton() {
 var validControlOptions = {
   "regex": [true, false],
   "context": [true, false],
-  "case": ["auto", false, true]
+  "case": ["auto", "false", "true"]
 };
 function initStateFromQueryParams() {
   var currURL = new URL(document.location);
@@ -184,6 +190,43 @@ function initStateFromQueryParams() {
 
 
   doSearch();
+}
+
+// the regex toggle 
+function initControlsFromLocalPrefs() {
+  var currControls = localStorage.getItem('controls-state') || '{}';
+  try {
+    currControls = JSON.parse(currControls);
+  } catch (err) {
+    console.error("error parsing localStorage controls state. Resetting it.");
+  }
+  
+  var regexVal = currControls['regex'];
+  var caseVal = currControls['case'];
+
+  regexToggle.dataset.selected = regexVal == 'true';
+
+  // validation in case someone tries to mess with localStorage
+  if (!validControlOptions.case.includes(caseVal)) {
+    caseVal = "auto";
+  }
+  caseSelect.value = caseVal;
+
+  searchOptions = {
+    q: '',
+    regex: regexVal,
+    context: true,
+    case: caseVal 
+  }
+}
+
+function storePrefs() {
+  var newPrefs = {
+    'regex': regexToggle.dataset.selected,
+    'case': caseSelect.value,
+  }
+
+  localStorage.setItem('controls-state', JSON.stringify(newPrefs));
 }
 
 function renderSearchHistory() {
@@ -276,16 +319,18 @@ function init() {
     var newVal = e.target.value;
     searchOptions['case'] = newVal;
     updateSearchParamState();
+    storePrefs();
   });
-  regexToggle.addEventListener('click', toggleControlButton);
+  regexToggle.addEventListener('click', function() {
+    toggleControlButton(this);
+    storePrefs();
+  });
   searchBox.addEventListener('input', updateQuery);
 
   // add search events to recent searches
   searchBox.addEventListener('blur', addSearchQueryToHistory);
 
   document.addEventListener('click', function(e) {
-    var clickedElem = event.target;
-
     var btn = e.target.closest('button');
     if (btn && btn.id == "showMoreFilematchesBtn") {
       toggleMoreFileMatches(e);
@@ -297,8 +342,7 @@ function init() {
   // listen for the '/' key to trigger search input focus
   // or, if text is selected, trigger a search for it
   document.addEventListener('keyup', function (event) {
-     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
-      return;
+     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
      if (event.key !== "/" || (searchBox === document.activeElement)) return;
 
      // if there is some selected text, then start a new search for it
@@ -319,7 +363,12 @@ function init() {
     initStateFromQueryParams();
   });
 
-  initStateFromQueryParams();
+  if (hasParams()) {
+    initStateFromQueryParams();
+  } else {
+    initControlsFromLocalPrefs();
+  }
+
   renderSearchHistory();
   livePoll();
 }
