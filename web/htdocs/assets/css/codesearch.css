@@ -280,6 +280,7 @@ button:hover {
     border: none;
     width: 100%;
     min-height: 2rem;
+    overflow-wrap: break-word;
 }
 
 #helparea #recent-searches .searches-container button:hover {
