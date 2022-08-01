@@ -237,7 +237,7 @@ button:hover {
     display: grid;
     grid-template-columns: 30% 1fr;
     gap: 50px;
-    width: 100em;
+    max-width: 100em;
     margin: auto;
 }
 
