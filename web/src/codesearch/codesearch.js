@@ -65,19 +65,29 @@ function livePoll() {
 }
 
 var currUrl;
+var lastUrlUpdate;
+var two_seconds = 2000;
 // We could maybe rethink this to be a function that only updates
 // the searchapram for the changed option. Ok for now tho
 function updateSearchParamState() {
-  if (!currUrl) {
-    url = new URL(window.location);
-  }
+  currUrl = new URL(window.location);
 
-  var sp = url.searchParams;
+  var sp = currUrl.searchParams;
 
   sp.set('q', encodeURIComponent(searchOptions.q));
   sp.set('regex', searchOptions.regex);
   sp.set('fold_case', searchOptions.case);
-  window.history.pushState({}, '', url);
+
+  // If the user is typing quickly, just keep replacing the
+  // current URL.  But after they've paused, enroll the URL they
+  // paused at into their browser history.
+  var now = Date.now();
+  if (now - lastUrlUpdate > two_seconds) {
+      window.history.pushState({}, '', currUrl);
+  } else {
+      history.replaceState(null, '', currUrl);
+  }
+  lastUrlUpdate = now;
 
   doSearch();
 }
