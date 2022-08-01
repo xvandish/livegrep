@@ -308,32 +308,36 @@ function initializePage(initData) {
     // most reliable way to do this is to hide the elements until the page
     // has loaded. We also need defer our own scroll handling since we can't
     // access the geometry of the DOM elements until they are visible.
-    lineNumberContainer.style.display = "block"; //  css({display: 'block'});
-    initializeActionButtons();
-
-    // Initial range detection for when the page is loaded
-    handleHashChange(true);
-
-    // Allow shift clicking links to expand the highlight range
-    // rather than adding an event handler to all links, we just 
-    // add a handler to the container, then check if the target
-    // is a link
-    lineNumberContainer.addEventListener('click', function(event) {
-        if(event.target.tagName.toLowerCase() !== 'a') {
-            return;
-        }
-        event.preventDefault();
-        if (event.shiftKey) {
-                expandRangeToElement(event.target);
-        } else {
-            setHash(event.target.getAttribute('href'));
-        }
-        handleHashChange(false);
-    });
-    window.addEventListener('hashchange', function(event) {
-        event.preventDefault();
+    
+    if (lineNumberContainer) { // directories don't have line nums
+        lineNumberContainer.style.display = "block"; //  css({display: 'block'});
+        // Initial range detection for when the page is loaded
         handleHashChange(true);
-    });
+        // Allow shift clicking links to expand the highlight range
+        // rather than adding an event handler to all links, we just 
+        // add a handler to the container, then check if the target
+        // is a link
+        lineNumberContainer.addEventListener('click', function(event) {
+            if(event.target.tagName.toLowerCase() !== 'a') {
+                return;
+            }
+            event.preventDefault();
+            if (event.shiftKey) {
+                    expandRangeToElement(event.target);
+            } else {
+                setHash(event.target.getAttribute('href'));
+            }
+            handleHashChange(false);
+        });
+        window.addEventListener('hashchange', function(event) {
+            event.preventDefault();
+            handleHashChange(true);
+        });
+    } else {
+        document.getElementById('external-link').setAttribute('href', getExternalLink(null));
+    }
+
+    initializeActionButtons();
 
     window.document.addEventListener('keydown', function (e) {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
