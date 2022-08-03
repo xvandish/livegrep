@@ -922,7 +922,7 @@ div.example {
 
 .code-line .num-link {
   min-width: 40px;
-  user-select: text;
+  user-select: none;
   text-decoration: none;
   color: #185890;
 }
