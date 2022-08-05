@@ -193,16 +193,14 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 		bk.I.Trees = nil
 		repoNames = make([]string, len(info.Trees))
 		reposMap = make(map[string]*pb.Tree, len(info.Trees))
-		// bk.I.Trees = append(bk.I.Trees, info.Trees...)
+
 		for idx, r := range info.Trees {
 			bk.I.Trees = append(bk.I.Trees, r)
 			repoNames[idx] = r.Name
 			reposMap[r.Name] = r
 		}
 	}
-
-	// Now, we should make a new map of trees
-	bk.I.Unlock() // rebuildRepoRegex locks bk.I
+	bk.I.Unlock()
 
 	bk.srv.rebuildRepoRegex(repoNames)
 	bk.srv.resetInteralRepos(reposMap)

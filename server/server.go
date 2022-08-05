@@ -84,28 +84,20 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
 	sampleRepo := ""
 	// Used to display a connection status. Default selected is first backend.
 	firstBkShortStatus := ""
 	firstBkStatus := ""
-	// for the purposes of the frontend, we only care about precense/whether a repo is in this. We
-	// don't actually use its value
-	internalRepos := make(map[string]int, 100)
+
 	for idx, bkId := range s.bkOrder {
 		bk := s.bk[bkId]
 		backends = append(backends, bk)
 		bk.I.Lock()
-		m := make(map[string]string, len(bk.I.Trees))
-		urls[bk.Id] = m
-		for _, r := range bk.I.Trees {
-			if sampleRepo == "" {
-				sampleRepo = r.Name
+		if sampleRepo == "" {
+			if len(bk.I.Trees) > 0 {
+				sampleRepo = bk.I.Trees[0].Name
 			}
-			m[r.Name] = r.Metadata.UrlPattern
-			// TODO: only do this if some metadata indicated that we're ok with it
-			internalRepos[r.Name] = 1
 		}
 		if idx == 0 {
 			firstBkShortStatus, firstBkStatus = bk.getTextStatus()

@@ -239,8 +239,6 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo *
 }
 
 func buildFileData(relativePath string, repo *pb.Tree, commit string) (*fileViewerContext, error) {
-	fmt.Printf("repo: %+v\n", repo)
-	fmt.Printf("repo path: %s\n", repo.Path)
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)
 	if err == nil {
