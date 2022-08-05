@@ -86,8 +86,8 @@
           </div>
         {{ end }}
         <div class="code-line">
-          <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="num-link">
-            <span class="num">{{.LineNumber}}</span>
+          <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="{{ getLineNumberLinkClass .Bounds }}">
+            {{.LineNumber}} 
           </a>
           <div class="line">
             {{ if gt (len .Bounds) 0}}

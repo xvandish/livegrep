@@ -387,97 +387,8 @@ button:hover {
     color: rgba(0, 0, 0, 0.5);
 }
 
-.match {
-    display: block;
-    background-color: #fff;
-}
-
 .file-group .match:last-of-type {
     padding-bottom: 10px;
-}
-
-.match.clip-before {
-    margin-top: 0;
-    border: none;
-}
-
-.match.clip-after {
-    border: none;
-}
-
-/* wrap lines within .contents so we can highlight all 
- * blocks at the same time */
-.match .content-line-wrapper {
-    display: contents;
-}
-
-/* Blank lines are used to space match groups within the 
- * same file that start/end at different line numbers */
-.match .content-line-wrapper.blank-line > * {
-    background-color: #f6f8fa;
-}
-
-.match .content-line-wrapper:hover > * {
-    background-color: var(--hover-highlight-color);
-}
-
-.match .contents {
-    display: grid;
-    /* 5em to allow for line numbers like in the tens of thousands */
-    grid-template-columns: 5em auto auto;
-    white-space: pre-wrap;
-     /* Break lines that have no white-space in them, but are too long. */
-    overflow-wrap: anywhere;
-    font-family: "Menlo", "Consolas", "Monaco", monospace;
-    font-size: 12px;
-    color: #000;
-    margin: 0;
-}
-
-#results.no-context .match .content-line-wrapper.ctx > * {
-    display: none;
-}
-
-.no-context .match {
-    border-top: none;
-    margin-top: 0;
-}
-
-.no-context .match .contents {
-    padding-top: 0;
-    padding-bottom: 0;
-}
-
-.lno-link {
-    color: #6e7781;
-    padding-right: 1em;
-    text-align: right;
-}
-
-.lno-link:hover {
-    color: black;
-}
-
-.lno:before {
-    content: attr(aria-label);
-}
-
-.matchlno {
-    font-weight: bold;
-}
-
-.matchlinks {
-    opacity: 0.3;
-    text-align: right;
-}
-
-.match:hover .matchlinks {
-    opacity: 1.0;
-}
-
-.matchstr {
-    background: rgba(255, 234, 170, 0.75);
-    font-weight: bold;
 }
 
 #countarea {
@@ -909,12 +820,12 @@ div.example {
     padding: 10px;
 }
 
-/* svelete rewrite stuff */
 .code-line {
   display: flex;
   align-items: center;
   text-decoration: none;
   padding: 1px 4px;
+  word-break: break-all;
 }
 
 .code-line:hover {
@@ -932,7 +843,7 @@ div.example {
     text-decoration: underline;
 }
 
-.code-line .num-link .num.bold {
+.code-line .num-link.match {
     font-weight: bold;
 }
 

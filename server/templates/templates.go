@@ -77,6 +77,13 @@ func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
 	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
 }
 
+func getLineNumberLinkClass(bounds []int) string {
+	if len(bounds) > 0 {
+		return "num-link match"
+	}
+	return "num-link"
+}
+
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
 		"loop":                   func(n int) []struct{} { return make([]struct{}, n) },
@@ -87,6 +94,7 @@ func getFuncs() map[string]interface{} {
 		"min":                    min,
 		"getFirstNFiles":         getFirstNFiles,
 		"shouldInsertBlankLine":  shouldInsertBlankLine,
+		"getLineNumberLinkClass": getLineNumberLinkClass,
 	}
 }
 
