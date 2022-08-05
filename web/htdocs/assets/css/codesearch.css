@@ -963,6 +963,7 @@ div.example {
     max-width: 27px;
     color: #71b1e3;
     margin-left: 10px;
+    user-select: none;
 }
 
 .regex-toggle {
