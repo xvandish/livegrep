@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -70,6 +72,50 @@ func (bk *Backend) Start() {
 	}
 	go bk.poll()
 	go bk.updateIndexAge()
+}
+
+func (bk *Backend) getStatus() (int, string) {
+	bk.Up.Lock()
+	defer bk.Up.Unlock()
+
+	var statusCode int
+	var normalizedAge string
+
+	if bk.Up.IsUp {
+		// 0s -> 0m and anthing0s -> anything
+		statusCode = 0
+		normalizedAge = fmt.Sprintf("%s", bk.I.IndexAge)
+		if "0s" == normalizedAge {
+			normalizedAge = "0m"
+		} else {
+			normalizedAge = strings.TrimSuffix(normalizedAge, "0s")
+		}
+	} else {
+		statusCode = int(bk.Up.DownCode)
+		normalizedAge = time.Since(bk.Up.DownSince).Round(time.Second).String()
+	}
+
+	return statusCode, normalizedAge
+}
+
+func (bk *Backend) getTextStatus() (string, string) {
+	statusCode, age := bk.getStatus()
+
+	var oneWordStatus string
+	var status string
+
+	if statusCode == 0 {
+		oneWordStatus = "up"
+		status = fmt.Sprintf("Connected. Index age: %s", age)
+	} else if statusCode == 14 {
+		oneWordStatus = "reloading"
+		status = fmt.Sprintf("Index reloading.. (%s)", age)
+	} else {
+		oneWordStatus = "down"
+		status = fmt.Sprintf("Disconnected. (%s)", age)
+	}
+
+	return oneWordStatus, status
 }
 
 func (bk *Backend) updateIndexAge() {

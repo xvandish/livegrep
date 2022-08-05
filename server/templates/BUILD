@@ -5,4 +5,7 @@ go_library(
     srcs = ["templates.go"],
     importpath = "github.com/livegrep/livegrep/server/templates",
     visibility = ["//visibility:public"],
+    deps = [
+        "//server/api:go_default_library",
+    ],
 )

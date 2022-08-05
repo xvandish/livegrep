@@ -1,0 +1,105 @@
+<div id="countarea">
+  <span id="numresults">{{ .Data.Info.NumMatches }}{{ if .Data.Info.MoreAvail }}+{{end}}</span> matches found
+  <span id='searchtimebox'>
+    <span class='label'>&asymp;</span>
+    <!-- js will embed the time here -->
+    <span id='searchtime'></span>
+  </span>
+</div>
+
+{{ if gt (len .Data.PopExts) 0 }}
+<div class="file-extensions">
+  <span>Narrow to:</span>
+  {{ range .Data.PopExts }}
+  <button class="file-extension">{{ .Ext }}</button> 
+  {{ end }}
+</div>
+{{ end }}
+
+<div class="path-results">
+  {{range $i, $e := getFirstNFiles .Data.FileResults 10 }}
+    <div class="cr-header">
+      <div class="links">
+        <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+        <span>›</span>
+        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+          {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+              <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+        </a>
+      </div>
+    </div>
+  {{end}}
+
+  {{ if ge (len .Data.FileResults) 10 }}
+    <div class="extra-results hidden">
+    {{range $i, $e := (slice .Data.FileResults 10 )}}
+        <div class="cr-header">
+          <div class="links">
+            <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+            <span>›</span>
+            <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+              {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
+                  <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+            </a>
+          </div>
+        </div>
+    {{end}}
+    </div>
+    <button id="showMoreFilematchesBtn" class="show-more-filematches-btn">
+      <span id="toggle-btn-text">Show all</span>
+      <img src="/assets/img/chevron-down.svg" />
+    </button>
+  {{ end }}
+</div>
+
+<div class="tree-results">
+  {{ range .Data.TreeResults }}
+    <div class="treename-match">
+      <a class="label header result-path" href="/view/{{.Name}}/">
+      {{ $lineParts := splitCodeLineIntoParts .Name (slice .Bounds) }}
+          <span>{{$lineParts.Prefix}}</span><span class="matchstr">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
+      </a>
+    </div>
+  {{ end }}
+</div>
+
+<div class="code-results">
+  {{range .Data.Results}}
+  {{$repo := .Tree}}
+  {{$path := .Path}}
+  {{$numLines := len .Lines }}
+  {{$lines := .Lines }}
+  <div class="code-result">
+    <div class="cr-header">
+      <div class="links">
+        <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+        <span>›</span>
+        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">{{.Path}}</a>
+      </div>
+    </div>
+    <div class="cr-lines">
+      {{range $i, $e := .Lines}}
+        {{ if shouldInsertBlankLine $i $lines }}
+          <div class="blank-line">
+            <span class="num-dots">…</span>
+            <span />
+          </div>
+        {{ end }}
+        <div class="code-line">
+          <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="num-link">
+            <span class="num">{{.LineNumber}}</span>
+          </a>
+          <div class="line">
+            {{ if gt (len .Bounds) 0}}
+              {{ $lineParts := splitCodeLineIntoParts .Line .Bounds}}
+              <pre><span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span></pre>
+            {{ else }}
+            <pre><span>{{.Line}}</span></pre>
+            {{ end }}
+          </div>
+        </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>

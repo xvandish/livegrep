@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/livegrep/livegrep/server/api"
 )
 
 func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
@@ -33,12 +35,58 @@ func scriptTag(nonce template.HTMLAttr, s string, m map[string]string) template.
 	))
 }
 
+type lineParts struct {
+	Prefix      string
+	Highlighted string
+	Suffix      string
+}
+
+func splitCodeLineIntoParts(line string, bounds []int) lineParts {
+	start := bounds[0]
+	end := bounds[1]
+
+	p := lineParts{
+		Prefix:      line[0:start],
+		Highlighted: line[start:end],
+		Suffix:      line[end:],
+	}
+
+	return p
+}
+
+// used to cap slice iteration
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// returns [:min(n|len(T))]
+func getFirstNFiles(s []*api.FileResult, n int) []*api.FileResult {
+	c := min(n, len(s))
+	return s[:c]
+}
+
+func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
+	prevIdx := currIdx - 1
+	if prevIdx < 0 {
+		return false
+	}
+
+	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
+}
+
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"loop":      func(n int) []struct{} { return make([]struct{}, n) },
-		"toLineNum": func(n int) int { return n + 1 },
-		"linkTag":   linkTag,
-		"scriptTag": scriptTag,
+		"loop":                   func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum":              func(n int) int { return n + 1 },
+		"linkTag":                linkTag,
+		"scriptTag":              scriptTag,
+		"splitCodeLineIntoParts": splitCodeLineIntoParts,
+		"min":                    min,
+		"getFirstNFiles":         getFirstNFiles,
+		"shouldInsertBlankLine":  shouldInsertBlankLine,
 	}
 }
 

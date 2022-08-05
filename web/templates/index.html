@@ -2,87 +2,89 @@
 
 {{define "body"}}
 <div id='searcharea'>
-  <div class="search-inputs">
-    <div class="prefixed-input filter-code">
-      <label class="prefix-label" for="searchbox">Query:</label>
-      <input type="text" id='searchbox' tabindex="1" required="required" />
-    </div>
+    <div class="search-inputs">
+    <div class="input-line">
+      <div class="inline-search-options left">
+        <label for="searchbox">
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </label>
+      </div>
+      <div class="inline-search-options">
+        <div class="select-with-icon-container">
+          <div class="icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <g id="regular-expression">
+                    <path id="upper-case" d="M7.53 7L4 17h2.063l.72-2.406h3.624l.72 2.406h2.062L9.65 7h-2.12zm1.064 1.53L9.938 13H7.25l1.344-4.47z"/>
+                    <path id="lower-case" d="M18.55 17l-.184-1.035h-.055c-.35.44-.71.747-1.08.92-.37.167-.85.25-1.44.25-.564 0-.955-.208-1.377-.625-.42-.418-.627-1.012-.627-1.784 0-.808.283-1.403.846-1.784.568-.386 1.193-.607 2.208-.64l1.322-.04v-.335c0-.772-.396-1.158-1.187-1.158-.61 0-1.325.18-2.147.55l-.688-1.4c.877-.46 1.85-.69 2.916-.69 1.024 0 1.59.22 2.134.662.545.445.818 1.12.818 2.03V17h-1.45m-.394-3.527l-.802.027c-.604.018-1.054.127-1.35.327-.294.2-.442.504-.442.912 0 .58.336.87 1.008.87.48 0 .865-.137 1.152-.414.29-.277.436-.645.436-1.103v-.627"/>
+            </g>
+          </svg>
+          </div>
+        <select id="case-sensitivity-toggle"}>
+          <option value="auto">auto</option>
+          <option value="false">match</option>
+          <option value="true">ignore</option>
+        </select>
+        </div>
+        <button type="button" class="regex-toggle" id="toggle-regex" data-selected="false" title="Toggle regex" name="regex">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+            <g id="regular-expression">
+                    <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"/>
+                    <path id="dot" d="M10 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                    <path id="star" d="M14.25 7.013l-.24 2.156 2.187-.61.193 1.47-1.992.14 1.307 1.74-1.33.71-.914-1.833-.8 1.822-1.38-.698 1.296-1.74-1.98-.152.23-1.464 2.14.61-.24-2.158h1.534"/>
+                    <path id="right-bracket" d="M21 12.045c0 .982-.152 1.896-.457 2.744A6.51 6.51 0 0 1 19.236 17h-1.453a8.017 8.017 0 0 0 1.225-2.31c.29-.855.434-1.74.434-2.66 0-.91-.14-1.797-.422-2.66a7.913 7.913 0 0 0-1.248-2.374h1.465a6.764 6.764 0 0 1 1.313 2.28c.3.86.45 1.782.45 2.764"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+      <div class="query-input-wrapper">
+        <input type="text" id='searchbox' tabindex="1" required="required" autofocus/>
+      </div>
+  </div>
     <div id='regex-error'>
       <span id='errortext'></span>
     </div>
 
-    <div class='query-hint'>
-      Special terms:
-      <code>path:</code>
-      <code>-path:</code>
-      <code>repo:</code>
-      <code>-repo:</code>
-      <code>max_matches:</code>
-    </div>
-  </div>
-
-  <div class="search-options">
-    <div class="search-option">
-      <span class="label">Case:</span>
-      <input type='radio' name='fold_case' value='false' id='case-match' tabindex="3" />
-      <label for='case-match'>match</label>
-      <input type='radio' name='fold_case' value='auto' id='case-auto' tabindex="4" />
-      <label for='case-auto'>auto</label>
-      [<span class="tooltip-target">?<div class="tooltip">
-        Case-sensitive if the query contains capital letters
-      </div></span>]
-      <input type='radio' name='fold_case' value='true' id='case-ignore' tabindex="5" />
-      <label for='case-ignore'>ignore</label>
-    </div>
-
-    <div class="search-option">
-      <span class="label">Regex:</span>
-      <input type='checkbox' name='regex' id='regex' tabindex="6" />
-      <label for='regex'>on</label>
-    </div>
-
-    {{if gt (.Data.Backends | len) 1 }}
-      <div class="search-option">
-        <span class="label">Search:</span>
-        <select id='backend' tabindex="7">
-        {{range .Data.Backends}}
-          <option value="{{.Id}}">{{.I.Name}}</option>
-        {{end}}
-        </select>
+    <div class='query-hint-and-index-info'>
+      <div>
+        <span>Special terms:</span>
+        <code>path:</code>
+        <code>-path:</code>
+        <code>repo:</code>
+        <code>-repo:</code>
+        <code>max_matches:</code>
       </div>
-    {{else}}
-      {{with index .Data.Backends 0}}
-        <select id='backend' style='display: none;'>
-          <option value="{{.Id}}">{{.I.Name}}</option>
-        </select>
-        {{if ne (.I.Name) "-"}}
-          <div class="search-option">
-            <span class="label" style="margin-right:5px">Searching:</span>
-            {{.I.Name}}
-          </div>
+      <div>
+        <div id="live-status-main-info-container">
+          <span id="live-status-dot" class="live-dot" data-status="{{ .Data.FirstBackendShortStatus}}"></span>
+          <span id="live-status-text">{{ .Data.FirstBackendStatus }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-options">
+      {{if gt (.Data.Backends | len) 1 }}
+        <div class="search-option">
+          <span class="label">Search:</span>
+          <select id='backend' tabindex="7">
+          {{range .Data.Backends}}
+            <option value="{{.Id}}">{{.I.Name}}</option>
+          {{end}}
+          </select>
+        </div>
+      {{else}}
+        {{with index .Data.Backends 0}}
+          <select id='backend' style='display: none;'>
+            <option value="{{.Id}}">{{.I.Name}}</option>
+          </select>
         {{end}}
       {{end}}
-    {{end}}
-
-    <div class="search-option">
-      <span class="label">Context:</span>
-      <input type='checkbox' name='context' id='context' tabindex="8" checked="CHECKED" />
-      <label for='context'>on</label>
-    </div>
-    
-    <div>
-      <div id="live-status-main-info-container">
-        <span id="live-status-dot" class="live-dot" data-status="up" ></span>
-        <span id="live-status-text">Connected</span>
-      </div>
-      <div id="live-status-sub-info">...</div>
     </div>
   </div>
 </div>
 
 <div id='resultbox'>
 <div id='helparea'>
-  <div id="joined-stuff">  
+  <div id="joined-stuff">
     <div id='recent-searches'>
         <div class="helpsection"><h3>Recent Searches</h3></div>
         <!-- js will populate this with history from localstorage -->
@@ -147,28 +149,15 @@
             </tr>
         </table>
         <div>
-            <div class='helpsection'>
-                <h3>Regular Expressions</h3>
-            </div>
             <p>
                 See <a href="https://github.com/google/re2/wiki/Syntax">the RE2
                 documentation</a> for a complete listing of supported regex syntax.
             </p>
         </div>
     </div>
-  </div>
+    </div>
 </div>
 <div id='resultarea'>
-  <div id='countarea'>
-    <span id='numresults'>0</span> matches found
-    <span id='searchtimebox'>
-      <span class='label'>
-        &asymp;
-      </span>
-      <span id='searchtime'>
-      </span>
-    </span>
-  </div>
   <div id='results' tabindex='-1'>
   </div>
 </div>

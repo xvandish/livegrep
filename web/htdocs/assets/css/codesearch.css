@@ -31,77 +31,80 @@ button:hover {
 
 #searcharea {
     width: 100%;
-    max-width: 1200px;
-    margin-top: 30px;
+    max-width: 800px;
     margin-bottom: 20px;
     margin-left: auto;
     margin-right: auto;
-    position: relative;
     padding: 20px;
-    background: white;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+    padding-top: 10px;
     box-sizing: border-box;
 }
 
-#searcharea > div {
-    flex: 1 1 auto;
+.input-line {
+    position: relative;
 }
 
-.prefixed-input input[type=text] {
-    vertical-align: bottom;
-    border: none;
-    border-bottom: solid 2px rgba(0, 0, 0, 0.1);
-    padding: 10px 0 5px 0;
-    transition: border 150ms;
-    width: 100%;
-}
-
-.prefixed-input input[type=text]:hover {
-    outline: none;
-    border-color: rgba(0, 126, 229, 0.1);
-}
-
-.prefixed-input input[type=text]:focus {
-    outline: none;
-    border-color: rgba(0, 126, 229, 0.25);
-}
-
-.prefixed-input input[type=text]:valid {
-    border-color: rgba(0, 0, 0, 0.4);
-}
-
-.prefixed-input input[type=text]:valid:hover {
-    border-color: rgba(0, 126, 229, 0.45);
-}
-
-.prefixed-input input[type=text]:valid:focus {
-    border-color: rgba(0, 126, 229, 0.75);
-}
-
-#searcharea #searchbox {
+.input-line .query-input-wrapper #searchbox {
     font-size: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    padding-right: 150px;
+    padding-left: 60px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    transition: all ease-in-out 100ms;
 }
 
-.query-hint {
-    padding-top: 5px;
+.input-line .query-input-wrapper #searchbox:hover {
+    border-color: rgba(0, 126, 229, 0.25);
+
+}
+
+.input-line .query-input-wrapper #searchbox:focus-visible {
+    border-color: rgba(0, 126, 229, 0.50);
+    outline: none;
+}
+
+.input-line .inline-search-options {
+    position: absolute;
+    right: 0px;
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    height: 100%;
+    margin-right: 10px;
+}
+
+.input-line .inline-search-options.left {
+    left: 0px;
+    right: unset;
+    margin-left: 15px;
+    margin-right: 0px;
+}
+
+.input-line .inline-search-options.left label {
+    margin-top: 3px;
+}
+
+.query-hint-and-index-info {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
     font-size: 11px;
     font-style: italic;
     color: rgba(0, 0, 0, 0.5);
+    margin-bottom: 10px;
+    margin-right: 5px;
 }
 
-.query-hint code {
-    border: 1px solid rgba(0, 0, 0, 0.25);
+.query-hint-and-index-info code {
     border-radius: 3px;
-    background: #f8f8f8;
+    background-color: #f8f8f8;
     font-style: normal;
     margin: 0px 1px;
     padding: 1px 3px;
-}
-
-.query-hint-text {
-    font-weight: bold;
 }
 
 .search-options {
@@ -110,23 +113,22 @@ button:hover {
     margin: 0;
     font-size: 12px;
     line-height: 20px;
-    margin-bottom: 3px;
 }
 
 .search-option {
     white-space: nowrap;
-    display: flex;
-    align-items: center;
+}
+
+#regex-error {
+    padding-top: 3px;
+    display: none;
 }
 
 #live-status-main-info-container {
     display: flex;
     align-items: center;
-    border-bottom: 1px solid #eaeaea;
-    padding-bottom: 5px;
-    margin-bottom: 5px;
-    margin-top: 15px;
     color: #888;
+    font-style: normal;
 }
 
 #live-status-sub-info {
@@ -142,7 +144,7 @@ button:hover {
 }
 
 .live-dot[data-status='up'] {
-    background-color: green;
+    background-color: rgb(56, 142, 60);
 }
 
 .live-dot[data-status='down'] {
@@ -151,11 +153,6 @@ button:hover {
 
 .live-dot[data-status='reloading'] {
     background-color: orange;
-}
-
-#regex-error {
-    padding-top: 3px;
-    display: none;
 }
 
 #errortext {
@@ -214,6 +211,8 @@ button:hover {
 #resultbox {
     padding: 1em 3em;
     width: 100%;
+    max-width: 1240px;
+    margin: auto;
     box-sizing: border-box;
 }
 
@@ -222,6 +221,7 @@ button:hover {
     margin-top: 50px;
     margin-bottom: 100px;
     font-family: monospace;
+    font-size: 0.8em;
 }
 
 .helpsection {
@@ -237,7 +237,7 @@ button:hover {
     display: grid;
     grid-template-columns: 30% 1fr;
     gap: 50px;
-    width: 100em;
+    max-width: 100em;
     margin: auto;
 }
 
@@ -252,7 +252,7 @@ button:hover {
 }
 
 #query-terms-table tr:hover {
-    background-color: #eaeaea;
+    background-color: var(--hover-highlight-color);
 }
 
 #query-terms-table td {
@@ -280,6 +280,7 @@ button:hover {
     border: none;
     width: 100%;
     min-height: 2rem;
+    overflow-wrap: break-word;
 }
 
 #helparea #recent-searches .searches-container button:hover {
@@ -299,6 +300,11 @@ button:hover {
 #results {
     margin-top: 10px;
     outline: none; /* despite 'tabindex' that lets it receive keystrokes */
+    font-family: ui-monospace,"Cascadia Mono","Segoe UI Mono","Liberation Mono",Menlo,Monaco,Consolas,monospace
+}
+
+#results #file-results {
+    margin-bottom: 3rem;
 }
 
 .path-results .hidden {
@@ -310,7 +316,7 @@ button:hover {
     align-items: center;
     gap: 10px;
     margin-top: 10px;
-    background-color: #fafafa;
+    background-color: #eaeaea;
     border-radius: 3px;
     padding: 5px;
     border: none;
@@ -481,6 +487,8 @@ button:hover {
 
 #header ul {
     padding: 0;
+    color: #999;
+    margin-bottom: 30px;
 }
 
 #header li {
@@ -498,18 +506,19 @@ button:hover {
     content: ""
 }
 
-#header .first {}
+#header h1 {
+    font-family: monospace;
+}
 
 #header {
     font-size: 12px;
-    color: #999;
     margin: 1em auto;
     width: 40em;
     text-align: center;
 }
 
 #resultarea {
-    display: none;
+    font-size: 0.75em;
 }
 
 /* File viewer */
@@ -608,6 +617,7 @@ button:hover {
     width: 100%;
     color: rgba(0, 0, 0, 0.25);
     text-decoration: none;
+    user-select: none;
 }
 
 .file-viewer .line-numbers a:hover {
@@ -848,4 +858,184 @@ div.example {
 .token.function,
 .token.bold {
     font-weight: bold;
+}
+
+.code-result {
+    /* padding: 10px; */
+    margin-bottom: 30px;
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    font-family: ui-monospace,"Cascadia Mono","Segoe UI Mono","Liberation Mono",Menlo,Monaco,Consolas,monospace;
+}
+
+.code-result .cr-header {
+    background-color: rgba(19, 61, 153, 0.09);
+    padding: 6px;
+}
+
+.code-result .cr-header .matches {
+    color: #888;
+    font-size: 0.7rem;
+}
+
+.cr-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.cr-header .links {
+    display: inline-flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.cr-header .links .repo-link {
+    color: #3d464d; 
+    white-space: nowrap;
+}
+
+.cr-header .links .path-link {
+    color: #224a6d;
+    font-weight: bold;
+}
+
+.cr-header .links .path-link .highlighted {
+    background-color: rgba(255, 234, 170, 0.75);
+}
+
+.code-result .cr-lines {
+    padding: 10px;
+}
+
+/* svelete rewrite stuff */
+.code-line {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  padding: 1px 4px;
+}
+
+.code-line:hover {
+    background-color: #EAEAEA;
+}
+
+.code-line .num-link {
+  min-width: 40px;
+  user-select: none;
+  text-decoration: none;
+  color: #185890;
+}
+
+.code-line .num-link:hover {
+    text-decoration: underline;
+}
+
+.code-line .num-link .num.bold {
+    font-weight: bold;
+}
+
+.code-line .line > pre {
+    margin: 0px;
+    font-family: ui-monospace,"Cascadia Mono","Segoe UI Mono","Liberation Mono",Menlo,Monaco,Consolas,monospace
+}
+
+/* This works, but not sure why the line-height if I set pre-wrap for .line is
+ * so high... */
+.code-line .line span {
+    white-space: pre-wrap;
+}
+
+.code-line .line .highlighted {
+    background-color: rgba(255, 234, 170, 0.75);
+}
+
+.blank-line {
+    background-color: #f9f9fa;
+}
+
+.blank-line:hover {
+    background-color: #EAEAEA;
+
+}
+
+.blank-line .num-dots {
+    max-width: 27px;
+    color: #71b1e3;
+    margin-left: 10px;
+    user-select: none;
+}
+
+.regex-toggle {
+    background-color: transparent;
+    border: none;
+    border-radius: 5px;
+}
+
+/* we go to all this trouble so that hovering is noticable,
+ * a selected toggle/button is noticeable, and when hovering
+ * over a selected button, you notice when it's selected or not. */
+.regex-toggle[data-selected="true"] {
+    background-color: #337ab7;
+}
+
+.regex-toggle[data-selected="true"] svg {
+    fill: white;
+}
+
+.regex-toggle:hover {
+    cursor: pointer;
+}
+
+.regex-toggle[data-selected="false"]:hover {
+    background-color: var(--hover-highlight-color);
+}
+
+.clear-input {
+    background-color: transparent;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 1px;
+}
+
+.clear-input:hover {
+    background-color: #eaeaea;
+}
+
+/* float the icon over the select, padd the select text
+ * so it all looks like the same element */
+.select-with-icon-container {
+    position: relative;
+    display: flex;
+    align-items: end;
+}
+
+.select-with-icon-container:hover {
+    cursor: pointer;
+}
+
+.select-with-icon-container .icon {
+    position: absolute;
+    left: 2px;
+    bottom: -3px;
+}
+
+.select-with-icon-container select {
+    padding: 5px;
+    padding-left: 25px;
+    border-radius: 5px;
+    border: none;
+    background-color: #fafafa;
+}
+
+.select-with-icon-container select:hover {
+    cursor: pointer;
+    background-color: var(--hover-highlight-color);
 }

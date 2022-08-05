@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -44,6 +46,15 @@ func writeQueryError(ctx context.Context, w http.ResponseWriter, err error) {
 	} else {
 		writeError(ctx, w, 500, "internal_error",
 			fmt.Sprintf("Talking to backend: %s", err.Error()))
+	}
+}
+
+func getQueryError(err error) (errCode int, errorMsg string, errorMsgLong string) {
+	if code := grpc.Code(err); code == codes.InvalidArgument {
+		return 400, "query", grpc.ErrorDesc(err)
+	} else {
+		return 500, "internal_error",
+			fmt.Sprintf("Talking to backend: %s", err.Error())
 	}
 }
 
@@ -104,6 +115,14 @@ func stringSlice(ss []string) []string {
 		return ss
 	}
 	return []string{}
+}
+
+func reverse(strings []string) []string {
+	newSstrings := make([]string, 0, len(strings))
+	for i := len(strings) - 1; i >= 0; i-- {
+		newSstrings = append(newSstrings, strings[i])
+	}
+	return newSstrings
 }
 
 func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
@@ -186,6 +205,255 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		ExitReason:  search.Stats.ExitReason.String(),
 	}
 	return reply, nil
+}
+
+func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearchV2, error) {
+	var search *pb.CodeSearchResult
+	var err error
+
+	start := time.Now()
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if id, ok := reqid.FromContext(ctx); ok {
+		ctx = metadata.AppendToOutgoingContext(ctx, "Request-Id", string(id))
+	}
+
+	search, err = backend.Codesearch.Search(
+		ctx, q,
+		grpc.FailFast(false),
+	)
+
+	if err != nil {
+		log.Printf(ctx, "error talking to backend err=%s", err)
+		return nil, err
+	}
+
+	reply := &api.ReplySearchV2{
+		Results:     make([]*api.ResultV2, 0),
+		FileResults: make([]*api.FileResult, 0),
+		TreeResults: make([]*api.TreeResult, 0),
+		SearchType:  "normal",
+	}
+
+	if q.FilenameOnly {
+		reply.SearchType = "filename_only"
+	} else if q.TreenameOnly {
+		reply.SearchType = "treename_only"
+	}
+
+	// https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
+	// the following logic is mostly the same as the function linked above, and should be attributed to Kevin Lin
+	dedupedResults := make(map[string]*api.ResultV2)
+	codeMatches := 0
+	for _, r := range search.Results {
+		key := fmt.Sprintf("%s-%s", r.Tree, r.Path)
+		lineNumber := int(r.LineNumber)
+
+		existingResult, present := dedupedResults[key]
+		if !present {
+			existingResult = &api.ResultV2{
+				Tree:         r.Tree,
+				Version:      r.Version,
+				Path:         r.Path,
+				ContextLines: make(map[int]*api.ResultLine),
+			}
+		}
+
+		var contextLinesInit []string
+		contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
+		contextLinesInit = append(contextLinesInit, r.Line)
+		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
+
+		// Now for every contextLine, transform it into a resultLines
+		for idx, line := range contextLinesInit {
+			contextLno := idx + lineNumber - len(r.ContextBefore)
+			var bounds []int
+
+			if contextLno == lineNumber {
+				codeMatches += 1
+				bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
+			}
+
+			// Defer to the existing bounds information
+			if present {
+				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
+					if len(existingContextLine.Bounds) == 2 {
+						copy(existingContextLine.Bounds, bounds)
+					}
+				}
+			}
+			existingResult.ContextLines[contextLno] = &api.ResultLine{
+				LineNumber: contextLno,
+				Bounds:     bounds,
+				Line:       line}
+		}
+
+		if !present {
+			dedupedResults[key] = existingResult
+		}
+
+	}
+
+	extensionCounts := make(map[string]int, len(dedupedResults))
+	for treeAndPath, dededupedResult := range dedupedResults {
+		ext := filepath.Ext(treeAndPath)
+		extensionCounts[ext] += 1
+
+		// Change the lines over to an array then sort by LineNumber
+		dededupedResult.Lines = make([]*api.ResultLine, 0)
+		for _, line := range dededupedResult.ContextLines {
+			dededupedResult.Lines = append(dededupedResult.Lines, line)
+		}
+		// It's faster to sort after the fact than trying to maintain sort
+		// order I believe
+		sort.Slice(dededupedResult.Lines, func(i, j int) bool {
+			lines := dededupedResult.Lines
+			return lines[i].LineNumber < lines[j].LineNumber
+		})
+
+		reply.Results = append(reply.Results, dededupedResult)
+	}
+
+	extensionArray := make([]*api.FileExtension, 0, len(extensionCounts))
+	idx := 0
+	for ext, count := range extensionCounts {
+		if ext == "" {
+			continue
+		}
+		extensionArray = append(extensionArray, &api.FileExtension{Ext: ext, Count: count})
+		idx += 1
+	}
+
+	sort.Slice(extensionArray, func(i, j int) bool {
+		return extensionArray[i].Count > extensionArray[j].Count
+	})
+	// we want at most 5 exts, but if there are less than 2, no exts
+	c := 5
+	if len(extensionArray) < 5 {
+		c = len(extensionArray)
+	}
+	if c < 2 {
+		c = 0
+	}
+	reply.PopExts = extensionArray[:c]
+
+	for _, r := range search.FileResults {
+		reply.FileResults = append(reply.FileResults, &api.FileResult{
+			Tree:    r.Tree,
+			Version: r.Version,
+			Path:    r.Path,
+			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+		})
+	}
+
+	for _, r := range search.TreeResults {
+		reply.TreeResults = append(reply.TreeResults, &api.TreeResult{
+			Name:    r.Name,
+			Version: r.Version,
+			Bounds:  [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+			// Only GitHub links are enabled atm.
+			Metadata: &api.Metadata{
+				Labels:      r.Metadata.Labels,
+				ExternalUrl: r.Metadata.Github + "/tree/" + r.Version,
+			},
+		})
+	}
+
+	exitReason := search.Stats.ExitReason.String()
+	var numMatches int
+
+	if q.FilenameOnly {
+		numMatches = len(search.FileResults)
+	} else if q.TreenameOnly {
+		numMatches = len(search.TreeResults)
+	} else {
+		numMatches = codeMatches
+	}
+
+	reply.Info = &api.Stats{
+		RE2Time:     search.Stats.Re2Time,
+		GitTime:     search.Stats.GitTime,
+		SortTime:    search.Stats.SortTime,
+		IndexTime:   search.Stats.IndexTime,
+		AnalyzeTime: search.Stats.AnalyzeTime,
+		TotalTime:   int64(time.Since(start) / time.Millisecond),
+		ExitReason:  exitReason,
+		NumMatches:  numMatches,
+		MoreAvail:   exitReason != "NONE",
+	}
+	return reply, nil
+}
+
+func getBackendFromQuery(s *server, r *http.Request) (string, *Backend) {
+	backendName := r.URL.Query().Get(":backend")
+	var backend *Backend
+	if backendName != "" {
+		backend = s.bk[backendName]
+	} else {
+		for _, backend = range s.bk {
+			break
+		}
+	}
+
+	return backendName, backend
+}
+
+// This function is internal to the app and not exposed.
+// It is used to perform a search, and those results are then rendered to HTML
+func (s *server) ServerSideAPISearchV2(ctx context.Context, w http.ResponseWriter, r *http.Request) (reply *api.ReplySearchV2, errCode int, errorMsg string, errorMsgLong string) {
+	backendName, backend := getBackendFromQuery(s, r)
+
+	if backend == nil {
+		return nil, 400, "bad_backend", fmt.Sprintf("Unknown backend: %s", backendName)
+	}
+
+	q, is_regex, err := extractQuery(ctx, r)
+
+	if err != nil {
+		return nil, 400, "bad_query", err.Error()
+	}
+
+	if q.Line == "" {
+		kind := "string"
+		if is_regex {
+			kind = "regex"
+		}
+		msg := fmt.Sprintf("You must specify a %s to match", kind)
+		return nil, 400, "bad_query", msg
+	}
+
+	if q.MaxMatches == 0 {
+		q.MaxMatches = s.config.DefaultMaxMatches
+	}
+
+	reply, err = s.doSearchV2(ctx, backend, &q)
+
+	if err != nil {
+		log.Printf(ctx, "error in search err=%s", err)
+		errCode, errorMsg, errorMsgLong = getQueryError(err)
+		return nil, errCode, errorMsg, errorMsgLong
+	}
+
+	if s.statsd != nil {
+		s.statsd.Increment("api.search.v2.invocations")
+		s.statsd.Increment("api.search.v2.exit_reason." + reply.Info.ExitReason)
+		s.statsd.Timing("api.search.v2.re2_time", reply.Info.RE2Time)
+		s.statsd.Timing("api.search.v2.git_time", reply.Info.GitTime)
+		s.statsd.Timing("api.search.v2.sort_time", reply.Info.SortTime)
+		s.statsd.Timing("api.search.v2.index_time", reply.Info.IndexTime)
+		s.statsd.Timing("api.search.v2.analyze_time", reply.Info.AnalyzeTime)
+		s.statsd.Timing("api.search.v2.total_time", reply.Info.TotalTime)
+	}
+
+	log.Printf(ctx,
+		"responding success results=%d why=%s stats=%s",
+		len(reply.Results),
+		reply.Info.ExitReason,
+		asJSON{reply.Info})
+
+	return reply, 200, "", ""
 }
 
 func (s *server) ServeAPISearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {

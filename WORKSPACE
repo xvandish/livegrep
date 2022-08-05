@@ -60,7 +60,6 @@ git_repository(
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
 load(
     "//tools/build_defs:go_externals.bzl",
     "go_externals",
@@ -70,12 +69,12 @@ go_externals()
 
 go_rules_dependencies()
 
-go_register_toolchains(version = "1.17.6")
+go_register_toolchains(version = "1.18.4")
 
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
-gazelle_dependencies()
 
+gazelle_dependencies()
 
 http_archive(
     name = "com_github_libgit2",
@@ -89,7 +88,7 @@ git_repository(
     name = "com_github_grpc_grpc",
     commit = "591d56e1300b6d11948e1b821efac785a295989c",  # 1.44.0
     remote = "https://github.com/grpc/grpc.git",
-    shallow_since = "1644573434 +0100"
+    shallow_since = "1644573434 +0100",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
@@ -105,15 +104,6 @@ git_repository(
     commit = "ae772d29d07002dfd89ed1d9ff673a1721f1b8dd",
     remote = "https://github.com/bazelbuild/buildifier.git",
 )
-
-local_repository(
-    name = "org_dropbox_rules_node",
-    path = "tools/org_dropbox_rules_node",
-)
-
-load("@org_dropbox_rules_node//node:defs.bzl", "node_repositories")
-
-node_repositories()
 
 # git_repository(
 #     name = "com_grail_bazel_compdb",
