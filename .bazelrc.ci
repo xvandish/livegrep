@@ -8,8 +8,9 @@ build --compilation_mode=opt
 # This is so we understand failures better
 build --verbose_failures
 build --worker_verbose
-test --test_output=errors
+test --test_output=all
 test --test_verbose_timeout_warnings
+test --test_timeout=300
 
 # Use BuildBuddy (anonymously for now) to build
 # I tried a GCS cache, but I think we were hitting up against
