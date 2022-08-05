@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/livegrep/livegrep/server/config"
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 // Mapping from known file extensions to filetype hinting.
@@ -91,7 +91,7 @@ type directoryListEntry struct {
 
 type fileViewerContext struct {
 	PathSegments   []breadCrumbEntry
-	Repo           config.RepoConfig
+	Repo           *pb.Tree
 	Commit         string
 	DirContent     *directoryContent
 	FileContent    *sourceFileContent
@@ -219,7 +219,7 @@ func buildReadmeRegex(supportedReadmeExtensions []string) *regexp.Regexp {
 	return repoFileRegex
 }
 
-func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo config.RepoConfig) directoryListEntry {
+func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo *pb.Tree) directoryListEntry {
 	var fileUrl string
 	var symlinkTarget string
 	if treeEntry.Mode == "120000" {
@@ -238,7 +238,9 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
 	}
 }
 
-func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
+func buildFileData(relativePath string, repo *pb.Tree, commit string) (*fileViewerContext, error) {
+	fmt.Printf("repo: %+v\n", repo)
+	fmt.Printf("repo path: %s\n", repo.Path)
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)
 	if err == nil {
@@ -324,7 +326,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	}
 
 	externalDomain := "external viewer"
-	if url, err := url.Parse(repo.Metadata["url_pattern"]); err == nil {
+	if url, err := url.Parse(repo.Metadata.UrlPattern); err == nil {
 		externalDomain = url.Hostname()
 	}
 

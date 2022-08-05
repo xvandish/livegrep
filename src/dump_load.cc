@@ -319,6 +319,7 @@ void codesearch_index::dump_metadata() {
          it != cs_->trees_.end(); ++it) {
         dump_string((*it)->name);
         dump_string((*it)->version);
+        dump_string((*it)->path);
         string metadata;
         auto st = google::protobuf::util::MessageToJsonString((*it)->metadata, &metadata);
         if (!st.ok()) {
@@ -533,6 +534,7 @@ void load_allocator::load(code_searcher *cs) {
         auto tree = std::make_unique<indexed_tree>();
         tree->name = load_string();
         tree->version = load_string();
+        tree->path = load_string();
         string metadata = load_string();
         if (metadata.size() != 0) {
             auto status = google::protobuf::util::JsonStringToMessage(metadata, &tree->metadata, google::protobuf::util::JsonParseOptions());

@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	texttemplate "text/template"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
 	"github.com/livegrep/livegrep/server/templates"
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 var serveUrlParseError = fmt.Errorf("failed to parse repo and path from URL")
@@ -41,7 +43,6 @@ type server struct {
 	config      *config.Config
 	bk          map[string]*Backend
 	bkOrder     []string
-	repos       map[string]config.RepoConfig
 	inner       http.Handler
 	Templates   map[string]*template.Template
 	OpenSearch  *texttemplate.Template
@@ -50,6 +51,8 @@ type server struct {
 
 	statsd *statsd.Client
 
+	sync.Mutex
+	repos              map[string]*pb.Tree
 	serveFilePathRegex *regexp.Regexp
 }
 
@@ -153,14 +156,14 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	data, err := buildFileData(path, repo, commit)
 	if err != nil {
-		http.Error(w, "Error reading file", 500)
+		http.Error(w, fmt.Sprintf("Error reading file: %s", err), 500)
 		return
 	}
 
 	script_data := &struct {
-		RepoInfo config.RepoConfig `json:"repo_info"`
-		FilePath string            `json:"file_path"`
-		Commit   string            `json:"commit"`
+		RepoInfo *pb.Tree `json:"repo_info"`
+		FilePath string   `json:"file_path"`
+		Commit   string   `json:"commit"`
 	}{repo, path, commit}
 
 	s.renderPage(ctx, w, r, "fileview.html", &page{
@@ -362,7 +365,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
 		config: cfg,
 		bk:     make(map[string]*Backend),
-		repos:  make(map[string]config.RepoConfig),
+		repos:  make(map[string]*pb.Tree),
 	}
 	srv.loadTemplates()
 
@@ -411,17 +414,17 @@ func New(cfg *config.Config) (http.Handler, error) {
 		srv.bkOrder = append(srv.bkOrder, be.Id)
 	}
 
-	var repoNames []string
-	for _, r := range srv.config.IndexConfig.Repositories {
-		srv.repos[r.Name] = r
-		repoNames = append(repoNames, r.Name)
-	}
+	// var repoNames []string
+	// for _, r := range srv.config.IndexConfig.Repositories {
+	// 	srv.repos[r.Name] = r
+	// 	repoNames = append(repoNames, r.Name)
+	// }
 
-	serveFilePathRegex, err := buildRepoRegex(repoNames)
-	if err != nil {
-		return nil, err
-	}
-	srv.serveFilePathRegex = serveFilePathRegex
+	// serveFilePathRegex, err := buildRepoRegex(repoNames)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// srv.serveFilePathRegex = serveFilePathRegex
 
 	m := pat.New()
 	m.Add("GET", "/healthz", http.HandlerFunc(srv.ServeHealthZ))
@@ -458,27 +461,32 @@ func New(cfg *config.Config) (http.Handler, error) {
 	return srv, nil
 }
 
+func (s *server) resetInteralRepos(repos map[string]*pb.Tree) {
+	ctx := context.Background()
+	s.Lock()
+	s.repos = repos
+	s.Unlock()
+	log.Printf(ctx, "Backend change detected. Internal repos reloaded")
+}
+
 // when a backend reloads, this is called so that the new trees
 // bkN allows for can be viewed through the internal viewer.
 // This, of course, assumes that the repos are meant to be viewed
 // through the internal view. In our case, this is true.
-func (s *server) rebuildRepoRegex() {
+// Also, if we ever want multiple backends, we'll need to concat
+// all backends available repoNames, not just pass in a single
+// backends.
+func (s *server) rebuildRepoRegex(repoNames []string) {
 	ctx := context.Background()
-	repoNames := make([]string, 0, 1000)
-	for _, bk := range s.bk {
-		bk.I.Lock()
-		for _, r := range bk.I.Trees {
-			repoNames = append(repoNames, r.Name)
-		}
-		bk.I.Unlock()
-	}
 	newFilePathRegex, err := buildRepoRegex(repoNames)
 	if err != nil {
 		log.Printf(ctx, "err trying to rebuild repo regex")
 		return
 	}
 
+	s.Lock()
 	s.serveFilePathRegex = newFilePathRegex
+	s.Unlock()
 	log.Printf(ctx, "Backend change detected. serveFilePathRegex rebuilt")
 }
 

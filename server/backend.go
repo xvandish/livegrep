@@ -187,16 +187,23 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 	bk.I.IndexTime = newIndexTime
 	bk.I.IndexAge = time.Since(newIndexTime).Round(time.Minute)
 
+	var repoNames []string
+	var reposMap map[string]*pb.Tree
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
-		bk.I.Trees = append(bk.I.Trees, info.Trees...)
-		// for _, r := range info.Trees {
-		// 	bk.I.Trees = append(bk.I.Trees, r)
-		// }
+		repoNames = make([]string, len(info.Trees))
+		reposMap = make(map[string]*pb.Tree, len(info.Trees))
+		// bk.I.Trees = append(bk.I.Trees, info.Trees...)
+		for idx, r := range info.Trees {
+			bk.I.Trees = append(bk.I.Trees, r)
+			repoNames[idx] = r.Name
+			reposMap[r.Name] = r
+		}
 	}
 
 	// Now, we should make a new map of trees
 	bk.I.Unlock() // rebuildRepoRegex locks bk.I
 
-	bk.srv.rebuildRepoRegex()
+	bk.srv.rebuildRepoRegex(repoNames)
+	bk.srv.resetInteralRepos(reposMap)
 }

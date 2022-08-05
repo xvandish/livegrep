@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 const uint32_t kIndexMagic   = 0xc0d35eac;
-const uint32_t kIndexVersion = 17;
+const uint32_t kIndexVersion = 18;
 
 // 16k is the page size on Apple M1 macs, which is the largest page
 // size of supported platforms. We use a consistent page size
