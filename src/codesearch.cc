@@ -30,6 +30,7 @@
 #include "src/chunk_allocator.h"
 #include "src/query_planner.h"
 #include "src/content.h"
+#include "src/literal_search.h"
 
 #include "absl/strings/string_view.h"
 
@@ -195,7 +196,7 @@ public:
              const intrusive_ptr<QueryPlan> index_key,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
-        limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
+        limiter_(q.max_matches), index_key_(index_key), literal_searcher_(), re2_time_(false),
         git_time_(false), index_time_(false), sort_time_(false),
         analyze_time_(false), files_(cc->files_.size(), 0xff),
         files_density_(-1)
@@ -333,6 +334,7 @@ p     * which contain `match', which is contained within `line'.
     thread_queue<match_result*> queue_;
     search_limiter limiter_;
     intrusive_ptr<QueryPlan> index_key_;
+    LiteralSearcher literal_searcher_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
@@ -1004,6 +1006,7 @@ void searcher::full_search(match_finger *finger,
 {
     StringPiece str((char*)chunk->data, chunk->size);
     StringPiece match;
+
     int pos = minpos, new_pos, end = minpos;
     while (pos < maxpos && !limiter_.exit_early()) {
         if (pos >= end) {
@@ -1026,11 +1029,35 @@ void searcher::full_search(match_finger *finger,
                 pos = limit + 1;
                 continue;
             }
+            /* fprintf(stderr, "match=%s len(match) == %lu\n", match.ToString().c_str(), match.length()); */
+            /* if (match.length() > 0) { */
+            /*     // */ 
+            /*     /1* string str("あぶらかたぶら"); *1/ */
+            /*     /1* RE2 re("(.ぶ)"); *1/ */
+            /*     /1* re2::StringPiece input(str); *1/ */
+            /*     /1* string r; *1/ */
+            /*     /1* while(re2::RE2::FindAndConsume(&input, re, &r) ){ *1/ */
+            /*     /1*     cout << r << endl; *1/ */
+            /*     /1* } *1/ */
+            /* } */
         }
         assert(memchr(match.data(), '\n', match.size()) == NULL);
         StringPiece line = find_line(str, match);
-        if (utf8::is_valid(line.data(), line.data() + line.size()))
+        if (utf8::is_valid(line.data(), line.data() + line.size())) {
+            /* fprintf(stderr, "trying to get more matches from line: %s\n", line.ToString().c_str()); */
+            /* auto stringPiece = StringPiece("test thirdTest fourthTest"); */
+            /* /1* string str("test secondTest thirdTest"); *1/ */
+            /* re2::StringPiece input("test --test_timeout=20"); */
+            /* string another_match; */
+            /* /1* RE2 re(query_->line_pat->pattern()); *1/ */
+            /* /1* fprintf(stderr, "line_pat: %s\n", query_->line_pat->pattern().c_str()); *1/ */
+            /* /1* while (RE2::FindAndConsume(&input, re, &another_match)) { *1/ */
+            /* while (RE2::Consume(&input, "test", &another_match)) { */
+            /*     cout << "found match: " << another_match << endl; */
+            /* } */
             find_match(chunk, match, line);
+
+        }
         new_pos = line.size() + line.data() - str.data() + 1;
         assert(new_pos > pos);
         pos = new_pos;
@@ -1146,6 +1173,14 @@ void searcher::try_match(const StringPiece& line,
         m->matchleft = utf8::distance(line.data(), match.data());
         m->matchright = m->matchleft +
             utf8::distance(match.data(), match.data() + match.size());
+        
+        // strong assumption here that regex search isn't being used
+        vector<match_bound> mbs = literal_searcher_.getMatchBounds(line, match);
+        fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size());
+        for (int i = 0; i < mbs.size(); i++) {
+            auto bound = mbs[i];
+            fprintf(stderr, "matchleft=%d matchright=%d\n", bound.matchleft, bound.matchright);
+        }
 
         // iterators for forward and backward context
         auto fit = it, bit = it;
@@ -1160,7 +1195,14 @@ void searcher::try_match(const StringPiece& line,
                 l = StringPiece(bit->data() + bit->size() + 1, 0);
             }
             l = find_line(*bit, StringPiece(l.data() - 1, 0));
+            vector<match_bound> mbs = literal_searcher_.getMatchBounds(l, match);
             m->context_before.push_back(l);
+
+            context_line cl;
+            cl.line = l;
+            cl.match_bounds = mbs;
+            m->context_before_v2.push_back(cl);
+            fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size());
         }
 
         l = line;
@@ -1172,7 +1214,14 @@ void searcher::try_match(const StringPiece& line,
                 l = StringPiece(fit->data() - 1, 0);
             }
             l = find_line(*fit, StringPiece(l.data() + l.size() + 1, 0));
+            vector<match_bound> mbs = literal_searcher_.getMatchBounds(l, match);
             m->context_after.push_back(l);
+
+            context_line cl;
+            cl.line = l;
+            cl.match_bounds = mbs;
+            m->context_after_v2.push_back(cl);
+            fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size());
         }
 
         if (!transform_ || transform_(m)) {

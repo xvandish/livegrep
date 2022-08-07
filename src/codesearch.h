@@ -93,13 +93,29 @@ struct index_info {
     vector<indexed_tree> trees;
 };
 
+struct match_bound {
+    int matchleft;
+    int matchright;
+};
+
+// context lines can also contain matches -
+struct context_line {
+    StringPiece line;
+    vector<match_bound> match_bounds;
+};
+
 struct match_result {
     indexed_file *file;
     int lno;
+    // TODO: need to allow context lines to contain bounds
     vector<StringPiece> context_before;
     vector<StringPiece> context_after;
     StringPiece line;
     int matchleft, matchright;
+
+    vector<match_bound> match_bounds;
+    vector<context_line> context_before_v2;
+    vector<context_line> context_after_v2;
 };
 
 struct file_result {
