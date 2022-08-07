@@ -267,43 +267,71 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 				Version:      r.Version,
 				Path:         r.Path,
 				ContextLines: make(map[int]*api.ResultLine),
+				// Since any line can now be a resultLine, it doesn't make sense
+				// to call these "contextLines"
 			}
 		}
 
-		var contextLinesInit []string
-		contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
-		contextLinesInit = append(contextLinesInit, r.Line)
-		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
+		// var contextLinesInit []string
+		// contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
+		// contextLinesInit = append(contextLinesInit, r.Line)
+		// contextLinesInit = append(contextLinesInit, r.ContextAfter...)
 
-		// Now for every contextLine, transform it into a resultLines
-		for idx, line := range contextLinesInit {
-			contextLno := idx + lineNumber - len(r.ContextBefore)
-			var bounds []api.Bounds
+		// contextLno := r.LineNumber - len(r.ContextBefore_V2)
 
-			if contextLno == lineNumber {
-				codeMatches += 1
-				log.Printf(ctx, "len newBounds: %+v\n", r.NewBounds)
-				log.Printf(ctx, "len bounds: %+v\n", r.Bounds)
-				for _, bound := range r.NewBounds {
+		// every context line should have been searched for matches (at least for literals)
+		// so the only thing we really need to do is add lineNumbers
 
-					bounds = append(bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
-				}
-				// bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
-				// bounds = append(bounds, r.NewBounds)
-			}
+		// for int i = 0 range cont
+		revIdx := len(r.ContextBeforeV2) - 1
+		// contextLno := r.LineNumber - len(r.ContextBefore_V2)
+		// log.Printf(ctx, "contextLno=%d\n", contextLno)
 
-			// Defer to the existing bounds information
-			if present {
-				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
-					if len(existingContextLine.Bounds) > 0 {
-						copy(existingContextLine.Bounds, bounds)
-					}
-				}
-			}
-			existingResult.ContextLines[contextLno] = &api.ResultLine{
+		for i := revIdx; i > 0; i-- {
+			line := r.ContextBeforeV2[revIdx]
+			contextLno := lineNumber - i
+			rl := api.ResultLine{
+				Line:       line.Line,
 				LineNumber: contextLno,
-				Bounds:     bounds,
-				Line:       line}
+			}
+			for _, bound := range line.Bounds {
+				rl.Bounds = append(rl.Bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
+			}
+			if _, exist := existingResult.ContextLines[contextLno]; exist {
+				log.Printf(ctx, "overwriting some context line\n")
+			}
+			existingResult.ContextLines[contextLno] = &rl
+		}
+
+		// now append the
+		// actual line
+		matchLine := api.ResultLine{
+			Line:       r.Line,
+			LineNumber: lineNumber,
+		}
+		codeMatches += 1
+		for _, bound := range r.NewBounds {
+			matchLine.Bounds = append(matchLine.Bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
+		}
+
+		existingResult.ContextLines[lineNumber] = &matchLine
+
+		// now append the afterContext
+		for i := 0; i < len(r.ContextAfterV2); i++ {
+			line := r.ContextAfterV2[i]
+			contextLno := lineNumber + i + 1
+			rl := api.ResultLine{
+				Line:       line.Line,
+				LineNumber: contextLno,
+			}
+			for _, bound := range line.Bounds {
+				rl.Bounds = append(rl.Bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
+			}
+			if _, exist := existingResult.ContextLines[contextLno]; exist {
+				log.Printf(ctx, "overwriting some context line\n")
+
+			}
+			existingResult.ContextLines[contextLno] = &rl
 		}
 
 		if !present {

@@ -76,6 +76,11 @@ type Bounds struct {
 	Right int
 }
 
+type Context struct {
+	Line   string   `json:"line"`
+	Bounds []Bounds `json:"bounds"`
+}
+
 type ResultLine struct {
 	LineNumber int `json:"lno"`
 	// Bounds may or may not be defined. If they are,
