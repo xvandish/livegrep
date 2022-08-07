@@ -54,6 +54,51 @@ func splitCodeLineIntoParts(line string, bounds []int) lineParts {
 	return p
 }
 
+func renderCodeLine(line string, bounds []api.Bounds) template.HTML {
+	// There may be multiple bounds
+	// var parts []lineParts
+
+	// for _, bound := range bounds {
+	// 	start := bound.Left
+	// 	end := bound.Right
+
+	// 	parts = append(parts, lineParts{
+	// 		Prefix:      line[0:start],
+	// 		Highlighted: line[start:end],
+	// 		Suffix:      line[end:],
+	// 	})
+	// }
+
+	fmt.Printf("got bounds of: %+v\n", bounds)
+
+	// let's just build the string for the template engine
+	// at some point we may have bounds of different lengths, once we get regex searches to also show
+	// multiple bounds, so we can't optimize that.
+
+	// process each bound at a time
+	// keep track of the currentIdx into the string
+	// at each bound.Left, if it's greater than currentIdx, we have a prefix
+	// at each bound.Right, set currentIdx to bound.Right. If there are no more bounds left, then we have a suffix
+	currIdx := 0
+	lineOut := ""
+	lastBound := len(bounds) - 1
+
+	for boundIdx, bound := range bounds {
+		if bound.Left > currIdx {
+			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:bound.Left])
+		}
+		currIdx = bound.Right
+
+		lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[bound.Left:bound.Right])
+
+		if boundIdx == lastBound && currIdx <= len(line) {
+			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:len(line)])
+		}
+	}
+
+	return template.HTML(lineOut)
+}
+
 // used to cap slice iteration
 func min(a, b int) int {
 	if a < b {
@@ -77,7 +122,7 @@ func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
 	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
 }
 
-func getLineNumberLinkClass(bounds []int) string {
+func getLineNumberLinkClass(bounds []api.Bounds) string {
 	if len(bounds) > 0 {
 		return "num-link match"
 	}
@@ -95,6 +140,7 @@ func getFuncs() map[string]interface{} {
 		"getFirstNFiles":         getFirstNFiles,
 		"shouldInsertBlankLine":  shouldInsertBlankLine,
 		"getLineNumberLinkClass": getLineNumberLinkClass,
+		"renderCodeLine":         renderCodeLine,
 	}
 }
 

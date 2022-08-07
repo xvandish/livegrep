@@ -199,6 +199,39 @@ public:
         for (auto &piece : m->context_after) {
             insert_string_back(result->mutable_context_after(), piece);
         }
+
+    /* for (auto it = trees.begin(); it != trees.end(); ++it) { */
+    /*     auto insert = response->add_trees(); */
+    /*     insert->set_name(it->name); */
+    /*     insert->set_version(it->version); */
+    /*     insert->mutable_metadata()->CopyFrom(it->metadata); */
+    /* } */
+        for (auto &l : m->context_before_v2) {
+            auto insert = result->add_context_before_v2();
+            insert->set_line(l.line.ToString());
+            for (auto &b : l.match_bounds) {
+                auto insert_two = insert->add_bounds();
+                insert_two->set_left(b.matchleft);
+                insert_two->set_right(b.matchright);
+            }
+        }
+
+        for (auto &l : m->context_after_v2) {
+            auto insert = result->add_context_after_v2();
+            insert->set_line(l.line.ToString());
+            for (auto &b : l.match_bounds) {
+                auto insert_two = insert->add_bounds();
+                insert_two->set_left(b.matchleft);
+                insert_two->set_right(b.matchright);
+            }
+        }
+
+        for (auto &mb : m->match_bounds) {
+            auto insert = result->add_new_bounds();
+            insert->set_left(mb.matchleft);
+            insert->set_right(mb.matchright);
+        }
+
         result->mutable_bounds()->set_left(m->matchleft);
         result->mutable_bounds()->set_right(m->matchright);
         result->set_line(m->line.ToString());

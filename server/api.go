@@ -278,18 +278,25 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		// Now for every contextLine, transform it into a resultLines
 		for idx, line := range contextLinesInit {
 			contextLno := idx + lineNumber - len(r.ContextBefore)
-			var bounds []int
+			var bounds []api.Bounds
 
 			if contextLno == lineNumber {
 				codeMatches += 1
-				bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
+				log.Printf(ctx, "len newBounds: %+v\n", r.NewBounds)
+				log.Printf(ctx, "len bounds: %+v\n", r.Bounds)
+				for _, bound := range r.NewBounds {
+
+					bounds = append(bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
+				}
+				// bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
+				// bounds = append(bounds, r.NewBounds)
 			}
 
 			// Defer to the existing bounds information
 			if present {
 				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
-					if len(existingContextLine.Bounds) == 2 {
-						bounds = existingContextLine.Bounds
+					if len(existingContextLine.Bounds) > 0 {
+						copy(existingContextLine.Bounds, bounds)
 					}
 				}
 			}

@@ -71,12 +71,17 @@ type ResultV2 struct {
 	ContextLines map[int]*ResultLine `json:"-"`
 }
 
+type Bounds struct {
+	Left  int
+	Right int
+}
+
 type ResultLine struct {
 	LineNumber int `json:"lno"`
 	// Bounds may or may not be defined. If they are,
 	// then this line is a match. Otherwise it's contex
-	Bounds []int  `json:"bounds"`
-	Line   string `json:"line"`
+	Bounds []Bounds `json:"bounds"`
+	Line   string   `json:"line"`
 }
 
 type FileResult struct {

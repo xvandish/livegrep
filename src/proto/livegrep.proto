@@ -22,6 +22,11 @@ message Bounds {
     int32 right = 2;
 }
 
+message Context {
+    string line = 1;
+    repeated Bounds bounds = 2; 
+}
+
 message SearchResult {
     string tree = 1;
     string version = 2;
@@ -31,6 +36,9 @@ message SearchResult {
     repeated string context_after = 6;
     Bounds bounds = 7;
     string line = 8;
+    repeated Context context_before_v2 = 9;
+    repeated Context context_after_v2 = 10;
+    repeated Bounds new_bounds = 11;
 }
 
 message FileResult {

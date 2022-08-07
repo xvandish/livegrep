@@ -1176,10 +1176,15 @@ void searcher::try_match(const StringPiece& line,
         
         // strong assumption here that regex search isn't being used
         vector<match_bound> mbs = literal_searcher_.getMatchBounds(line, match);
-        fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size());
+        m->match_bounds = mbs;
+        /* fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size()); */
         for (int i = 0; i < mbs.size(); i++) {
             auto bound = mbs[i];
             fprintf(stderr, "matchleft=%d matchright=%d\n", bound.matchleft, bound.matchright);
+        }
+
+        if (mbs.size() > 0) {
+            fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size());
         }
 
         // iterators for forward and backward context
@@ -1202,7 +1207,7 @@ void searcher::try_match(const StringPiece& line,
             cl.line = l;
             cl.match_bounds = mbs;
             m->context_before_v2.push_back(cl);
-            fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size());
+            /* fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size()); */
         }
 
         l = line;
@@ -1221,7 +1226,7 @@ void searcher::try_match(const StringPiece& line,
             cl.line = l;
             cl.match_bounds = mbs;
             m->context_after_v2.push_back(cl);
-            fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size());
+            /* fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size()); */
         }
 
         if (!transform_ || transform_(m)) {
