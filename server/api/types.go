@@ -1,5 +1,9 @@
 package api
 
+import (
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
+)
+
 type InnerError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -85,8 +89,8 @@ type ResultLine struct {
 	LineNumber int `json:"lno"`
 	// Bounds may or may not be defined. If they are,
 	// then this line is a match. Otherwise it's contex
-	Bounds []Bounds `json:"bounds"`
-	Line   string   `json:"line"`
+	Bounds []*pb.Bounds `json:"bounds"`
+	Line   string       `json:"line"`
 }
 
 type FileResult struct {

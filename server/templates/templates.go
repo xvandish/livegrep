@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/livegrep/livegrep/server/api"
+	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
@@ -54,7 +55,7 @@ func splitCodeLineIntoParts(line string, bounds []int) lineParts {
 	return p
 }
 
-func renderCodeLine(line string, bounds []api.Bounds) template.HTML {
+func renderCodeLine(line string, bounds []*pb.Bounds) template.HTML {
 	// There may be multiple bounds
 	// var parts []lineParts
 
@@ -84,12 +85,12 @@ func renderCodeLine(line string, bounds []api.Bounds) template.HTML {
 	lastBound := len(bounds) - 1
 
 	for boundIdx, bound := range bounds {
-		if bound.Left > currIdx {
-			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:bound.Left])
+		if int(bound.Left) > currIdx {
+			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:int(bound.Left)])
 		}
-		currIdx = bound.Right
+		currIdx = int(bound.Right)
 
-		lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[bound.Left:bound.Right])
+		lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[int(bound.Left):int(bound.Right)])
 
 		if boundIdx == lastBound && currIdx <= len(line) {
 			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:len(line)])
@@ -122,7 +123,7 @@ func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
 	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
 }
 
-func getLineNumberLinkClass(bounds []api.Bounds) string {
+func getLineNumberLinkClass(bounds []*pb.Bounds) string {
 	if len(bounds) > 0 {
 		return "num-link match"
 	}

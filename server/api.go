@@ -293,9 +293,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			rl := api.ResultLine{
 				Line:       line.Line,
 				LineNumber: contextLno,
-			}
-			for _, bound := range line.Bounds {
-				rl.Bounds = append(rl.Bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
+				Bounds:     line.Bounds,
 			}
 			if _, exist := existingResult.ContextLines[contextLno]; exist {
 				log.Printf(ctx, "overwriting some context line\n")
@@ -308,12 +306,9 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		matchLine := api.ResultLine{
 			Line:       r.Line,
 			LineNumber: lineNumber,
+			Bounds:     r.NewBounds,
 		}
 		codeMatches += 1
-		for _, bound := range r.NewBounds {
-			matchLine.Bounds = append(matchLine.Bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
-		}
-
 		existingResult.ContextLines[lineNumber] = &matchLine
 
 		// now append the afterContext
@@ -323,9 +318,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			rl := api.ResultLine{
 				Line:       line.Line,
 				LineNumber: contextLno,
-			}
-			for _, bound := range line.Bounds {
-				rl.Bounds = append(rl.Bounds, api.Bounds{Right: int(bound.Right), Left: int(bound.Left)})
+				Bounds:     line.Bounds,
 			}
 			if _, exist := existingResult.ContextLines[contextLno]; exist {
 				log.Printf(ctx, "overwriting some context line\n")
