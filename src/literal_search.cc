@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <assert.h>
 
 #include "re2/re2.h"
 // #include "re2/walker-inl.h"
@@ -62,10 +63,40 @@ std::vector<match_bound> LiteralSearcher::rabinKarp(StringPiece haystack, String
     return bounds;
 }
 
+std::vector<match_bound> LiteralSearcher::oneByte(StringPiece haystack, StringPiece needle) {
+    // scan the input one byte at a time
+    //  given haystack=eeeeeeeeee and needle=e, should we return n bounds or one
+    //  single bound that spans the range? For now, return n bounds.
+    //  TODO: Return the longest possible bound for a contigous range of
+    //  identical chars.
+
+    assert(needle.length() == 1);
+
+    vector<match_bound> bounds;
+    for (int i = 0; i < haystack.length(); i++) {
+        const char *start = static_cast<const char*>(memchr(haystack.data()+i, needle[0], 1));
+        if (start == NULL) continue;
+
+        match_bound mb;
+        mb.matchleft = i;
+        mb.matchright = i+1;
+        bounds.push_back(mb);
+    }
+
+    return bounds;
+}
+
 std::vector<match_bound> LiteralSearcher::getMatchBounds(StringPiece haystack, StringPiece needle) {
-    // eventually, split out to other fast string search methods
-    // for now though, just use rk
+    // for the smallest needle possible, memchr is the fastest algo
+    if (needle.length() == 1) {
+        return oneByte(haystack, needle);
+    }
+
+
+    // for small haystacks, rabinKarp is good
     return rabinKarp(haystack, needle, 31);
+
+    // other algos TK.
 }
 
 

@@ -23,4 +23,5 @@ public:
 
 private:
     std::vector<match_bound> rabinKarp(StringPiece haystack, StringPiece needle, int q);
+    std::vector<match_bound> oneByte(StringPiece haystack, StringPiece needle);
 };
