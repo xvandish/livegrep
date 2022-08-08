@@ -84,7 +84,7 @@ function updateSearchParamState() {
   if (now - lastUrlUpdate > two_seconds) {
     window.history.pushState({}, "", currUrl);
   } else {
-    history.replaceState(null, "", currUrl);
+    window.history.replaceState(null, "", currUrl);
   }
   lastUrlUpdate = now;
 
@@ -168,10 +168,9 @@ function hasParams() {
 }
 
 // Set the textInput value and all selection controls
-// TODO: validate the given options
 var validControlOptions = {
-  regex: [true, false],
-  context: [true, false],
+  regex: ["true", "false"],
+  context: ["true", "false"],
   case: ["auto", "false", "true"],
 };
 function initStateFromQueryParams() {
@@ -180,7 +179,22 @@ function initStateFromQueryParams() {
 
   var currentQ = decodeURIComponent(sp.get("q") || "");
   var caseVal = sp.get("fold_case") || "auto";
-  var regexVal = sp.get("regex") || false;
+  var regexVal = sp.get("regex") || "false";
+
+  if (!validControlOptions.case.includes(caseVal)) {
+    caseVal = "auto";
+  }
+
+  if (!validControlOptions.regex.includes(regexVal)) {
+    regexVal = "false";
+  }
+
+  // if the user came in with malformed url params, rewrite them
+  if (sp.get("fold_case") != caseVal || sp.get("regex") != regexVal) {
+    sp.set("fold_case", caseVal);
+    sp.set("regex", regexVal);
+    window.location.search = sp.toString();
+  }
 
   searchBox.value = currentQ;
   caseSelect.value = caseVal;
@@ -208,12 +222,17 @@ function initControlsFromLocalPrefs() {
   var regexVal = currControls["regex"];
   var caseVal = currControls["case"];
 
-  regexToggle.dataset.selected = regexVal == "true";
-
   // validation in case someone tries to mess with localStorage
+  if (!validControlOptions.regex.includes(regexVal)) {
+    regexVal = "false";
+  }
+
   if (!validControlOptions.case.includes(caseVal)) {
     caseVal = "auto";
   }
+
+
+  regexToggle.dataset.selected = regexVal == "true";
   caseSelect.value = caseVal;
 
   searchOptions = {
