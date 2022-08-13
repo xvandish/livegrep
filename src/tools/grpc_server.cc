@@ -200,12 +200,6 @@ public:
             insert_string_back(result->mutable_context_after(), piece);
         }
 
-    /* for (auto it = trees.begin(); it != trees.end(); ++it) { */
-    /*     auto insert = response->add_trees(); */
-    /*     insert->set_name(it->name); */
-    /*     insert->set_version(it->version); */
-    /*     insert->mutable_metadata()->CopyFrom(it->metadata); */
-    /* } */
         for (auto &l : m->context_before_v2) {
             auto insert = result->add_context_before_v2();
             insert->set_line(l.line.ToString());
