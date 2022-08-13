@@ -283,20 +283,18 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		// so the only thing we really need to do is add lineNumbers
 
 		// for int i = 0 range cont
-		revIdx := len(r.ContextBeforeV2) - 1
 		// contextLno := r.LineNumber - len(r.ContextBefore_V2)
-		// log.Printf(ctx, "contextLno=%d\n", contextLno)
 
-		for i := revIdx; i > 0; i-- {
-			line := r.ContextBeforeV2[revIdx]
+		for i := len(r.ContextBeforeV2) - 1; i > 0; i-- {
+			line := r.ContextBeforeV2[i]
 			contextLno := lineNumber - i
 			rl := api.ResultLine{
 				Line:       line.Line,
 				LineNumber: contextLno,
 				Bounds:     line.Bounds,
 			}
-			if _, exist := existingResult.ContextLines[contextLno]; exist {
-				log.Printf(ctx, "overwriting some context line\n")
+			if prevLine, exist := existingResult.ContextLines[contextLno]; exist {
+				log.Printf(ctx, "overwriting %+v for %+v\n", prevLine, rl)
 			}
 			existingResult.ContextLines[contextLno] = &rl
 		}
