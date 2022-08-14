@@ -55,23 +55,12 @@ func splitCodeLineIntoParts(line string, bounds []int) lineParts {
 	return p
 }
 
-func renderCodeLine(line string, bounds []*pb.Bounds) template.HTML {
-	// There may be multiple bounds
-	// var parts []lineParts
+type CodePart struct {
+	Line  string
+	Match bool
+}
 
-	// for _, bound := range bounds {
-	// 	start := bound.Left
-	// 	end := bound.Right
-
-	// 	parts = append(parts, lineParts{
-	// 		Prefix:      line[0:start],
-	// 		Highlighted: line[start:end],
-	// 		Suffix:      line[end:],
-	// 	})
-	// }
-
-	fmt.Printf("got bounds of: %+v\n", bounds)
-
+func renderCodeLine(line string, bounds []*pb.Bounds) []CodePart {
 	// let's just build the string for the template engine
 	// at some point we may have bounds of different lengths, once we get regex searches to also show
 	// multiple bounds, so we can't optimize that.
@@ -84,20 +73,37 @@ func renderCodeLine(line string, bounds []*pb.Bounds) template.HTML {
 	lineOut := ""
 	lastBound := len(bounds) - 1
 
+	fmt.Printf("line: %s bounds: %+v\n", line, bounds)
+	var codeParts []CodePart
+
 	for boundIdx, bound := range bounds {
 		if int(bound.Left) > currIdx {
-			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:int(bound.Left)])
+			codeParts = append(codeParts, CodePart{
+				Line:  line[currIdx:int(bound.Left)],
+				Match: false,
+			})
+			// lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:int(bound.Left)])
 		}
 		currIdx = int(bound.Right)
 
-		lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[int(bound.Left):int(bound.Right)])
+		codeParts = append(codeParts, CodePart{
+			Line:  line[int(bound.Left):int(bound.Right)],
+			Match: true,
+		})
+		// lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[int(bound.Left):int(bound.Right)])
 
 		if boundIdx == lastBound && currIdx <= len(line) {
-			lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:len(line)])
+			codeParts = append(codeParts, CodePart{
+				Line:  line[currIdx:len(line)],
+				Match: false,
+			})
+			// lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:len(line)])
 		}
 	}
+	fmt.Printf("lineOut: %s\n", lineOut)
+	fmt.Printf("template.HTML(lineOut)=%s\n", template.HTML(lineOut))
 
-	return template.HTML(lineOut)
+	return codeParts
 }
 
 // used to cap slice iteration

@@ -125,6 +125,14 @@ func reverse(strings []string) []string {
 	return newSstrings
 }
 
+func reverseContext(context []*pb.Context) []*pb.Context {
+	newContext := make([]*pb.Context, 0, len(context))
+	for i := len(context) - 1; i >= 0; i-- {
+		newContext = append(newContext, context[i])
+	}
+	return newContext
+}
+
 func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
 	var search *pb.CodeSearchResult
 	var err error
@@ -272,10 +280,43 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			}
 		}
 
-		// var contextLinesInit []string
-		// contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
-		// contextLinesInit = append(contextLinesInit, r.Line)
-		// contextLinesInit = append(contextLinesInit, r.ContextAfter...)
+		var contextLinesInit []*pb.Context
+		contextLinesInit = append(contextLinesInit, reverseContext(r.ContextBeforeV2)...)
+		contextLinesInit = append(contextLinesInit, &pb.Context{
+			Line:   r.Line,
+			Bounds: r.NewBounds,
+		})
+		contextLinesInit = append(contextLinesInit, r.ContextAfterV2...)
+
+		for idx, line := range contextLinesInit {
+			contexLno := idx + lineNumber - len(r.ContextBeforeV2)
+
+			if len(line.Bounds) > 0 {
+				codeMatches += len(line.Bounds)
+			}
+
+			bounds := line.Bounds
+			// defer to the existing bounds information
+			if present {
+				if existingContextLine, exist := existingResult.ContextLines[contexLno]; exist {
+					codeMatches -= len(line.Bounds)
+					log.Printf(ctx, "line already existing. Checking whether it's worth overwriting")
+					if len(existingContextLine.Bounds) > len(line.Bounds) {
+						log.Printf(ctx, "the old line - %+v had more bounds than newLine %+v", existingContextLine, line)
+						copy(existingContextLine.Bounds, bounds)
+					}
+					if line.Line != existingContextLine.Line {
+						log.Printf(ctx, "unxecpted! line=%s existingContextLine=%s", line.Line, existingContextLine.Line)
+					}
+				}
+			}
+
+			existingResult.ContextLines[contexLno] = &api.ResultLine{
+				LineNumber: contexLno,
+				Bounds:     bounds,
+				Line:       line.Line,
+			}
+		}
 
 		// contextLno := r.LineNumber - len(r.ContextBefore_V2)
 
@@ -285,45 +326,52 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		// for int i = 0 range cont
 		// contextLno := r.LineNumber - len(r.ContextBefore_V2)
 
-		for i := len(r.ContextBeforeV2) - 1; i > 0; i-- {
-			line := r.ContextBeforeV2[i]
-			contextLno := lineNumber - i
-			rl := api.ResultLine{
-				Line:       line.Line,
-				LineNumber: contextLno,
-				Bounds:     line.Bounds,
-			}
-			if prevLine, exist := existingResult.ContextLines[contextLno]; exist {
-				log.Printf(ctx, "overwriting %+v for %+v\n", prevLine, rl)
-			}
-			existingResult.ContextLines[contextLno] = &rl
-		}
+		// for i := len(r.ContextBeforeV2) - 1; i > 0; i-- {
+		// 	line := r.ContextBeforeV2[i]
+		// 	contextLno := lineNumber - i
+		// 	rl := api.ResultLine{
+		// 		Line:       line.Line,
+		// 		LineNumber: contextLno,
+		// 		Bounds:     line.Bounds,
+		// 	}
+		// 	if prevLine, exist := existingResult.ContextLines[contextLno]; !exist {
+		// 		existingResult.ContextLines[contextLno] = &rl
+		// 	} else {
+		// 		// take the line that actually represents something (not sure why)
+		// 		// this is happening just yet - all lines should have identical text content
+
+		// 		if len(rl.Line) > len(prevLine.Line) || len(rl.Bounds) > len(prevLine.Bounds) {
+		// 			log.Printf(ctx, "overwriting %+v for %+v\n", prevLine, rl)
+		// 			existingResult.ContextLines[contextLno] = &rl
+		// 		}
+		// 	}
+		// }
 
 		// now append the
 		// actual line
-		matchLine := api.ResultLine{
-			Line:       r.Line,
-			LineNumber: lineNumber,
-			Bounds:     r.NewBounds,
-		}
-		codeMatches += 1
-		existingResult.ContextLines[lineNumber] = &matchLine
+		// matchLine := api.ResultLine{
+		// 	Line:       r.Line,
+		// 	LineNumber: lineNumber,
+		// 	Bounds:     r.NewBounds,
+		// }
+		// codeMatches += 1
+		// existingResult.ContextLines[lineNumber] = &matchLine
 
 		// now append the afterContext
-		for i := 0; i < len(r.ContextAfterV2); i++ {
-			line := r.ContextAfterV2[i]
-			contextLno := lineNumber + i + 1
-			rl := api.ResultLine{
-				Line:       line.Line,
-				LineNumber: contextLno,
-				Bounds:     line.Bounds,
-			}
-			if _, exist := existingResult.ContextLines[contextLno]; exist {
-				log.Printf(ctx, "overwriting some context line\n")
+		// for i := 0; i < len(r.ContextAfterV2); i++ {
+		// 	line := r.ContextAfterV2[i]
+		// 	contextLno := lineNumber + i + 1
+		// 	rl := api.ResultLine{
+		// 		Line:       line.Line,
+		// 		LineNumber: contextLno,
+		// 		Bounds:     line.Bounds,
+		// 	}
+		// 	if _, exist := existingResult.ContextLines[contextLno]; exist {
+		// 		log.Printf(ctx, "overwriting some context line\n")
 
-			}
-			existingResult.ContextLines[contextLno] = &rl
-		}
+		// 	}
+		// 	existingResult.ContextLines[contextLno] = &rl
+		// }
 
 		if !present {
 			dedupedResults[key] = existingResult
@@ -427,6 +475,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		NumMatches:  numMatches,
 		MoreAvail:   exitReason != "NONE",
 	}
+
+	log.Printf(ctx, "re2 time: %d\n", search.Stats.Re2Time)
 	return reply, nil
 }
 

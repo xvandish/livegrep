@@ -91,7 +91,7 @@
           </a>
           <div class="line">
             {{ if gt (len .Bounds) 0}}
-              <pre>{{ renderCodeLine .Line .Bounds }}</pre>
+              <pre>{{ range renderCodeLine .Line .Bounds }}<span class="{{ if .Match }}highlighted{{end}}">{{ .Line}}</span>{{ end }}</pre>
             {{ else }}
             <pre><span>{{.Line}}</span></pre>
             {{ end }}
