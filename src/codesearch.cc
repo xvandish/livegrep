@@ -302,7 +302,7 @@ p     * which contain `match', which is contained within `line'.
                    const StringPiece&,
                    indexed_file *);
 
-    std::vector<match_bound> getAllMatchBounds(const StringPiece& line, int start);
+    std::vector<match_bound> getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds);
     typedef std::map<std::pair<indexed_file*, int>, std::vector<match_bound> > bounds_cache; 
 
     static int line_start(const chunk *chunk, int pos) {
@@ -1134,13 +1134,13 @@ void searcher::find_match(const chunk *chunk,
 
 
 // for now, brute force
-std::vector<match_bound> searcher::getAllMatchBounds(const StringPiece& line, int start) {
+// if start > 0, bounds is non-empty/already contains a match
+std::vector<match_bound> searcher::getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds) {
     /* if (!query_->line_pat->Match(str, pos, limit, RE2::UNANCHORED, &match, 1)) { */
     /*     pos = limit + 1; */
     /*     continue; */
     
     StringPiece match;
-    vector<match_bound> bounds;
     int i = start;
     int line_len = line.length();
     /* fprintf(stderr, "line='%s' start=%d\n", line.ToString().c_str(), start); */
@@ -1211,12 +1211,13 @@ void searcher::try_match(const StringPiece& line,
 
         // we actually need to add the first match
         // since matchright is exclusive, we can start the next match on it
-        vector<match_bound> mbs = getAllMatchBounds(line, m->matchright);
+        vector<match_bound> mbs;
         match_bound first_bound;
         first_bound.matchleft = m->matchleft;
         first_bound.matchright = m->matchright;
-    
-        mbs.insert(mbs.begin(), first_bound); // inefficient but ok for now
+        mbs.push_back(first_bound);
+
+        getAllMatchBounds(line, m->matchright, mbs);
         m->match_bounds = mbs;
         /* fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size()); */
         /* for (int i = 0; i < mbs.size(); i++) { */
@@ -1243,10 +1244,11 @@ void searcher::try_match(const StringPiece& line,
             }
             l = find_line(*bit, StringPiece(l.data() - 1, 0));
             /* vector<match_bound> mbs = literal_searcher_.getMatchBounds(l, match); */
-            vector<match_bound> mbs = getAllMatchBounds(l, 0);
+            vector<match_bound> mbs;
+            getAllMatchBounds(l, 0, mbs);
             m->context_before.push_back(l);
 
-            context_line cl;
+            result_line cl;
             cl.line = l;
             cl.match_bounds = mbs;
             m->context_before_v2.push_back(cl);
@@ -1264,10 +1266,11 @@ void searcher::try_match(const StringPiece& line,
             }
             l = find_line(*fit, StringPiece(l.data() + l.size() + 1, 0));
             /* vector<match_bound> mbs = literal_searcher_.getMatchBounds(l, match); */
-            vector<match_bound> mbs = getAllMatchBounds(l, 0);
+            vector<match_bound> mbs;
+            getAllMatchBounds(l, 0, mbs);
             m->context_after.push_back(l);
 
-            context_line cl;
+            result_line cl;
             cl.line = l;
             cl.match_bounds = mbs;
             m->context_after_v2.push_back(cl);
