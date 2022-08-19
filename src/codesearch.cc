@@ -1152,7 +1152,7 @@ std::vector<match_bound> searcher::getAllMatchBounds(const StringPiece& line, in
         mb.matchright = mb.matchleft + utf8::distance(match.data(), match.data() + match.size());
         /* fprintf(stderr, "line='''%s''' match=%s. left=%d right=%d\n", line.ToString().c_str(), match.ToString().c_str(), mb.matchleft, mb.matchright); */
         bounds.push_back(mb);
-        i = mb.matchright + 1;
+        i = mb.matchright; // matchright is exclusive, so we start our next search there
     }
 
     return bounds;
