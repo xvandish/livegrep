@@ -303,7 +303,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 					log.Printf(ctx, "line already existing. Checking whether it's worth overwriting")
 					if len(existingContextLine.Bounds) > len(line.Bounds) {
 						log.Printf(ctx, "the old line - %+v had more bounds than newLine %+v", existingContextLine, line)
-						copy(existingContextLine.Bounds, bounds)
+						bounds = existingContextLine.Bounds
+						log.Printf(ctx, "copied bounds are now blah: %+v", line.Bounds)
 					}
 					if line.Line != existingContextLine.Line {
 						log.Printf(ctx, "unxecpted! line=%s existingContextLine=%s", line.Line, existingContextLine.Line)
