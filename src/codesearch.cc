@@ -1147,9 +1147,20 @@ std::vector<match_bound> searcher::getAllMatchBounds(const StringPiece& line, in
 
     run_timer run(re2_time_);
     while (i < line_len && query_->line_pat->Match(line, i, line_len, RE2::UNANCHORED, &match, 1)) {
+        int matchleft = utf8::distance(line.data(), match.data());
+        int matchright = matchleft + utf8::distance(match.data(), match.data() + match.size());
+
+        // if the previous bounds matchright is this bounds matchleft, just
+        // update the previous bounds end. e.g. "merge" the intervals
+        if (bounds.size() > 0 && bounds.back().matchright == matchleft) {
+            bounds.back().matchright = matchright; 
+            i = matchright;
+            continue;
+        }
+
         match_bound mb;
-        mb.matchleft = utf8::distance(line.data(), match.data());
-        mb.matchright = mb.matchleft + utf8::distance(match.data(), match.data() + match.size());
+        mb.matchleft = matchleft;
+        mb.matchright = matchright;
         /* fprintf(stderr, "line='''%s''' match=%s. left=%d right=%d\n", line.ToString().c_str(), match.ToString().c_str(), mb.matchleft, mb.matchright); */
         bounds.push_back(mb);
         i = mb.matchright; // matchright is exclusive, so we start our next search there
@@ -1199,7 +1210,8 @@ void searcher::try_match(const StringPiece& line,
 
 
         // we actually need to add the first match
-        vector<match_bound> mbs = getAllMatchBounds(line, m->matchright + 1);
+        // since matchright is exclusive, we can start the next match on it
+        vector<match_bound> mbs = getAllMatchBounds(line, m->matchright);
         match_bound first_bound;
         first_bound.matchleft = m->matchleft;
         first_bound.matchright = m->matchright;
