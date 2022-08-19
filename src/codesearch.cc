@@ -17,6 +17,7 @@
 #include <fstream>
 #include <limits>
 #include <atomic>
+#include <chrono>
 
 #include "src/lib/timer.h"
 #include "src/lib/metrics.h"
@@ -43,6 +44,7 @@
 using re2::RE2;
 using re2::StringPiece;
 using namespace std;
+using namespace std::chrono;
 
 const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
@@ -148,6 +150,7 @@ public:
         if (exit_reason_)
             return;
         if (max_matches_ && matches >= max_matches_) {
+            fprintf(stderr, "setting exit reason: %d > %d\n", matches, max_matches_);
             exit_reason_ = kExitMatchLimit;
         }
     }
@@ -302,7 +305,13 @@ p     * which contain `match', which is contained within `line'.
                    const StringPiece&,
                    indexed_file *);
 
-    std::vector<match_bound> getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds);
+    /*
+     * Given a line, find all matches of query_.line_pat on said line.
+     * When `start` is provided, matching begins on the starting index.
+     * When `start` is provided, `bounds` may be non-empty.
+     * Returns the number of matches found.
+     */
+    int getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds);
     typedef std::map<std::pair<indexed_file*, int>, std::vector<match_bound> > bounds_cache; 
 
     static int line_start(const chunk *chunk, int pos) {
@@ -353,6 +362,11 @@ p     * which contain `match', which is contained within `line'.
     timer sort_time_;
     timer analyze_time_;
     vector<uint8_t> files_;
+    /*
+     * A cache of StringPiece -> match_bounds, to avoid re-doing work on already
+     * matched lines
+     */
+    map<StringPiece, vector<match_bound>> re2_cache_;
 
     /*
      * The approximate ratio of how many files match file_pat and
@@ -360,6 +374,7 @@ p     * which contain `match', which is contained within `line'.
      * yet. Protected by mtx_.
      */
     double files_density_;
+
     std::mutex mtx_;
 
     friend class code_searcher::search_thread;
@@ -1135,20 +1150,38 @@ void searcher::find_match(const chunk *chunk,
 
 // for now, brute force
 // if start > 0, bounds is non-empty/already contains a match
-std::vector<match_bound> searcher::getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds) {
+int searcher::getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds) {
     /* if (!query_->line_pat->Match(str, pos, limit, RE2::UNANCHORED, &match, 1)) { */
     /*     pos = limit + 1; */
     /*     continue; */
+    /* auto time_start = high_resolution_clock::now(); */
+    auto cached_bounds = re2_cache_.find(line);
+    /* auto stop = high_resolution_clock::now(); */
+    /* auto duration = duration_cast<nanoseconds>(stop - time_start); */
+ 
+    // To get the value of duration use the count()
+    // member function on the duration object
+    fprintf(stderr, "there are %d items in the cache\n", re2_cache_.size());
+    /* fprintf(stderr, "took %luns for cache lookup\n", duration.count()); */
+    if (cached_bounds != re2_cache_.end()) {
+        fprintf(stderr, "We've seen line===%s==== before!\n", line.ToString().c_str());
+        // now, how do we use the bounds here?
+        bounds = cached_bounds->second;
+        return bounds.size();
+    }
     
     StringPiece match;
     int i = start;
     int line_len = line.length();
+    int num_matches = bounds.size(); // this should only ever be of length 0 or 1
     /* fprintf(stderr, "line='%s' start=%d\n", line.ToString().c_str(), start); */
 
     run_timer run(re2_time_);
-    while (i < line_len && query_->line_pat->Match(line, i, line_len, RE2::UNANCHORED, &match, 1)) {
-        int matchleft = utf8::distance(line.data(), match.data());
-        int matchright = matchleft + utf8::distance(match.data(), match.data() + match.size());
+    while (!limiter_.exit_early() && i < line_len && query_->line_pat->Match(line, i, line_len, RE2::UNANCHORED, &match, 1)) {
+        num_matches += 1;
+
+        int matchleft = match.data() - line.data();
+        int matchright = matchleft + match.length();
 
         // if the previous bounds matchright is this bounds matchleft, just
         // update the previous bounds end. e.g. "merge" the intervals
@@ -1166,7 +1199,8 @@ std::vector<match_bound> searcher::getAllMatchBounds(const StringPiece& line, in
         i = mb.matchright; // matchright is exclusive, so we start our next search there
     }
 
-    return bounds;
+    re2_cache_[line] = bounds;
+    return num_matches;
 }
 
 void searcher::try_match(const StringPiece& line,
@@ -1217,7 +1251,7 @@ void searcher::try_match(const StringPiece& line,
         first_bound.matchright = m->matchright;
         mbs.push_back(first_bound);
 
-        getAllMatchBounds(line, m->matchright, mbs);
+        int matches_found = getAllMatchBounds(line, m->matchright, mbs);
         m->match_bounds = mbs;
         /* fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size()); */
         /* for (int i = 0; i < mbs.size(); i++) { */
@@ -1230,7 +1264,6 @@ void searcher::try_match(const StringPiece& line,
         /* } */
 
         // iterators for forward and backward context
-        int matches_found = mbs.size();
         auto fit = it, bit = it;
         StringPiece l = line;
         int i = 0;
@@ -1252,7 +1285,7 @@ void searcher::try_match(const StringPiece& line,
             cl.line = l;
             cl.match_bounds = mbs;
             m->context_before_v2.push_back(cl);
-            matches_found += mbs.size();
+            /* matches_found += mbs.size(); */
             /* fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size()); */
         }
 
@@ -1274,7 +1307,7 @@ void searcher::try_match(const StringPiece& line,
             cl.line = l;
             cl.match_bounds = mbs;
             m->context_after_v2.push_back(cl);
-            matches_found += mbs.size();
+            /* matches_found += mbs.size(); */
             /* fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size()); */
         }
 
