@@ -280,34 +280,28 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			}
 		}
 
-		var contextLinesInit []*pb.Context
-		contextLinesInit = append(contextLinesInit, reverseContext(r.ContextBeforeV2)...)
-		contextLinesInit = append(contextLinesInit, &pb.Context{
-			Line:   r.Line,
-			Bounds: r.NewBounds,
-		})
-		contextLinesInit = append(contextLinesInit, r.ContextAfterV2...)
+		var contextLinesInit []string
+		contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)
+		contextLinesInit = append(contextLinesInit, r.Line)
+		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
 
 		for idx, line := range contextLinesInit {
-			contexLno := idx + lineNumber - len(r.ContextBeforeV2)
+			contexLno := idx + lineNumber - len(r.ContextBefore)
 
-			if len(line.Bounds) > 0 {
-				codeMatches += len(line.Bounds)
+			var bounds []*pb.Bounds
+			if contexLno == lineNumber {
+				codeMatches += int(r.NumMatches)
+				bounds = r.NewBounds
 			}
 
-			bounds := line.Bounds
 			// defer to the existing bounds information
 			if present {
 				if existingContextLine, exist := existingResult.ContextLines[contexLno]; exist {
-					codeMatches -= len(line.Bounds)
 					log.Printf(ctx, "line already existing. Checking whether it's worth overwriting")
-					if len(existingContextLine.Bounds) > len(line.Bounds) {
+					if len(existingContextLine.Bounds) > len(bounds) {
 						log.Printf(ctx, "the old line - %+v had more bounds than newLine %+v", existingContextLine, line)
 						bounds = existingContextLine.Bounds
-						log.Printf(ctx, "copied bounds are now blah: %+v", line.Bounds)
-					}
-					if line.Line != existingContextLine.Line {
-						log.Printf(ctx, "unxecpted! line=%s existingContextLine=%s", line.Line, existingContextLine.Line)
+						log.Printf(ctx, "copied bounds are now blah: %+v", bounds)
 					}
 				}
 			}
@@ -315,7 +309,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			existingResult.ContextLines[contexLno] = &api.ResultLine{
 				LineNumber: contexLno,
 				Bounds:     bounds,
-				Line:       line.Line,
+				Line:       line,
 			}
 		}
 

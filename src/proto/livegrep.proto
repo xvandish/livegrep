@@ -36,9 +36,12 @@ message SearchResult {
     repeated string context_after = 6;
     Bounds bounds = 7;
     string line = 8;
-    repeated Context context_before_v2 = 9;
-    repeated Context context_after_v2 = 10;
-    repeated Bounds new_bounds = 11;
+
+    repeated Bounds new_bounds = 9;
+    // since we merge consecutive bounds, it's easier to just return 
+    // the number of matches found than have services try to figure that
+    // out themselves
+    int64 num_matches = 10;
 }
 
 message FileResult {

@@ -1253,6 +1253,7 @@ void searcher::try_match(const StringPiece& line,
 
         int matches_found = getAllMatchBounds(line, m->matchright, mbs);
         m->match_bounds = mbs;
+        m->num_matches = matches_found;
         /* fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size()); */
         /* for (int i = 0; i < mbs.size(); i++) { */
         /*     auto bound = mbs[i]; */
@@ -1276,17 +1277,7 @@ void searcher::try_match(const StringPiece& line,
                 l = StringPiece(bit->data() + bit->size() + 1, 0);
             }
             l = find_line(*bit, StringPiece(l.data() - 1, 0));
-            /* vector<match_bound> mbs = literal_searcher_.getMatchBounds(l, match); */
-            vector<match_bound> mbs;
-            getAllMatchBounds(l, 0, mbs);
             m->context_before.push_back(l);
-
-            result_line cl;
-            cl.line = l;
-            cl.match_bounds = mbs;
-            m->context_before_v2.push_back(cl);
-            /* matches_found += mbs.size(); */
-            /* fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size()); */
         }
 
         l = line;
@@ -1298,22 +1289,11 @@ void searcher::try_match(const StringPiece& line,
                 l = StringPiece(fit->data() - 1, 0);
             }
             l = find_line(*fit, StringPiece(l.data() + l.size() + 1, 0));
-            /* vector<match_bound> mbs = literal_searcher_.getMatchBounds(l, match); */
-            vector<match_bound> mbs;
-            getAllMatchBounds(l, 0, mbs);
             m->context_after.push_back(l);
-
-            result_line cl;
-            cl.line = l;
-            cl.match_bounds = mbs;
-            m->context_after_v2.push_back(cl);
-            /* matches_found += mbs.size(); */
-            /* fprintf(stderr, "context line=%s -- has %lu matches\n", l.ToString().c_str(), mbs.size()); */
         }
 
         if (!transform_ || transform_(m)) {
             queue_.push(m);
-            /* limiter_.record_match(); */
             fprintf(stderr, "found %d matches from one try_match\n", matches_found);
             limiter_.record_n_matches(matches_found);
         }
