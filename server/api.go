@@ -280,7 +280,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			if present {
 				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
 					if len(existingContextLine.Bounds) == 2 {
-						copy(existingContextLine.Bounds, bounds)
+						bounds = existingContextLine.Bounds
 					}
 				}
 			}
