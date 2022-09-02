@@ -173,6 +173,15 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		})
 	}
 
+	// sort based on the repo name first, then file path
+	sort.Slice(reply.Results, func(i, j int) bool {
+		if reply.Results[i].Tree != reply.Results[j].Tree {
+			return reply.Results[i].Tree < reply.Results[j].Tree
+		}
+
+		return reply.Results[i].Path < reply.Results[j].Path
+	})
+
 	for _, r := range search.FileResults {
 		reply.FileResults = append(reply.FileResults, &api.FileResult{
 			Tree:    r.Tree,
@@ -315,6 +324,15 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 
 		reply.Results = append(reply.Results, dededupedResult)
 	}
+
+	// sort based on the repo name first, then file path
+	sort.Slice(reply.Results, func(i, j int) bool {
+		if reply.Results[i].Tree != reply.Results[j].Tree {
+			return reply.Results[i].Tree < reply.Results[j].Tree
+		}
+
+		return reply.Results[i].Path < reply.Results[j].Path
+	})
 
 	extensionArray := make([]*api.FileExtension, 0, len(extensionCounts))
 	idx := 0
