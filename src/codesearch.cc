@@ -306,13 +306,11 @@ p     * which contain `match', which is contained within `line'.
                    indexed_file *);
 
     /*
-     * Given a line, find all matches of query_.line_pat on said line.
-     * When `start` is provided, matching begins on the starting index.
-     * When `start` is provided, `bounds` may be non-empty.
-     * Returns the number of matches found.
+     * Given a line, find all matches and return their bounds. Starts 
+     * at startPos, in the case that we already know of some number of
+     * existing matches. Uses a cache based on `line`.
      */
-    int getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds);
-    typedef std::map<std::pair<indexed_file*, int>, std::vector<match_bound> > bounds_cache; 
+    int find_matches_in_line(const StringPiece& line, int startPos, vector<match_bound>& bounds);
 
     static int line_start(const chunk *chunk, int pos) {
         const unsigned char *start = static_cast<const unsigned char*>
@@ -362,11 +360,7 @@ p     * which contain `match', which is contained within `line'.
     timer sort_time_;
     timer analyze_time_;
     vector<uint8_t> files_;
-    /*
-     * A cache of StringPiece -> match_bounds, to avoid re-doing work on already
-     * matched lines
-     */
-    map<StringPiece, vector<match_bound>> re2_cache_;
+    map<StringPiece, pair<int, vector<match_bound>>> re2_match_cache_;
 
     /*
      * The approximate ratio of how many files match file_pat and
@@ -1148,58 +1142,40 @@ void searcher::find_match(const chunk *chunk,
 }
 
 
-// for now, brute force
-// if start > 0, bounds is non-empty/already contains a match
-int searcher::getAllMatchBounds(const StringPiece& line, int start, vector<match_bound>& bounds) {
-    /* if (!query_->line_pat->Match(str, pos, limit, RE2::UNANCHORED, &match, 1)) { */
-    /*     pos = limit + 1; */
-    /*     continue; */
-    /* auto time_start = high_resolution_clock::now(); */
-    auto cached_bounds = re2_cache_.find(line);
-    /* auto stop = high_resolution_clock::now(); */
-    /* auto duration = duration_cast<nanoseconds>(stop - time_start); */
- 
-    // To get the value of duration use the count()
-    // member function on the duration object
-    fprintf(stderr, "there are %d items in the cache\n", re2_cache_.size());
-    /* fprintf(stderr, "took %luns for cache lookup\n", duration.count()); */
-    if (cached_bounds != re2_cache_.end()) {
-        fprintf(stderr, "We've seen line===%s==== before!\n", line.ToString().c_str());
-        // now, how do we use the bounds here?
-        bounds = cached_bounds->second;
-        return bounds.size();
+int searcher::find_matches_in_line(const StringPiece& line, int startPos, vector<match_bound>& bounds) {
+    auto cached_bounds = re2_match_cache_.find(line);
+    if (cached_bounds != re2_match_cache_.end()) {
+        bounds = cached_bounds->second.second;
+        return cached_bounds->second.first;
     }
-    
+
     StringPiece match;
-    int i = start;
-    int line_len = line.length();
-    int num_matches = bounds.size(); // this should only ever be of length 0 or 1
-    /* fprintf(stderr, "line='%s' start=%d\n", line.ToString().c_str(), start); */
+    int line_len = line.length(); 
+    int num_matches = bounds.size(); // this should only ever be 0 or 1
 
     run_timer run(re2_time_);
-    while (!limiter_.exit_early() && i < line_len && query_->line_pat->Match(line, i, line_len, RE2::UNANCHORED, &match, 1)) {
+    while (!limiter_.exit_early() && startPos < line_len && query_->line_pat->Match(line, startPos, line_len, RE2::UNANCHORED, &match, 1)) {
         num_matches += 1;
 
         int matchleft = match.data() - line.data();
         int matchright = matchleft + match.length();
 
-        // if the previous bounds matchright is this bounds matchleft, just
-        // update the previous bounds end. e.g. "merge" the intervals
+        // if the previous bounds matchright == this bounds matchleft, just
+        // update the previous bounds - e.g., "merge" the intervals
         if (bounds.size() > 0 && bounds.back().matchright == matchleft) {
             bounds.back().matchright = matchright; 
-            i = matchright;
+            startPos = matchright;
             continue;
         }
 
         match_bound mb;
         mb.matchleft = matchleft;
         mb.matchright = matchright;
-        /* fprintf(stderr, "line='''%s''' match=%s. left=%d right=%d\n", line.ToString().c_str(), match.ToString().c_str(), mb.matchleft, mb.matchright); */
         bounds.push_back(mb);
-        i = mb.matchright; // matchright is exclusive, so we start our next search there
+        startPos = mb.matchright;
     }
 
-    re2_cache_[line] = bounds;
+    re2_match_cache_[line] = pair<int, vector<match_bound>>(num_matches, bounds);
     return num_matches;
 }
 
@@ -1230,39 +1206,17 @@ void searcher::try_match(const StringPiece& line,
         m->file = sf;
         m->lno  = lno;
         m->line = line;
-        m->matchleft = utf8::distance(line.data(), match.data());
-        m->matchright = m->matchleft +
-            utf8::distance(match.data(), match.data() + match.size());
-        
-        // strong assumption here that regex search isn't being used
-        
-        // we're going to do this manually
-        // call Match in a loop. Keep an iterator. The startindex is just
-        // m->matchright. After that, we just go forward one byte at a time
-        // we can't optimize for needle size, until we know for sure that
-        // something is a prefix, or some set of prefixes.
 
-
-        // we actually need to add the first match
-        // since matchright is exclusive, we can start the next match on it
         vector<match_bound> mbs;
         match_bound first_bound;
-        first_bound.matchleft = m->matchleft;
-        first_bound.matchright = m->matchright;
+        first_bound.matchleft = utf8::distance(line.data(), match.data());
+        first_bound.matchright = first_bound.matchleft + 
+            utf8::distance(match.data(), match.data() + match.size());
         mbs.push_back(first_bound);
 
-        int matches_found = getAllMatchBounds(line, m->matchright, mbs);
+        int matches_found = find_matches_in_line(line, first_bound.matchright, mbs);
         m->match_bounds = mbs;
         m->num_matches = matches_found;
-        /* fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size()); */
-        /* for (int i = 0; i < mbs.size(); i++) { */
-        /*     auto bound = mbs[i]; */
-        /*     fprintf(stderr, "matchleft=%d matchright=%d\n", bound.matchleft, bound.matchright); */
-        /* } */
-
-        /* if (mbs.size() > 0) { */
-        /*     fprintf(stderr, "line=%s -- has %lu matches\n", line.ToString().c_str(), mbs.size()); */
-        /* } */
 
         // iterators for forward and backward context
         auto fit = it, bit = it;
@@ -1294,7 +1248,6 @@ void searcher::try_match(const StringPiece& line,
 
         if (!transform_ || transform_(m)) {
             queue_.push(m);
-            fprintf(stderr, "found %d matches from one try_match\n", matches_found);
             limiter_.record_n_matches(matches_found);
         }
         if (limiter_.exit_early())
@@ -1390,7 +1343,7 @@ void code_searcher::search_thread::match(const query &q,
 
     if (!q.filename_only) {
         while (search.queue_.pop(&m)) {
-            matches++;
+            matches += m->num_matches;
             cb(m);
             delete m;
         }

@@ -1,5 +1,5 @@
 <div id="countarea">
-  <span id="numresults">{{ .Data.Info.NumMatches }}{{ if .Data.Info.MoreAvail }}+{{end}}</span> matches found
+  <span id="numresults">{{ .Data.Info.NumMatches }}{{ if ne .Data.Info.ExitReason "NONE" }}+{{end}}</span> matches found
   <span id='searchtimebox'>
     <span class='label'>&asymp;</span>
     <!-- js will embed the time here -->

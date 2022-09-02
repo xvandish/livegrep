@@ -98,20 +98,12 @@ struct match_bound {
     int matchright;
 };
 
-// context lines can also contain matches -
-struct context_line {
-    StringPiece line;
-    vector<match_bound> match_bounds;
-};
-
 struct match_result {
     indexed_file *file;
     int lno;
     vector<StringPiece> context_before;
     vector<StringPiece> context_after;
     StringPiece line;
-    int matchleft, matchright;
-
     vector<match_bound> match_bounds;
     int num_matches;
 };

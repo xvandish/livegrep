@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/livegrep/livegrep/server/api"
-	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 )
 
 func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
@@ -60,7 +59,7 @@ type CodePart struct {
 	Match bool
 }
 
-func renderCodeLine(line string, bounds []*pb.Bounds) []CodePart {
+func renderCodeLine(line string, bounds [][2]int) []CodePart {
 	// let's just build the string for the template engine
 	// at some point we may have bounds of different lengths, once we get regex searches to also show
 	// multiple bounds, so we can't optimize that.
@@ -77,17 +76,20 @@ func renderCodeLine(line string, bounds []*pb.Bounds) []CodePart {
 	var codeParts []CodePart
 
 	for boundIdx, bound := range bounds {
-		if int(bound.Left) > currIdx {
+		leftBound := bound[0]
+		rightBound := bound[1]
+
+		if bound[0] > currIdx {
 			codeParts = append(codeParts, CodePart{
-				Line:  line[currIdx:int(bound.Left)],
+				Line:  line[currIdx:leftBound],
 				Match: false,
 			})
 			// lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:int(bound.Left)])
 		}
-		currIdx = int(bound.Right)
+		currIdx = rightBound
 
 		codeParts = append(codeParts, CodePart{
-			Line:  line[int(bound.Left):int(bound.Right)],
+			Line:  line[leftBound:rightBound],
 			Match: true,
 		})
 		// lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[int(bound.Left):int(bound.Right)])
@@ -129,7 +131,7 @@ func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
 	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
 }
 
-func getLineNumberLinkClass(bounds []*pb.Bounds) string {
+func getLineNumberLinkClass(bounds [][2]int) string {
 	if len(bounds) > 0 {
 		return "num-link match"
 	}
