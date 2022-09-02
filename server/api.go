@@ -125,6 +125,15 @@ func reverse(strings []string) []string {
 	return newSstrings
 }
 
+func convertBounds(bounds []*pb.Bounds) [][2]int {
+	convertedBounds := make([][2]int, 0, len(bounds))
+	for _, bound := range bounds {
+		convertedBounds = append(convertedBounds, [2]int{int(bound.Left), int(bound.Right)})
+	}
+
+	return convertedBounds
+}
+
 func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*api.ReplySearch, error) {
 	var search *pb.CodeSearchResult
 	var err error
@@ -168,7 +177,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 			LineNumber:    int(r.LineNumber),
 			ContextBefore: stringSlice(r.ContextBefore),
 			ContextAfter:  stringSlice(r.ContextAfter),
-			Bounds:        [2]int{int(r.Bounds.Left), int(r.Bounds.Right)},
+			Bounds:        convertBounds(r.Bounds),
 			Line:          r.Line,
 		})
 	}
@@ -212,6 +221,7 @@ func (s *server) doSearch(ctx context.Context, backend *Backend, q *pb.Query) (*
 		AnalyzeTime: search.Stats.AnalyzeTime,
 		TotalTime:   int64(time.Since(start) / time.Millisecond),
 		ExitReason:  search.Stats.ExitReason.String(),
+		NumMatches:  int(search.Stats.NumMatches),
 	}
 	return reply, nil
 }
@@ -255,7 +265,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// https://source.static.kevinlin.info/webgrep/file/src/server/logic/search.js#l130
 	// the following logic is mostly the same as the function linked above, and should be attributed to Kevin Lin
 	dedupedResults := make(map[string]*api.ResultV2)
-	codeMatches := 0
 	for _, r := range search.Results {
 		key := fmt.Sprintf("%s-%s", r.Tree, r.Path)
 		lineNumber := int(r.LineNumber)
@@ -275,28 +284,28 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		contextLinesInit = append(contextLinesInit, r.Line)
 		contextLinesInit = append(contextLinesInit, r.ContextAfter...)
 
-		// Now for every contextLine, transform it into a resultLines
 		for idx, line := range contextLinesInit {
-			contextLno := idx + lineNumber - len(r.ContextBefore)
-			var bounds []int
+			contexLno := idx + lineNumber - len(r.ContextBefore)
 
-			if contextLno == lineNumber {
-				codeMatches += 1
-				bounds = append(bounds, int(r.Bounds.Left), int(r.Bounds.Right))
+			var bounds [][2]int
+			if contexLno == lineNumber {
+				bounds = convertBounds(r.Bounds)
 			}
 
-			// Defer to the existing bounds information
+			// defer to the existing bounds information
 			if present {
-				if existingContextLine, exist := existingResult.ContextLines[contextLno]; exist {
-					if len(existingContextLine.Bounds) == 2 {
+				if existingContextLine, exist := existingResult.ContextLines[contexLno]; exist {
+					if len(existingContextLine.Bounds) > len(bounds) {
 						bounds = existingContextLine.Bounds
 					}
 				}
 			}
-			existingResult.ContextLines[contextLno] = &api.ResultLine{
-				LineNumber: contextLno,
+
+			existingResult.ContextLines[contexLno] = &api.ResultLine{
+				LineNumber: contexLno,
 				Bounds:     bounds,
-				Line:       line}
+				Line:       line,
+			}
 		}
 
 		if !present {
@@ -379,17 +388,6 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		})
 	}
 
-	exitReason := search.Stats.ExitReason.String()
-	var numMatches int
-
-	if q.FilenameOnly {
-		numMatches = len(search.FileResults)
-	} else if q.TreenameOnly {
-		numMatches = len(search.TreeResults)
-	} else {
-		numMatches = codeMatches
-	}
-
 	reply.Info = &api.Stats{
 		RE2Time:     search.Stats.Re2Time,
 		GitTime:     search.Stats.GitTime,
@@ -397,9 +395,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		IndexTime:   search.Stats.IndexTime,
 		AnalyzeTime: search.Stats.AnalyzeTime,
 		TotalTime:   int64(time.Since(start) / time.Millisecond),
-		ExitReason:  exitReason,
-		NumMatches:  numMatches,
-		MoreAvail:   exitReason != "NONE",
+		ExitReason:  search.Stats.ExitReason.String(),
+		NumMatches:  int(search.Stats.NumMatches),
 	}
 	return reply, nil
 }

@@ -43,7 +43,6 @@ type Stats struct {
 	TotalTime   int64  `json:"total_time"`
 	ExitReason  string `json:"why"`
 	NumMatches  int    `json:"num_matches"`
-	MoreAvail   bool   `json:"more_avail"`
 }
 
 type Metadata struct {
@@ -58,7 +57,7 @@ type Result struct {
 	LineNumber    int      `json:"lno"`
 	ContextBefore []string `json:"context_before"`
 	ContextAfter  []string `json:"context_after"`
-	Bounds        [2]int   `json:"bounds"`
+	Bounds        [][2]int `json:"bounds"`
 	Line          string   `json:"line"`
 }
 
@@ -71,12 +70,22 @@ type ResultV2 struct {
 	ContextLines map[int]*ResultLine `json:"-"`
 }
 
+type Bounds struct {
+	Left  int
+	Right int
+}
+
+type Context struct {
+	Line   string   `json:"line"`
+	Bounds []Bounds `json:"bounds"`
+}
+
 type ResultLine struct {
 	LineNumber int `json:"lno"`
 	// Bounds may or may not be defined. If they are,
 	// then this line is a match. Otherwise it's contex
-	Bounds []int  `json:"bounds"`
-	Line   string `json:"line"`
+	Bounds [][2]int `json:"bounds"`
+	Line   string   `json:"line"`
 }
 
 type FileResult struct {

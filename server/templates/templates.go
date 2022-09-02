@@ -54,6 +54,48 @@ func splitCodeLineIntoParts(line string, bounds []int) lineParts {
 	return p
 }
 
+type CodePart struct {
+	Line  string
+	Match bool
+}
+
+func renderCodeLine(line string, bounds [][2]int) []CodePart {
+	// process each bound at a time
+	// keep track of the currentIdx into the string
+	// at each bound.Left, if it's greater than currentIdx, we have a prefix
+	// at each bound.Right, set currentIdx to bound.Right. If there are no more bounds left, then we have a suffix
+	currIdx := 0
+	lastBound := len(bounds) - 1
+
+	var codeParts []CodePart
+
+	for boundIdx, bound := range bounds {
+		leftBound := bound[0]
+		rightBound := bound[1]
+
+		if bound[0] > currIdx {
+			codeParts = append(codeParts, CodePart{
+				Line:  line[currIdx:leftBound],
+				Match: false,
+			})
+		}
+		currIdx = rightBound
+
+		codeParts = append(codeParts, CodePart{
+			Line:  line[leftBound:rightBound],
+			Match: true,
+		})
+
+		if boundIdx == lastBound && currIdx <= len(line) {
+			codeParts = append(codeParts, CodePart{
+				Line:  line[currIdx:len(line)],
+				Match: false,
+			})
+		}
+	}
+	return codeParts
+}
+
 // used to cap slice iteration
 func min(a, b int) int {
 	if a < b {
@@ -77,7 +119,7 @@ func shouldInsertBlankLine(currIdx int, lines []*api.ResultLine) bool {
 	return lines[currIdx].LineNumber-lines[prevIdx].LineNumber != 1
 }
 
-func getLineNumberLinkClass(bounds []int) string {
+func getLineNumberLinkClass(bounds [][2]int) string {
 	if len(bounds) > 0 {
 		return "num-link match"
 	}
@@ -95,6 +137,7 @@ func getFuncs() map[string]interface{} {
 		"getFirstNFiles":         getFirstNFiles,
 		"shouldInsertBlankLine":  shouldInsertBlankLine,
 		"getLineNumberLinkClass": getLineNumberLinkClass,
+		"renderCodeLine":         renderCodeLine,
 	}
 }
 

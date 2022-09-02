@@ -69,11 +69,11 @@ var two_seconds = 2000;
 // We could maybe rethink this to be a function that only updates
 // the searchapram for the changed option. Ok for now tho
 function updateSearchParamState() {
-  currUrl = new URL(window.location);
+  var sp = new URLSearchParams(window.location.search);
 
-  var sp = currUrl.searchParams;
-
-  sp.set("q", encodeURIComponent(searchOptions.q));
+  // we don't encode the query ourseleves, as that's already being performed by
+  // something here, and it resulted in a double encoding.
+  sp.set("q", searchOptions.q);
   sp.set("regex", searchOptions.regex);
   sp.set("fold_case", searchOptions.case);
 
@@ -82,9 +82,9 @@ function updateSearchParamState() {
   // paused at into their browser history.
   var now = Date.now();
   if (now - lastUrlUpdate > two_seconds) {
-    window.history.pushState({}, "", currUrl);
+    window.history.pushState({}, "", `${window.location.pathname}?${sp}`);
   } else {
-    window.history.replaceState(null, "", currUrl);
+    history.replaceState(null, "", `${window.location.pathname}?${sp}`);
   }
   lastUrlUpdate = now;
 
@@ -103,15 +103,8 @@ function doSearch() {
   }
   var time1 = performance.now();
   var time2;
-  var urlToFetch =
-    "/api/v2/getRenderedSearchResults/?q=" +
-    searchOptions.q +
-    "&fold_case=" +
-    searchOptions.case +
-    "&regex=" +
-    searchOptions.regex +
-    "&context=" +
-    searchOptions.context;
+  // we take the chance this fires before we clean up the query params
+  var urlToFetch = "/api/v2/getRenderedSearchResults/" + window.location.search;
   urlFetching = urlToFetch;
   fetch(urlToFetch)
     .then(function (r) {
