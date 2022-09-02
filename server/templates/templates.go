@@ -60,19 +60,13 @@ type CodePart struct {
 }
 
 func renderCodeLine(line string, bounds [][2]int) []CodePart {
-	// let's just build the string for the template engine
-	// at some point we may have bounds of different lengths, once we get regex searches to also show
-	// multiple bounds, so we can't optimize that.
-
 	// process each bound at a time
 	// keep track of the currentIdx into the string
 	// at each bound.Left, if it's greater than currentIdx, we have a prefix
 	// at each bound.Right, set currentIdx to bound.Right. If there are no more bounds left, then we have a suffix
 	currIdx := 0
-	lineOut := ""
 	lastBound := len(bounds) - 1
 
-	fmt.Printf("line: %s bounds: %+v\n", line, bounds)
 	var codeParts []CodePart
 
 	for boundIdx, bound := range bounds {
@@ -84,7 +78,6 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 				Line:  line[currIdx:leftBound],
 				Match: false,
 			})
-			// lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:int(bound.Left)])
 		}
 		currIdx = rightBound
 
@@ -92,19 +85,14 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 			Line:  line[leftBound:rightBound],
 			Match: true,
 		})
-		// lineOut += fmt.Sprintf("<span class='highlighted'>%s</span>", line[int(bound.Left):int(bound.Right)])
 
 		if boundIdx == lastBound && currIdx <= len(line) {
 			codeParts = append(codeParts, CodePart{
 				Line:  line[currIdx:len(line)],
 				Match: false,
 			})
-			// lineOut += fmt.Sprintf("<span>%s</span>", line[currIdx:len(line)])
 		}
 	}
-	fmt.Printf("lineOut: %s\n", lineOut)
-	fmt.Printf("template.HTML(lineOut)=%s\n", template.HTML(lineOut))
-
 	return codeParts
 }
 

@@ -295,11 +295,8 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 			// defer to the existing bounds information
 			if present {
 				if existingContextLine, exist := existingResult.ContextLines[contexLno]; exist {
-					// log.Printf(ctx, "line already existing. Checking whether it's worth overwriting")
 					if len(existingContextLine.Bounds) > len(bounds) {
-						// log.Printf(ctx, "the old line - %+v had more bounds than newLine %+v", existingContextLine, line)
 						bounds = existingContextLine.Bounds
-						// log.Printf(ctx, "copied bounds are now blah: %+v", bounds)
 					}
 				}
 			}
