@@ -5,7 +5,4 @@ go_library(
     srcs = ["types.go"],
     importpath = "github.com/livegrep/livegrep/server/api",
     visibility = ["//visibility:public"],
-    deps = [
-        "//src/proto:go_proto",
-    ]
 )
