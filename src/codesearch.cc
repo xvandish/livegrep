@@ -17,7 +17,6 @@
 #include <fstream>
 #include <limits>
 #include <atomic>
-#include <chrono>
 
 #include "src/lib/timer.h"
 #include "src/lib/metrics.h"
@@ -31,7 +30,6 @@
 #include "src/chunk_allocator.h"
 #include "src/query_planner.h"
 #include "src/content.h"
-#include "src/literal_search.h"
 
 #include "absl/strings/string_view.h"
 
@@ -44,7 +42,6 @@
 using re2::RE2;
 using re2::StringPiece;
 using namespace std;
-using namespace std::chrono;
 
 const size_t kMinSkip = 250;
 const int kMinFilterRatio = 50;
@@ -208,7 +205,7 @@ public:
              const intrusive_ptr<QueryPlan> index_key,
              const code_searcher::search_thread::transform_func& func) :
         cc_(cc), query_(&q), transform_(func), queue_(),
-        limiter_(q.max_matches), index_key_(index_key), literal_searcher_(), re2_time_(false),
+        limiter_(q.max_matches), index_key_(index_key), re2_time_(false),
         git_time_(false), index_time_(false), sort_time_(false),
         analyze_time_(false), files_(cc->files_.size(), 0xff),
         files_density_(-1)
@@ -353,7 +350,6 @@ p     * which contain `match', which is contained within `line'.
     thread_queue<match_result*> queue_;
     search_limiter limiter_;
     intrusive_ptr<QueryPlan> index_key_;
-    LiteralSearcher literal_searcher_;
     timer re2_time_;
     timer git_time_;
     timer index_time_;
@@ -368,7 +364,6 @@ p     * which contain `match', which is contained within `line'.
      * yet. Protected by mtx_.
      */
     double files_density_;
-
     std::mutex mtx_;
 
     friend class code_searcher::search_thread;
@@ -1053,10 +1048,8 @@ void searcher::full_search(match_finger *finger,
         }
         assert(memchr(match.data(), '\n', match.size()) == NULL);
         StringPiece line = find_line(str, match);
-        if (utf8::is_valid(line.data(), line.data() + line.size())) {
+        if (utf8::is_valid(line.data(), line.data() + line.size()))
             find_match(chunk, match, line);
-
-        }
         new_pos = line.size() + line.data() - str.data() + 1;
         assert(new_pos > pos);
         pos = new_pos;
