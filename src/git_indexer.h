@@ -11,7 +11,6 @@
 #include <string>
 #include "src/proto/config.pb.h"
 #include "src/smart_git.h"
-#include "src/lib/threadsafe_progress_indicator.h"
 #include "src/lib/thread_queue.h"
 
 class code_searcher;
@@ -35,7 +34,6 @@ struct pre_indexed_file {
 
 // used to walk a repos folders/trees in parallel using threads
 struct tree_to_walk {
-    int id;
     std::string prefix;
     std::string repopath;
     bool walk_submodules;

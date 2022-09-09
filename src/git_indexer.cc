@@ -3,7 +3,6 @@
 
 #include "src/lib/metrics.h"
 #include "src/lib/debug.h"
-#include "src/lib/threadsafe_progress_indicator.h"
 #include "src/lib/rlimits.h"
 
 #include "src/codesearch.h"
@@ -126,7 +125,7 @@ void git_indexer::index_repos() {
         for (auto &rev : repo.revisions()) {
             fprintf(stderr, " walking %s... ", rev.c_str());
             walk(curr_repo, rev, repo.path(), repo.name(), repo.metadata(), repo.walk_submodules(), "");
-            fprintf(stderr, "done\n");
+            fprintf(stderr, "done.\n");
         }
         idx += 1;
     }
@@ -177,17 +176,24 @@ void git_indexer::index_files() {
     if (!is_singlethreaded_) {
         fprintf(stderr, "sorting files_to_index_ by tree...\n");
         std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByTree);
-        fprintf(stderr, "  done\n");
+        fprintf(stderr, "    done\n");
     }
 
     fprintf(stderr, "sorting files_to_index_ by score...\n");
     std::stable_sort(files_to_index_.begin(), files_to_index_.end(), compareFilesByScore);
     fprintf(stderr, "  done\n");
 
-    threadsafe_progress_indicator tpi(files_to_index_.size(), "Indexing files_to_index_...", "Done");
-    for (auto it = files_to_index_.begin(); it != files_to_index_.end(); ++it) {
-        auto file = *it;
+    int num_files = files_to_index_.size();
+    int progress_splits = std::ceil((float)num_files / 20); // show progress every ~3%
+    
+    // if small number of files, indexing is probably going to complete quickly
+    // enough to make a progress bar obsolete
+    bool show_progress = num_files >= 1000;
 
+    fprintf(stderr, "beginning indexing of %d files...\n", num_files);
+    fprintf(stderr, "size of files_=%lu\n", sizeof(pre_indexed_file) * num_files);
+    for (int i = 0; i < num_files; i++) {
+        auto file = files_to_index_[i];
         git_blob *blob;
         int err = git_blob_lookup(&blob, file->repo, file->oid);
         free(file->oid);
@@ -201,8 +207,13 @@ void git_indexer::index_files() {
 
         git_blob_free(blob);
         delete(file);
-        tpi.tick();
+
+        if (show_progress && (i+1) % progress_splits == 0) {
+            int percent_done = std::round(((i+1) * 100) / num_files);
+            fprintf(stderr, "    %d%% [%d/%d] indexed\n",  percent_done, i + 1, num_files); 
+        }
     }
+    fprintf(stderr, "    done\n");
 }
 
 void git_indexer::walk(git_repository *curr_repo,
