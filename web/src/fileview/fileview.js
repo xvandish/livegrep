@@ -192,6 +192,20 @@ function getExternalLink(range) {
     return;
   }
 
+  // if we are at the root of the repo
+  if (transformedFilePath == "") {
+    if (githubUrl != "") { 
+      return githubUrl;
+    }
+
+    // otherwise, take the url pattern, then split off everthing after '{name}/'
+    // e.g "https://github.com/{name}/blob/{version}/{path}#L{lno}" -> "https://github.com/{name}/"
+    var idx = url.indexOf("{name}/");  
+    var cutStr = url.substring(0, idx+7); // idx + len of search term
+    url = cutStr.replace("{name}", repoName);
+    return url;
+  }
+
   // If {path} already has a slash in front of it, trim extra leading
   // slashes from `pathInRepo` to avoid a double-slash in the URL.
   if (url.indexOf("/{path}") !== -1) {
@@ -314,6 +328,7 @@ function initializePage(initData) {
   console.log(initData);
   console.log(initData.repo_info);
   urlPattern = initData.repo_info.metadata["url_pattern"];
+  githubUrl = initData.repo_info.metadata["github"];
   fullRepoName = initData.repo_info.name;
   filePath = initData.file_path;
   commit = initData.commit;
@@ -398,6 +413,7 @@ function hideHelp() {
 
 var initData;
 var urlPattern;
+var githubUrl;
 var commit;
 var fullRepoName;
 var filePath;
