@@ -292,7 +292,6 @@ function initializeActionButtons() {
   };
 
   for (var actionName in ACTION_MAP) {
-    console.log("actionName: ", actionName);
     document
       .querySelector("a[data-action-name=" + actionName + "]")
       .addEventListener(
@@ -325,8 +324,6 @@ var hideSelectionReminder = function () {
 };
 
 function initializePage(initData) {
-  console.log(initData);
-  console.log(initData.repo_info);
   urlPattern = initData.repo_info.metadata["url_pattern"];
   githubUrl = initData.repo_info.metadata["github"];
   fullRepoName = initData.repo_info.name;
