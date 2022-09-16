@@ -369,6 +369,10 @@ function init() {
     // if there is some selected text, then start a new search for it
     var selectedText = getSelectedText();
     if (selectedText !== "") {
+      // if this is a regex search, then escape necessary parts of the text
+      if (searchOptions.regex) {
+        selectedText = selectedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // from mozilla docs
+      }
       searchBox.value = selectedText;
       searchBox.dispatchEvent(new Event("input"));
       window.scrollTo({ top: 0, behavior: "smooth" });
