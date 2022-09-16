@@ -6,6 +6,11 @@
 
 using std::string
 
+// file's to search, for now just pacakge.json
+string file_pat = "package.json";
+string line_pat;
+string base_path;
+
 int main(int argc, char **argv) {
 
     if ((err = git_libgit2_init()) < 0)
@@ -66,11 +71,15 @@ void search_git_repo(const char *repopath, const string& line_pat, const string&
     walk_tree("", FLAGS_order_root, repopath, walk_submodules, submodule_prefix, idx_tree, tree, curr_repo, 0);
 }
 
-bool is_package_json(string& file_path) {
+bool is_package_json(string& file_name) {
     const string rev = "nosj.egakcap";
     int i = 0;
 
-    for (string::reverse_iterator rit=file_path.rbegin(); rit!=file_path.rend(); ++rit) {
+    if (file_name.length() != rev.length()) {
+        return false;
+    }
+
+    for (string::reverse_iterator rit=file_name.rbegin(); rit!=file_name.rend(); ++rit) {
         if (*rit != rev[i])
             return false;
         if (i + 1 == rev.size())
@@ -95,9 +104,32 @@ void walk_tree(git_tree *tree, git_repository *curr_repo, int depth) {
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB && is_package_json(path)) {
             // read the blob that's stored in obj
             // use RE2 to search it for line_pat
+            // options:
+            // 1. Search line by line (thought shall not)
+            // 2. Search the blob, if a match found, then look line by
+            //    line......
+            // I think I'm partial to #1 for the following reasons:
+            //   * our search space is severely reduced already (only a few
+            //   files per repo)
+            //   * to print out line numbers, we need to loop through the file
+            //   line by line anyways...
+            // OR - use RE2 to search the whole blob, and given a search result,
+            // count the number of newlines up to the search position...
+            // lets do that ^ first
         } else if (git_tree_entry_type(ent) == GIT_OBJ_COMMIT) {
-            // submodule
+            // submodule, call walk_tree recursively
         }
     }
+}
+
+
+void search_blob(const string& path, StringPiece contents) {
+ 
+    size_t len = contents.size();
+    const char *p = contents.data();
+    const char *end = p + len;
+    const char *f;
+    StringPiece line;
+
 }
 
