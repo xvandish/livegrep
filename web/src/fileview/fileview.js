@@ -192,7 +192,7 @@ function getExternalLink(range) {
   }
 
   // if we are at the root of the repo
-  // TODO: respect permalinks (specific commits of dirs)
+  // TODO(xvandish): respect permalinks (specific commits of dirs)
   if (transformedFilePath == "") {
     if (githubUrl != "") { 
       return githubUrl;

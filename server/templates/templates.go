@@ -149,6 +149,8 @@ type SyntaxHighlightedContent struct {
 	Styles  template.CSS
 }
 
+// TODO(xvandish): Convert this function so that our build process can use it
+// and inject it into our stylesheets. Right now, manual process.
 func styleToCSS(style *chroma.Style) map[chroma.TokenType]string {
 	classes := map[chroma.TokenType]string{}
 
@@ -230,14 +232,6 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 	l := lexers.Get(language)
 	css := styleToCSS(styles.Xcode)
 
-	// get an io.Writer
-	// var sbuilder strings.Builder
-	// err := writeCSS(&sbuilder, styles.Get("xcode"))
-
-	// fmt.Printf("sbuilder len=%d\n", sbuilder.Len())
-	// fmt.Printf("sbuilder=%s\n", sbuilder.String())
-
-	// if err != nil || l == nil {
 	if l == nil {
 		fmt.Printf("unable to get lexer with language=%s. Trying via filename=%s\n", language, filename)
 		l = lexers.Match(filename)
@@ -270,7 +264,6 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 
 	for idx, tokens := range lines {
 		// we want to convert the line into its html equivalent
-
 		// each line can have n tokens
 		// each token is a span with (potentially) styling
 
@@ -281,8 +274,7 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 			b.WriteString(fmt.Sprintf("<span%s>%s</span>", attr, html))
 		}
 
-		outLines[idx] = template.HTML(b.String()) // TODO: wrap with span if necessary
-		// we want to get the styles to attach
+		outLines[idx] = template.HTML(b.String())
 	}
 
 	return SyntaxHighlightedContent{
