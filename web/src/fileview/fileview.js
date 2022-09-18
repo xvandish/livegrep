@@ -87,9 +87,8 @@ function parseHashForLineRange(hashString) {
 }
 
 function addHighlightClassesForRange(range, root) {
-  var idSelectors = [];
   for (var lineNumber = range.start; lineNumber <= range.end; lineNumber++) {
-    root.querySelector("#L" + lineNumber).classList.add("highlighted");
+    root.querySelector("#LC" + lineNumber).classList.add("highlighted");
   }
 }
 
@@ -332,7 +331,7 @@ function initializePage(initData) {
   commit = initData.commit;
 
   root = document.getElementsByClassName("file-content")[0];
-  lineNumberContainer = document.querySelector(".file-content > .line-numbers");
+  lineNumberContainer = document.querySelector(".file-content");
   helpScreen = document.getElementsByClassName("help-screen")[0];
 
   // The native browser handling of hashes in the location is to scroll
@@ -343,8 +342,6 @@ function initializePage(initData) {
   // access the geometry of the DOM elements until they are visible.
 
   if (lineNumberContainer) {
-    // directories don't have line nums
-    lineNumberContainer.style.display = "block"; //  css({display: 'block'});
     // Initial range detection for when the page is loaded
     handleHashChange(true);
     // Allow shift clicking links to expand the highlight range
@@ -352,14 +349,14 @@ function initializePage(initData) {
     // add a handler to the container, then check if the target
     // is a link
     lineNumberContainer.addEventListener("click", function (event) {
-      if (event.target.tagName.toLowerCase() !== "a") {
+      if (!event.target.classList.contains("lno")) {
         return;
       }
       event.preventDefault();
       if (event.shiftKey) {
         expandRangeToElement(event.target);
       } else {
-        setHash(event.target.getAttribute("href"));
+        setHash("#" + event.target.getAttribute("id"));
       }
       handleHashChange(false);
     });
