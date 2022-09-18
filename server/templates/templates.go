@@ -146,7 +146,6 @@ func convertContentBlobToArrayOfLines(content string) []template.HTML {
 
 type SyntaxHighlightedContent struct {
 	Content []template.HTML
-	Styles  template.CSS
 }
 
 // TODO(xvandish): Convert this function so that our build process can use it
@@ -227,8 +226,7 @@ func timeTrack(start time.Time, name string) {
 }
 
 func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighlightedContent {
-	defer timeTrack(time.Now(), "getSyntaxHighlightedContent")
-	fmt.Printf("language is %s\n", language)
+	defer timeTrack(time.Now(), fmt.Sprintf("getSyntaxHighlightedContent-%s", filename))
 	l := lexers.Get(language)
 	css := styleToCSS(styles.Xcode)
 
@@ -239,8 +237,9 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 			fmt.Printf("failed to get lexer with filename. Not using a lexer and just splitting content.\n")
 			return SyntaxHighlightedContent{
 				Content: convertContentBlobToArrayOfLines(content),
-				Styles:  "",
 			}
+		} else {
+			fmt.Printf("Found lexer=%s for filename=%s\n", l.Config().Name, filename)
 		}
 	}
 
@@ -253,7 +252,6 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 		fmt.Printf("error tokenizing=%+v\n", err)
 		return SyntaxHighlightedContent{
 			Content: convertContentBlobToArrayOfLines(content),
-			Styles:  "",
 		}
 	}
 
@@ -279,8 +277,6 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 
 	return SyntaxHighlightedContent{
 		Content: outLines,
-		// Styles:  template.CSS(sbuilder.String()),
-		Styles: "",
 	}
 }
 
