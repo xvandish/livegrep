@@ -210,6 +210,9 @@ func writeCSS(w io.Writer, style *chroma.Style) error {
 			continue
 		}
 		styles := css[tt]
+		if styles == "" {
+			continue
+		}
 		if _, err := fmt.Fprintf(w, "/* %s */ .%schroma .%s { %s }\n", tt, "", class, styles); err != nil {
 			return err
 		}
@@ -221,25 +224,29 @@ func timeTrack(start time.Time, name string) {
 	fmt.Printf("%s took %s\n", name, time.Since(start))
 }
 
-func getSyntaxHighlightedContent(content, language string) SyntaxHighlightedContent {
+func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighlightedContent {
 	defer timeTrack(time.Now(), "getSyntaxHighlightedContent")
 	fmt.Printf("language is %s\n", language)
 	l := lexers.Get(language)
 	css := styleToCSS(styles.Xcode)
 
 	// get an io.Writer
-	var sbuilder strings.Builder
-	err := writeCSS(&sbuilder, styles.Get("xcode"))
+	// var sbuilder strings.Builder
+	// err := writeCSS(&sbuilder, styles.Get("xcode"))
 
 	// fmt.Printf("sbuilder len=%d\n", sbuilder.Len())
 	// fmt.Printf("sbuilder=%s\n", sbuilder.String())
 
-	if err != nil || l == nil {
-		fmt.Printf("hit an error: %+v or l==nil:%d\n", err, l == nil)
-		// whoops, we have a nil language. TODO: log this error
-		return SyntaxHighlightedContent{
-			Content: convertContentBlobToArrayOfLines(content),
-			Styles:  "",
+	// if err != nil || l == nil {
+	if l == nil {
+		fmt.Printf("unable to get lexer with language=%s. Trying via filename=%s\n", language, filename)
+		l = lexers.Match(filename)
+		if l == nil {
+			fmt.Printf("failed to get lexer with filename. Not using a lexer and just splitting content.\n")
+			return SyntaxHighlightedContent{
+				Content: convertContentBlobToArrayOfLines(content),
+				Styles:  "",
+			}
 		}
 	}
 
@@ -280,7 +287,8 @@ func getSyntaxHighlightedContent(content, language string) SyntaxHighlightedCont
 
 	return SyntaxHighlightedContent{
 		Content: outLines,
-		Styles:  template.CSS(sbuilder.String()),
+		// Styles:  template.CSS(sbuilder.String()),
+		Styles: "",
 	}
 }
 

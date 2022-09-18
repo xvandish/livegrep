@@ -1,10 +1,7 @@
 {{define "filecontent"}}
 <div class="file-content">
   {{ $lang := .Language }}
-  {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang }}
-  <style type="text/css">
-    {{ $highlightedContent.Styles }}
-  </style>
+  {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang .Filename }}
   <table>
     <tbody class="chroma">
     {{ range $i, $e := $highlightedContent.Content }}

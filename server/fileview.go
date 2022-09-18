@@ -104,6 +104,7 @@ type sourceFileContent struct {
 	Content   string
 	LineCount int
 	Language  string
+	Filename  string
 }
 
 type directoryContent struct {
@@ -303,7 +304,8 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		if err != nil {
 			return nil, err
 		}
-		language := filenameToLangMap[filepath.Base(cleanPath)]
+		filename := filepath.Base(cleanPath)
+		language := filenameToLangMap[filename]
 		if language == "" {
 			language = extToLangMap[filepath.Ext(cleanPath)]
 		}
@@ -312,6 +314,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			// LineCount: strings.Count(string(content), "\n"),
 			LineCount: 0,
 			Language:  language,
+			Filename:  filename,
 		}
 	}
 
