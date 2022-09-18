@@ -498,47 +498,6 @@ button:hover {
 }
 
 
-.file-viewer .line-numbers > .line:focus {
-    outline: none;
-}
-
-.file-viewer .line-numbers a:focus {
-    outline: solid 1px rgba(255, 234, 170, 0.5);
-    background: rgba(255, 234, 170, 0.33);
-}
-
-.file-viewer .line-numbers .highlighted {
-    background: rgba(255, 234, 170, 0.75);
-    left: 0;
-    width: 100%;
-}
-
-.file-viewer .line-numbers a.highlighted:focus {
-    background: rgba(255, 234, 170, 0.75);
-}
-
-.file-viewer .line-numbers a {
-    display: block;
-    width: 100%;
-    color: rgba(0, 0, 0, 0.25);
-    text-decoration: none;
-    user-select: none;
-}
-
-.file-viewer .line-numbers a:hover {
-    color: rgba(0, 0, 0, 1);
-    text-decoration: underline;
-}
-.file-viewer .code-pane {
-    position: absolute;
-    top: 0;
-    left: 75px;
-    width: 30%;
-    overflow: visible;
-    margin: 0 0 0 20px;
-    white-space: pre;
-}
-
 .file-viewer .file-content table tbody tr td.lno {
     color: rgba(0, 0, 0, 0.25);
     user-select: none;
