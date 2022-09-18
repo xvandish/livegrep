@@ -489,11 +489,12 @@ button:hover {
 .file-viewer .file-content {
     overflow-x: auto;
     overflow-y: hidden;
-    margin-left: 2rem;
-    margin-right: 2rem;
-    margin-bottom: 2rem;
     border: 1px solid #d0d7de;
     border-radius: 5px;
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 2rem;
 }
 
 
