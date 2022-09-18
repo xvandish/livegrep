@@ -33,7 +33,7 @@ var extToLangMap map[string]string = map[string]string{
 	".go":          "go",
 	".h":           "cpp",
 	".hs":          "haskell",
-	".html":        "markup",
+	".html":        "html",
 	".java":        "java",
 	".js":          "javascript",
 	".json":        "json",
@@ -64,7 +64,7 @@ var extToLangMap map[string]string = map[string]string{
 	".ts":          "typescript",
 	".tsx":         "tsx",
 	".wiki":        "markdown",
-	".xml":         "markup",
+	".xml":         "xml",
 	".yaml":        "yaml",
 	".yml":         "yaml",
 }
@@ -308,8 +308,9 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			language = extToLangMap[filepath.Ext(cleanPath)]
 		}
 		fileContent = &sourceFileContent{
-			Content:   content,
-			LineCount: strings.Count(string(content), "\n"),
+			Content: content,
+			// LineCount: strings.Count(string(content), "\n"),
+			LineCount: 0,
 			Language:  language,
 		}
 	}

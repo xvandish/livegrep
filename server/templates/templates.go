@@ -5,11 +5,19 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"html"
 	"html/template"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
+	"github.com/alecthomas/chroma"
+	htmlf "github.com/alecthomas/chroma/formatters/html"
+	"github.com/alecthomas/chroma/lexers"
+	"github.com/alecthomas/chroma/styles"
 	"github.com/livegrep/livegrep/server/api"
 )
 
@@ -126,18 +134,170 @@ func getLineNumberLinkClass(bounds [][2]int) string {
 	return "num-link"
 }
 
+func convertContentBlobToArrayOfLines(content string) []template.HTML {
+	init := strings.Split(content, "\n")
+	asHtml := make([]template.HTML, len(init))
+	for idx, s := range init {
+		asHtml[idx] = template.HTML(s)
+	}
+
+	return asHtml
+}
+
+type SyntaxHighlightedContent struct {
+	Content []template.HTML
+	Styles  template.CSS
+}
+
+func styleToCSS(style *chroma.Style) map[chroma.TokenType]string {
+	classes := map[chroma.TokenType]string{}
+
+	bg := style.Get(chroma.Background)
+
+	for t := range chroma.StandardTypes {
+		entry := style.Get(t)
+
+		if t != chroma.Background {
+			entry = entry.Sub(bg)
+		}
+
+		styleEntryCSS := htmlf.StyleEntryToCSS(entry)
+		if styleEntryCSS != `` && classes[t] != `` {
+			styleEntryCSS += `;`
+		}
+		classes[t] = styleEntryCSS + classes[t]
+	}
+
+	return classes
+}
+
+func getChromaClass(t chroma.TokenType) string {
+	for t != 0 {
+		if cls, ok := chroma.StandardTypes[t]; ok {
+			if cls != "" {
+				return cls
+			}
+			return ""
+		}
+		t = t.Parent()
+	}
+	if cls := chroma.StandardTypes[t]; cls != "" {
+		return cls
+	}
+	return ""
+}
+
+func styleAttr(styles map[chroma.TokenType]string, tt chroma.TokenType) string {
+	cls := getChromaClass(tt)
+	if cls == "" {
+		return ""
+	}
+	return fmt.Sprintf(` class="%s"`, cls)
+}
+
+func writeCSS(w io.Writer, style *chroma.Style) error {
+	css := styleToCSS(style)
+
+	tts := []int{}
+	for tt := range css {
+		tts = append(tts, int(tt))
+	}
+	sort.Ints(tts)
+	for _, ti := range tts {
+		tt := chroma.TokenType(ti)
+		class := getChromaClass(tt)
+		if class == "" {
+			continue
+		}
+		styles := css[tt]
+		if _, err := fmt.Fprintf(w, "/* %s */ .%schroma .%s { %s }\n", tt, "", class, styles); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func timeTrack(start time.Time, name string) {
+	fmt.Printf("%s took %s\n", name, time.Since(start))
+}
+
+func getSyntaxHighlightedContent(content, language string) SyntaxHighlightedContent {
+	defer timeTrack(time.Now(), "getSyntaxHighlightedContent")
+	fmt.Printf("language is %s\n", language)
+	l := lexers.Get(language)
+	css := styleToCSS(styles.Xcode)
+
+	// get an io.Writer
+	var sbuilder strings.Builder
+	err := writeCSS(&sbuilder, styles.Get("xcode"))
+
+	// fmt.Printf("sbuilder len=%d\n", sbuilder.Len())
+	// fmt.Printf("sbuilder=%s\n", sbuilder.String())
+
+	if err != nil || l == nil {
+		fmt.Printf("hit an error: %+v or l==nil:%d\n", err, l == nil)
+		// whoops, we have a nil language. TODO: log this error
+		return SyntaxHighlightedContent{
+			Content: convertContentBlobToArrayOfLines(content),
+			Styles:  "",
+		}
+	}
+
+	// Use the coalescing lexer to coalesce runs of idential token types into a single token
+	l = chroma.Coalesce(l)
+
+	it, err := l.Tokenise(nil, content)
+
+	if err != nil {
+		fmt.Printf("error tokenizing=%+v\n", err)
+		return SyntaxHighlightedContent{
+			Content: convertContentBlobToArrayOfLines(content),
+			Styles:  "",
+		}
+	}
+
+	tokens := it.Tokens()
+
+	lines := chroma.SplitTokensIntoLines(tokens)
+	outLines := make([]template.HTML, len(lines))
+
+	for idx, tokens := range lines {
+		// we want to convert the line into its html equivalent
+
+		// each line can have n tokens
+		// each token is a span with (potentially) styling
+
+		var b strings.Builder
+		for _, token := range tokens {
+			html := html.EscapeString(token.String())
+			attr := styleAttr(css, token.Type)
+			b.WriteString(fmt.Sprintf("<span%s>%s</span>", attr, html))
+		}
+
+		outLines[idx] = template.HTML(b.String()) // TODO: wrap with span if necessary
+		// we want to get the styles to attach
+	}
+
+	return SyntaxHighlightedContent{
+		Content: outLines,
+		Styles:  template.CSS(sbuilder.String()),
+	}
+}
+
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
-		"loop":                   func(n int) []struct{} { return make([]struct{}, n) },
-		"toLineNum":              func(n int) int { return n + 1 },
-		"linkTag":                linkTag,
-		"scriptTag":              scriptTag,
-		"splitCodeLineIntoParts": splitCodeLineIntoParts,
-		"min":                    min,
-		"getFirstNFiles":         getFirstNFiles,
-		"shouldInsertBlankLine":  shouldInsertBlankLine,
-		"getLineNumberLinkClass": getLineNumberLinkClass,
-		"renderCodeLine":         renderCodeLine,
+		"loop":                             func(n int) []struct{} { return make([]struct{}, n) },
+		"toLineNum":                        func(n int) int { return n + 1 },
+		"linkTag":                          linkTag,
+		"scriptTag":                        scriptTag,
+		"splitCodeLineIntoParts":           splitCodeLineIntoParts,
+		"min":                              min,
+		"getFirstNFiles":                   getFirstNFiles,
+		"shouldInsertBlankLine":            shouldInsertBlankLine,
+		"getLineNumberLinkClass":           getLineNumberLinkClass,
+		"renderCodeLine":                   renderCodeLine,
+		"convertContentBlobToArrayOfLines": convertContentBlobToArrayOfLines,
+		"getSyntaxHighlightedContent":      getSyntaxHighlightedContent,
 	}
 }
 
