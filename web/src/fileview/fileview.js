@@ -103,7 +103,7 @@ function expandRangeToElement(element) {
     } else {
       range.end = elementLine;
     }
-    setHash("#L" + range.start + "-" + range.end);
+    setHash("#L" + range.start + "-" + "L" + range.end);
   }
 }
 
@@ -171,7 +171,7 @@ function getLineNumber(range) {
     // We blindly assume that the external viewer supports linking to a
     // range of lines. Github doesn't support this, but highlights the
     // first line given, which is close enough.
-    return range.start + "-" + range.end;
+    return range.start + "-L" + range.end;
   }
 }
 
