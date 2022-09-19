@@ -42,6 +42,7 @@ type server struct {
 	bk          map[string]*Backend
 	bkOrder     []string
 	repos       map[string]config.RepoConfig
+	newRepos    map[string]map[string]config.RepoConfig
 	inner       http.Handler
 	Templates   map[string]*template.Template
 	OpenSearch  *texttemplate.Template
@@ -184,13 +185,11 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/simple-git-log/")
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	path := pat.Tail("/view/:parent/:repo/commits/:rev/", r.URL.Path)
 	firstParent := r.URL.Query().Get("firstParent")
+
 	if firstParent == "" {
 		firstParent = "HEAD"
 	}
@@ -200,7 +199,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	repo, ok := s.repos[repoName]
+	repo, ok := s.repos[parent+"/"+repoName]
 	if !ok {
 		http.Error(w, "No such repo", 404)
 		return
@@ -245,6 +244,89 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		IncludeHeader: false,
 		Data:          data,
 	})
+}
+
+type TestInfo struct {
+	Parent string
+	Repo   string
+	Rev    string
+	Path   string
+}
+
+func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// m.Add("GET", "/:parent/:repo/blob/:rev/:path", srv.Handler(srv.ServeGitBlob))
+	// start := time.Now()
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	// m.Add("GET", "/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
+	fmt.Printf("r.URL.Path=%s\n", r.URL.Path)
+
+	// TODO(xvandish): this is temporary. Soon we can split out blob and directory code all the way
+	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
+	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
+	// "ServeGitBlob" function works for both entitites
+	path := ""
+	if strings.HasPrefix(r.URL.Path, "/delve/"+parent+"/"+repo+"/tree/") {
+		path = pat.Tail("/delve/:parent/:repo/tree/:rev/", r.URL.Path)
+	} else {
+		path = pat.Tail("/delve/:parent/:repo/blob/:rev/", r.URL.Path)
+	}
+	// path := r.URL.Query().Get(":path")
+	// t := TestInfo{
+	// 	Parent: parent,
+	// 	Repo:   repo,
+	// 	Rev:    rev,
+	// 	Path:   path,
+	// }
+	// took := time.Since(start)
+
+	fmt.Printf("parent: %v\n", parent)
+	fmt.Printf("repo: %v\n", repo)
+	fmt.Printf("rev: %v\n", rev)
+	fmt.Printf("path: %v\n", path)
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	fmt.Printf("repoConfig: %+v\n", repoConfig)
+
+	data, err := buildFileData(path, repoConfig, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+	// We build this carefully increase /blob/ is in the path to the file that
+	// we're actually viewing
+	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
+	data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+
+	script_data := &struct {
+		RepoInfo   config.RepoConfig `json:"repo_info"`
+		FilePath   string            `json:"file_path"`
+		Commit     string            `json:"commit"`
+		CommitHash string            `json:"commit_hash"`
+	}{repoConfig, path, rev, data.CommitHash}
+
+	s.renderPage(ctx, w, r, "fileview.html", &page{
+		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
+		ScriptName:    "fileview",
+		ScriptData:    script_data,
+		IncludeHeader: false,
+		Data:          data,
+	})
+
 }
 
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -479,9 +561,10 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
-		config: cfg,
-		bk:     make(map[string]*Backend),
-		repos:  make(map[string]config.RepoConfig),
+		config:   cfg,
+		bk:       make(map[string]*Backend),
+		repos:    make(map[string]config.RepoConfig),
+		newRepos: make(map[string]map[string]config.RepoConfig),
 	}
 	srv.loadTemplates()
 
@@ -537,6 +620,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	serveFilePathRegex, err := buildRepoRegex(repoNames)
+	buildReposAndParents(srv, repoNames)
 	if err != nil {
 		return nil, err
 	}
@@ -549,6 +633,10 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/delve/:parent/:repo/tree/:rev/:path/", srv.Handler(srv.ServeGitBlob))
+	m.Add("GET", "/delve/:parent/:repo/blob/:rev/:path/", srv.Handler(srv.ServeGitBlob))
+	m.Add("GET", "/delve/:parent/:repo/commits/:rev/:path/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/delve/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
@@ -594,6 +682,23 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.inner = mux
 
 	return srv, nil
+}
+
+func buildReposAndParents(srv *server, repoNames []string) {
+	parents := make(map[string]map[string]config.RepoConfig)
+	for _, parentAndRepo := range repoNames {
+		firstSlash := strings.Index(parentAndRepo, "/")
+		parent := parentAndRepo[:firstSlash]
+		if len(parents[parent]) == 0 {
+			parents[parent] = make(map[string]config.RepoConfig)
+		}
+		onlyRepoName := parentAndRepo[firstSlash+1:]
+
+		// fmt.Printf("srv.repos[%s]: %+v\n", parentAndRepo, srv.repos[parentAndRepo])
+		parents[parent][onlyRepoName] = srv.repos[parentAndRepo]
+	}
+
+	srv.newRepos = parents
 }
 
 func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {

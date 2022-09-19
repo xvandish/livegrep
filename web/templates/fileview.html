@@ -6,7 +6,7 @@
   <header class="header">
     <nav class="header-title">
       {{$repo := .Repo.Name}}
-      <a href="/view/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
+      <a href="/delve/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
       {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
     </nav>
     <ul class="header-actions without-selection">
@@ -18,6 +18,9 @@
       </li>,
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
+      </li>,
+      <li class="header-action">
+        <a id="commit-history" data-action-name="" title="View commit history at. Keyboard shortcut: l" href="{{.LogLink}}">commits [<span class='shortcut'>l</span>]</a>
       </li>,
       {{if .Permalink}}
       <li class="header-action">

@@ -96,11 +96,13 @@ type fileViewerContext struct {
 	PathSegments   []breadCrumbEntry
 	Repo           config.RepoConfig
 	Commit         string
+	CommitHash     string
 	DirContent     *directoryContent
 	FileContent    *sourceFileContent
 	ExternalDomain string
 	Permalink      string
 	Headlink       string
+	LogLink        string
 }
 
 type sourceFileContent struct {
@@ -191,12 +193,16 @@ func gitListDir(obj string, repoPath string) ([]gitTreeEntry, error) {
 	return result, nil
 }
 
-func viewUrl(repo string, path string) string {
-	return "/view/" + repo + "/" + path
+func viewUrl(repo string, path string, isDir bool) string {
+	entryType := "blob"
+	if isDir {
+		entryType = "tree"
+	}
+	return "/delve/" + repo + "/" + entryType + "/" + "HEAD/" + path
 }
 
 func getFileUrl(repo string, pathFromRoot string, name string, isDir bool) string {
-	fileUrl := viewUrl(repo, filepath.Join(pathFromRoot, path.Clean(name)))
+	fileUrl := viewUrl(repo, filepath.Join(pathFromRoot, path.Clean(name)), isDir)
 	if isDir {
 		fileUrl += "/"
 	}
@@ -703,6 +709,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		PathSegments:   segments,
 		Repo:           repo,
 		Commit:         commit,
+		CommitHash:     commitHash[:16],
 		DirContent:     dirContent,
 		FileContent:    fileContent,
 		ExternalDomain: externalDomain,
