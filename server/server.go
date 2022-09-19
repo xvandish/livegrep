@@ -274,7 +274,13 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 	// We build this carefully increase /blob/ is in the path to the file that
 	// we're actually viewing
 	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
-	data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+	// if we were going to permalink, make it what we want
+	// TODO(xvandish): do this in fileview.go
+	if data.Permalink != "" {
+		data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+	} else if data.Headlink != "" {
+		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
+	}
 
 	script_data := &struct {
 		RepoInfo   config.RepoConfig `json:"repo_info"`

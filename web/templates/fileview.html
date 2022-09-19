@@ -7,7 +7,7 @@
     <nav class="header-title">
       {{$repo := .Repo.Name}}
       <a href="/delve/{{$repo}}/tree/{{.Commit}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
-      {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+      {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}{{ if ne .Commit "HEAD" }}<span class="ch">@{{.CommitHash}}</span>{{ end }}
     </nav>
     <ul class="header-actions without-selection">
       <li class="header-action">
