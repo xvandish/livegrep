@@ -19,8 +19,8 @@
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
       </li>,
-      <li class="header-action">
-        <a id="commit-history" data-action-name="" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">history [<span class='shortcut'>h</span>]</a>
+      <li class="header-action new">
+        <a id="commit-history" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">NEW: history [<span class='shortcut'>h</span>]</a>
       </li>,
       {{if .Permalink}}
       <li class="header-action">
@@ -41,6 +41,9 @@
       </li>,
       <li class="header-action">
         search for selected text globally [/]
+      </li>,
+      <li class="header-action new">
+        <a id="commit-history" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">NEW: history [<span class='shortcut'>h</span>]</a>
       </li>,
       <li class="header-action">
         previous match [p]

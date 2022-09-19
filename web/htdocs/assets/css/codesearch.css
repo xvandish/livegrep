@@ -467,6 +467,10 @@ button:hover {
     color: rgba(0, 0, 0, 1.0);
 }
 
+.sticky-header .ch {
+    color: rgba(0, 0, 0, 0.5);
+}
+
 .sticky-header .header-title {
     font-size: 13px;
     padding: 0;
@@ -587,6 +591,11 @@ button:hover {
 .header-action .shortcut {
     font-weight: bolder;
     text-decoration: underline;
+}
+
+.header-action.new a {
+    color: #de035e;
+    font-weight: bold;
 }
 /* END */
 
