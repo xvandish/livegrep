@@ -944,6 +944,7 @@ div.example {
 
 #log-table {
     margin-bottom: 2rem;
+    width: 100%;
 }
 
 #log-table tr {
