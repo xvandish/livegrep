@@ -119,6 +119,10 @@ type directoryContent struct {
 
 type DirListingSort []directoryListEntry
 
+func timeTrack(start time.Time, name string) {
+	fmt.Printf("%s took %s\n", name, time.Since(start))
+}
+
 func (s DirListingSort) Len() int {
 	return len(s)
 }
@@ -318,7 +322,6 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	// Null terminate our thing
 	start = time.Now()
 	out = append(out, byte(rune(0)))
-	fmt.Printf("took %s to append rune\n", time.Since(start))
 	err = os.WriteFile("./tmp-log", out, 0644)
 	if err != nil {
 		return nil, err
@@ -437,6 +440,7 @@ func ScanGitShowEntry(data []byte, atEOF bool) (advance int, token []byte, err e
 
 // Given a specific commitHash, get detailed info (--numstat or --shortstat)
 func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
+	defer timeTrack(time.Now(), "gitShowCommit")
 
 	// git show 74846d35b24b6efd61bb88a0a750b6bb257e6e78 --patch-with-stat -z > out.txt
 	cmd := exec.Command("git", "-C", repo.Path, "show", commit,
@@ -526,10 +530,6 @@ func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 		if len(match) == 0 {
 			diffStat.SummaryLine = string(line)
 			break
-		}
-
-		for m := range match {
-			fmt.Printf("match[%d]: %s\n", m, string(match[m]))
 		}
 
 		graphString := string(match[3])

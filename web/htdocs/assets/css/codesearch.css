@@ -949,7 +949,7 @@ div.example {
 #log-table tr {
     display: grid;
     /* shortHash, name, commitTime, commitMsg */
-    grid-template-columns: 140px 15% 200px 1fr;
+    grid-template-columns: 140px 15% 200px 500px 1fr;
     justify-content: flex-start;
     text-align: left;
     border-bottom: 1px solid rgba(0,0,0,0.12); /* hairline color from cs.opensource.google */
@@ -1011,6 +1011,12 @@ div.example {
 
 .diff-data span[data-line-type="delete"] {
     color: red;
+}
+
+.diff-data pre {
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    padding: 10px;
 }
 
 .git-show-wrapper {

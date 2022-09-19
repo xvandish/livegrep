@@ -7,6 +7,7 @@
       <th>Author</th>
       <th>Commit Date</th>
       <th>Subject</th>
+      <th>Actions</th>
     </tr>
   </thead>
   {{ end }}
@@ -25,6 +26,9 @@
               <button type="button" class="ellipses-expander" data-action="expandText">…</button>
             </span>
           {{ end }}
+        </td>
+        <td>
+          <a href="{{$.CommitLinkPrefix}}/blob/{{$commit.Hash}}/{{$.Path}}/" title="View this file at this commit">View file</a>
         </td>
         {{ if ne $commit.Body "" }}
         <td class='expanded-row-content hide-row'>
