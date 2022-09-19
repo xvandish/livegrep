@@ -233,15 +233,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 	})
 }
 
-type TestInfo struct {
-	Parent string
-	Repo   string
-	Rev    string
-	Path   string
-}
-
 func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	// m.Add("GET", "/:parent/:repo/blob/:rev/:path", srv.Handler(srv.ServeGitBlob))
 	// start := time.Now()
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -259,19 +251,6 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 	} else {
 		path = pat.Tail("/delve/:parent/:repo/blob/:rev/", r.URL.Path)
 	}
-	// path := r.URL.Query().Get(":path")
-	// t := TestInfo{
-	// 	Parent: parent,
-	// 	Repo:   repo,
-	// 	Rev:    rev,
-	// 	Path:   path,
-	// }
-	// took := time.Since(start)
-
-	fmt.Printf("parent: %v\n", parent)
-	fmt.Printf("repo: %v\n", repo)
-	fmt.Printf("rev: %v\n", rev)
-	fmt.Printf("path: %v\n", path)
 
 	parentMap, ok := s.newRepos[parent]
 
@@ -286,8 +265,6 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
 		return
 	}
-
-	fmt.Printf("repoConfig: %+v\n", repoConfig)
 
 	data, err := buildFileData(path, repoConfig, rev)
 	if err != nil {
