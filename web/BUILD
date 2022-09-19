@@ -30,7 +30,9 @@ genrule(
     ]),
     outs = [
         "htdocs/assets/js/bundle_new.js",
+        "htdocs/assets/js/gitlog.js",
         "htdocs/assets/css/codesearch.min.css",
+        "htdocs/assets/css/gitlog.min.css",
     ],
     cmd = "$(location //web/cmd/build-web:build_web) -test=$(RULEDIR)",
     tools = ["//web/cmd/build-web:build_web"],

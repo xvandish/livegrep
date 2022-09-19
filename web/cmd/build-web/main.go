@@ -33,6 +33,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// for now, build the gitlog js seperately
+	result = api.Build(api.BuildOptions{
+		EntryPoints: []string{"web/src/gitlog/gitlog.js"},
+		Outfile: path.Join(*outDir,
+			"htdocs", "assets", "js", "gitlog.js"),
+		Bundle:            true,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		Write:             true,
+		LogLevel:          api.LogLevelInfo,
+	})
+
+	if len(result.Errors) > 0 {
+		os.Exit(1)
+	}
+
 	// minify CSS
 	result = api.Build(api.BuildOptions{
 		EntryPoints:       []string{"web/htdocs/assets/css/codesearch.css"},
@@ -42,6 +59,22 @@ func main() {
 		MinifySyntax:      true,
 		Outfile: path.Join(*outDir,
 			"htdocs", "assets", "css", "codesearch.min.css"),
+		LogLevel: api.LogLevelInfo,
+		Write:    true,
+	})
+
+	if len(result.Errors) > 0 {
+		os.Exit(1)
+	}
+
+	result = api.Build(api.BuildOptions{
+		EntryPoints:       []string{"web/htdocs/assets/css/gitlog.css"},
+		Bundle:            true,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		Outfile: path.Join(*outDir,
+			"htdocs", "assets", "css", "gitlog.min.css"),
 		LogLevel: api.LogLevelInfo,
 		Write:    true,
 	})

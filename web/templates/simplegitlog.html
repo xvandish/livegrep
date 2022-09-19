@@ -2,59 +2,8 @@
 <html>
 <head>
   <title>Git log</title>
-<style>
-#log-table tr {
-    display: grid;
-    grid-template-columns: 100px 200px 200px 1fr;
-    justify-content: flex-start;
-    text-align: left;
-    border-bottom: 1px solid rgba(0,0,0,0.12); /* hairline color from cs.opensource.google */
-}
-
-#log-table tr:hover {
-    background-color: #FAFAFA;
-}
-
-#log-table th, td {
-    padding: 10px;
-}
-
-#log-table .expanded-row-content {
-    border-top: none;
-    display: grid;
-    grid-column: 1/-1;
-    justify-content: flex-start;
-    font-size: 11px;
-    font-family: monospace;
-}
-
-#log-table .hide-row {
-    display: none;
-}
-
-#log-table .hidden-text-expander {
-    position: relative;
-    top: -1px;
-    display: inline-block;
-    margin-left: 5px;
-    line-height: 0;
-}
-
-#log-table .ellipses-expander {
-    display: inline-block;
-    height: 12px;
-    padding: 0 5px 5px;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 6px;
-    text-decoration: none;
-    vertical-align: middle;
-    background: rgba(175,184,193,0.2);
-    border: 0;
-    border-radius: 1px;
-}
-
-</style>
+  {{linkTag .Nonce "stylesheet" "/assets/css/gitlog.min.css" .AssetHashes}}
+  {{scriptTag .Nonce "/assets/js/gitlog.js" .AssetHashes}}
 </head>
 <!-- we don't include anything but the table for pagination reqs -->
 <!-- although at this point we should just make a seperet template lmao -->
@@ -65,118 +14,14 @@
 <section class="simple-git-log">
 {{ with .Data }}
 
+{{ template "gitlogtable" . }}
 
-<table id="log-table">
-  {{ if not .IsPaginationReq }}
-  <thead>
-    <tr>
-      <th>Short Hash</th>
-      <th>Author</th>
-      <th>Commit Date</th>
-      <th>Subject</th>
-    </tr>
-  </thead>
-  {{ end }}
-  <tbody>
-    {{range $commit := .Commits }}
-      <tr>
-        <td>{{$commit.ShortHash}}</td>
-        <td>{{$commit.AuthorName}}</td>
-        <td>{{$commit.Date}}</td>
-        <td>
-          <span>
-          {{$commit.Subject}}
-          </span>
-          {{ if ne $commit.Body "" }}
-            <span class="hidden-text-expander">
-              <button type="button" class="ellipses-expander" data-action="expandText">…</button>
-            </span>
-          {{ end }}
-        </td>
-        {{ if ne $commit.Body "" }}
-        <td class='expanded-row-content hide-row'>
-          <pre>{{$commit.Body}}</pre>
-        </td>
-        {{ end }}
-      </tr>
-    {{ end }}
-  </tbody>
-</table>
 {{ if not .IsPaginationReq }}
   {{ if not .MaybeLastPage }}
   <button type="button" id="next-page-fetcher" data-action="getNextPage" value={{ .NextParent }}>Load More</button>
   {{ end }}
 {{ end }}
 
-{{ if not .IsPaginationReq }}
-<script>
-  const functionMap = {
-    "expandText": expandText,
-    "getNextPage": getNextCommits
-  };
-
-  const loadMoreBtn = document.getElementById('next-page-fetcher');
-
-  // we can request a server-rendered-page and then embed-the html that
-  // comes back.
-  // how do we deal with the next button? replace it on every-render so
-  // that its state is correct?
-  async function getNextCommits(event) {
-    loadMoreBtn.disabled = true; // don't allow a click while one in flight
-
-    // we need to get the hash of the currently displayed last commit
-    // it would be nice if something computed it for us. 
-    const new_url = new URL(window.location.href);
-    new_url.searchParams.set('firstParent', event.target.value);
-    new_url.searchParams.set('partial', 'true');
-
-    let enableBtn = false;
-    var resp = await fetch(new_url)
-        .then((r) => {
-          const nextParent = r.headers.get("X-next-parent");
-          enableBtn = r.headers.get("X-maybe-last") === "false";  
-          loadMoreBtn.value = nextParent;
-          
-          return r.text();  
-         })
-        .then((html) => {
-          console.log({ html });
-          loadMoreBtn.insertAdjacentHTML("beforebegin", html);
-        });
-
-    if (enableBtn) {
-      loadMoreBtn.disabled = false;
-    }
-  }
-
-  function expandText(event) {
-    // Get the row that triggered this click
-    const row = event.target.closest('tr');
-    row.querySelector('.expanded-row-content').classList.toggle('hide-row');
-  }
-
-  function dealWithClick(event) {
-    if (event.target.tagName != "BUTTON") {
-        return
-    }
-
-    functionMap[event.target.dataset.action](event);
-  }
-
-  // We use a global handler, since we dynamically add commit-rows on
-  // pagination
-  document.addEventListener('click', function(e) {
-    if (event.target.getAttribute('data-action') != "expandText") {
-        return;
-    }
-
-    expandText(e);
-  });
-
-  document.getElementById('next-page-fetcher').addEventListener('click', dealWithClick, false);
-</script>
-
-{{ end }}
 {{end}}
 <section/>
 </body>
