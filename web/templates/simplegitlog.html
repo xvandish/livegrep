@@ -1,12 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Git log</title>
-  {{linkTag .Nonce "stylesheet" "/assets/css/gitlog.min.css" .AssetHashes}}
-  {{scriptTag .Nonce "/assets/js/gitlog.js" .AssetHashes}}
-</head>
-<body>
+{{template "layout" .}}
+
+{{define "body"}}
 <!-- start with table, move to divs with <flex if useful -->
+<section class="">
+  <header class="sticky-header">
+    <nav class="header-title">
+      {{$repo := .Data.Repo.Name}}
+      <a href="/delve/{{ $repo }}/tree/HEAD/" class="path-segment repo">{{$repo}}</a>
+      {{range $i, $e := .Data.PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+    </nav>
+  </header>
+</section>
 <section class="simple-git-log">
   {{ with .Data }}
 
@@ -19,5 +23,4 @@
 
   {{end}}
 <section/>
-</body>
-</html>
+{{end}}

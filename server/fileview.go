@@ -288,6 +288,21 @@ type SimpleGitLog struct {
 	IsPaginationReq  bool
 	NextParent       string // hash of the commit
 	CommitLinkPrefix string // like xvandish/livegrep xvandish=parent livegrep=repo
+	Repo             config.RepoConfig
+	PathSegments     []breadCrumbEntry
+}
+
+func getPathSegments(pathSplits []string, repo config.RepoConfig) []breadCrumbEntry {
+	segments := make([]breadCrumbEntry, len(pathSplits))
+	for i, name := range pathSplits {
+		parentPath := path.Clean(strings.Join(pathSplits[0:i], "/"))
+		segments[i] = breadCrumbEntry{
+			Name: name,
+			Path: getFileUrl(repo.Name, parentPath, name, true),
+		}
+	}
+
+	return segments
 }
 
 // We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
@@ -328,6 +343,8 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	simpleGitLog.MaybeLastPage = len(simpleGitLog.Commits) < 1000
 	simpleGitLog.IsPaginationReq = firstParent != "HEAD"
 	simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
+	simpleGitLog.Repo = repo
+	simpleGitLog.PathSegments = getPathSegments(strings.Split(cleanPath, "/"), repo)
 
 	return &simpleGitLog, nil
 }
@@ -373,6 +390,7 @@ type GitShow struct {
 	Commit   *Commit // basic commit info
 	Diffs    []*Diff
 	DiffStat *DiffStat
+	Repo     config.RepoConfig
 }
 
 // var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ai%nbody %b"
@@ -597,6 +615,7 @@ func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 
 	gitShow.DiffStat = &diffStat
 	gitShow.Commit = &gitCommit
+	gitShow.Repo = repo
 
 	return &gitShow, nil
 }

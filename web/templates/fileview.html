@@ -3,10 +3,10 @@
 {{define "body"}}
 {{with .Data}}
 <section class="file-viewer">
-  <header class="header">
+  <header class="sticky-header">
     <nav class="header-title">
       {{$repo := .Repo.Name}}
-      <a href="/delve/{{$repo}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
+      <a href="/delve/{{$repo}}/tree/{{.Commit}}/" class="path-segment repo" title="Repository: {{$repo}}">{{$repo}}</a>:
       {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
     </nav>
     <ul class="header-actions without-selection">
@@ -20,7 +20,7 @@
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
       </li>,
       <li class="header-action">
-        <a id="commit-history" data-action-name="" title="View commit history at. Keyboard shortcut: l" href="{{.LogLink}}">commits [<span class='shortcut'>l</span>]</a>
+        <a id="commit-history" data-action-name="" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">history [<span class='shortcut'>h</span>]</a>
       </li>,
       {{if .Permalink}}
       <li class="header-action">
@@ -84,7 +84,7 @@
         <li>Shift + click a second line number to highlight a range</li>
         <li>Press <kbd class="keyboard-shortcut">/</kbd> to start a new search</li>
         <li>Press <kbd class="keyboard-shortcut">b</kbd> to see which authors wrote which lines</li>
-        <li>Press <kbd class="keyboard-shortcut">l</kbd> to see the commit log for this file</li>
+        <li>Press <kbd class="keyboard-shortcut">h</kbd> to see the commit history for this file</li>
         <li>Press <kbd class="keyboard-shortcut">v</kbd> to view this file/directory at {{.ExternalDomain}}</li>
         <li>Press <kbd class="keyboard-shortcut">y</kbd> to create a permalink to this version of this file</li>
         <li>Select some text and press <kbd class="keyboard-shortcut">/</kbd> to search for that text</li>

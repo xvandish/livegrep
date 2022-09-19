@@ -1,31 +1,14 @@
-<!-- this template will show detailed information about a commit -->
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Git show</title>
+{{ template "layout" .}}
 
-<style>
-.body {
-  font-size: 1rem;
-}
-.diff-data span[data-line-type="insert"] {
-    color: green;
-}
-
-.diff-data span[data-line-type="delete"] {
-    color: red;
-}
-
-.green {
-  color: green;
-}
-
-.red {
-  color: red;
-}
-</style>
-</head>
-<body>
+{{ define "body" }}
+<section class="">
+  <header class="sticky-header">
+    <nav class="header-title">
+      {{$repo := .Data.Repo.Name}}
+      <a href="/delve/{{ $repo }}/tree/HEAD/" class="path-segment repo">{{$repo}}</a>
+    </nav>
+  </header>
+</section>
 <section class="git-show">
   {{ with .Data }}
 
@@ -96,5 +79,4 @@
 
   {{end}}
 <section/>
-</body>
-</html>
+{{ end }}

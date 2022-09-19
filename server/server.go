@@ -162,25 +162,11 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	// log.Printf(ctx, "data is: %v\n", data)
-
-	templateName := "gitshowcommit.html"
-	t, ok := s.Templates[templateName]
-	if !ok {
-		log.Printf(ctx, "Error: no template named %v", templateName)
-		return
-	}
-
-	err = t.ExecuteTemplate(w, templateName, struct {
-		Data interface{}
-	}{
-		Data: data,
+	s.renderPage(ctx, w, r, "gitshowcommit.html", &page{
+		Title:         "Git Show",
+		IncludeHeader: false,
+		Data:          data,
 	})
-
-	if err != nil {
-		log.Printf(ctx, "Error rendering %v: %s", templateName, err)
-		return
-	}
 }
 
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -241,6 +227,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 
 	s.renderPage(ctx, w, r, "simplegitlog.html", &page{
 		Title:         "simplegitlog",
+		ScriptName:    "gitlog",
 		IncludeHeader: false,
 		Data:          data,
 	})

@@ -280,7 +280,7 @@ function processKeyEvent(event) {
     if (selectedText) {
       window.find(selectedText, false /* case sensitive */, goBackwards);
     }
-  } else if (String.fromCharCode(event.which) == 'L') {
+  } else if (String.fromCharCode(event.which) == 'H') {
     var logLink = document.getElementById("commit-history");
     logLink.focus();
     window.location = logLink.getAttribute("href");

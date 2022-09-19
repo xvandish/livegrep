@@ -10,12 +10,18 @@ button:hover {
 .simple-git-log {
     max-width: 1300px;
     margin: auto;
+    margin-top: 5rem;
+    margin-bottom: 2rem;
+}
+
+#log-table {
+    margin-bottom: 2rem;
 }
 
 #log-table tr {
     display: grid;
     /* shortHash, name, commitTime, commitMsg */
-    grid-template-columns: 100px 15% 200px 1fr;
+    grid-template-columns: 140px 15% 200px 1fr;
     justify-content: flex-start;
     text-align: left;
     border-bottom: 1px solid rgba(0,0,0,0.12); /* hairline color from cs.opensource.google */
@@ -35,6 +41,10 @@ button:hover {
     grid-column: 1/-1;
     justify-content: flex-start;
     font-size: 14px;
+}
+
+#log-table .expanded-row-content pre {
+    white-space: pre-wrap;
 }
 
 #log-table .hide-row {

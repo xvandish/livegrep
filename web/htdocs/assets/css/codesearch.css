@@ -442,7 +442,7 @@ button:hover {
     font-size: 14px;
 }
 
-.file-viewer .header {
+.sticky-header {
     position: fixed;
     top: 0;
     width: 100%;
@@ -460,15 +460,15 @@ button:hover {
     box-shadow: 0 0 5px rgba(0,0,0,0.15);
 }
 
-.file-viewer .header .repo {
+.sticky-header .repo {
     color: rgba(0, 0, 0, 0.5);
 }
 
-.file-viewer .header .repo:hover {
+.sticky-header .repo:hover {
     color: rgba(0, 0, 0, 1.0);
 }
 
-.file-viewer .header-title {
+.sticky-header .header-title {
     font-size: 13px;
     padding: 0;
     margin: 0 0 5px 0;
@@ -935,9 +935,22 @@ div.example {
     background-color: var(--hover-highlight-color);
 }
 
+
+.simple-git-log {
+    max-width: 1300px;
+    margin: auto;
+    margin-top: 5rem;
+    margin-bottom: 2rem;
+}
+
+#log-table {
+    margin-bottom: 2rem;
+}
+
 #log-table tr {
     display: grid;
-    grid-template-columns: 100px 200px 200px 1fr;
+    /* shortHash, name, commitTime, commitMsg */
+    grid-template-columns: 140px 15% 200px 1fr;
     justify-content: flex-start;
     text-align: left;
     border-bottom: 1px solid rgba(0,0,0,0.12); /* hairline color from cs.opensource.google */
@@ -947,7 +960,11 @@ div.example {
     background-color: #FAFAFA;
 }
 
-#log-table th, td {
+#log-table th {
+    padding: 10px;
+}
+
+#log-table td {
     padding: 10px;
 }
 
@@ -956,8 +973,11 @@ div.example {
     display: grid;
     grid-column: 1/-1;
     justify-content: flex-start;
-    font-size: 11px;
-    font-family: monospace;
+    font-size: 14px;
+}
+
+#log-table .expanded-row-content pre {
+    white-space: pre-wrap;
 }
 
 #log-table .hide-row {
@@ -984,4 +1004,28 @@ div.example {
     background: rgba(175,184,193,0.2);
     border: 0;
     border-radius: 1px;
+}
+
+.diff-data span[data-line-type="insert"] {
+    color: green;
+}
+
+.diff-data span[data-line-type="delete"] {
+    color: red;
+}
+
+.git-show {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 5rem;
+  padding: 10px;
+}
+
+.green {
+  color: green;
+}
+
+.red {
+  color: red;
 }
