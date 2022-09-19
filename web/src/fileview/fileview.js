@@ -264,12 +264,9 @@ function processKeyEvent(event) {
     if (permalinkLink) {
       permalinkLink.focus();
       // get the current url
-      console.log({ commit }); 
       var curr = window.location.href;
-      console.log({ curr });
       var searchingFor = "/blob/"+commit+"/";
       var replacingWith = "/blob/"+commitHash+"/";
-      console.log({ searchingFor, replacingWith });
       curr = curr.replace(searchingFor, replacingWith);
 
       window.location.href = curr;

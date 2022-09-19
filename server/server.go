@@ -186,7 +186,7 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repoName := r.URL.Query().Get(":repo")
-	path := pat.Tail("/view/:parent/:repo/commits/:rev/", r.URL.Path)
+	path := pat.Tail("/delve/:parent/:repo/commits/:rev/", r.URL.Path)
 	firstParent := r.URL.Query().Get("firstParent")
 
 	if firstParent == "" {
@@ -209,7 +209,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
 		return
 	}
-	data.CommitLinkPrefix = "/view/" + parent + "/" + repo
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName + "/"
 
 	if !data.MaybeLastPage {
 		w.Header().Set("X-next-parent", data.NextParent)
@@ -633,10 +633,10 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
-	m.Add("GET", "/delve/:parent/:repo/tree/:rev/:path/", srv.Handler(srv.ServeGitBlob))
-	m.Add("GET", "/delve/:parent/:repo/blob/:rev/:path/", srv.Handler(srv.ServeGitBlob))
-	m.Add("GET", "/view/:parent/:repo/commit/:commitHash/", srv.Handler(srv.ServeGitShow))
-	m.Add("GET", "/delve/:parent/:repo/commits/:rev/:path/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/delve/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlob))
+	m.Add("GET", "/delve/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
+	m.Add("GET", "/delve/:parent/:repo/commit/:commitHash/", srv.Handler(srv.ServeGitShow))
+	m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/delve/", srv.Handler(srv.ServeFile))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
