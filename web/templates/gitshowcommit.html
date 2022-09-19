@@ -1,21 +1,34 @@
 {{ template "layout" .}}
 
 {{ define "body" }}
-<section class="">
+<section class="git-show">
   <header class="sticky-header">
     <nav class="header-title">
       {{$repo := .Data.Repo.Name}}
       <a href="/delve/{{ $repo }}/tree/HEAD/" class="path-segment repo">{{$repo}}</a>
     </nav>
+    <ul class="header-actions">
+      <li class="header-action">
+        <a href="/search">New global search</a> 
+      </li>,
+      <li class="header-action">
+        <a href="/delve/{{$repo}}/commits/HEAD">Back to commit history</a> 
+      </li>
+    </ul>
   </header>
-</section>
-<section class="git-show">
+  <div class="git-show-wrapper">
   {{ with .Data }}
 
   <div class="commit-metadata">
   
     {{ with .Commit }}
       <div>
+      <div class="body-&-subject">
+        <!-- TODO: add emphasis to subject -->
+        <span>{{ .Subject }}</span>
+        <pre>{{ .Body }}</pre>
+      </div>
+
         <div>
           <span>commit </span>
           <a href="../{{ .Hash }}">{{ .Hash }}</a>
@@ -37,16 +50,11 @@
           {{ .Date }}</div>
       </div>
 
-      <div class="body-&-subject">
-        <!-- TODO: add emphasis to subject -->
-        <pre>{{ .Subject }}</pre>
-        <pre>{{ .Body }}</pre>
-      </div>
     {{ end }}
 
     {{ with .DiffStat }}
       <div class="diffstat">
-    
+        <h3>Diffstat</h3>    
         <table>
           <tbody>
             {{ range $sL := .StatLines }}
@@ -69,6 +77,7 @@
 
   </div>
 
+  <hr />
   <div class="diff-data">
     {{ range $diff := .Diffs }}
 <pre id="{{ printf "%s%d" "hunk" $diff.HunkNum }}">
@@ -78,5 +87,6 @@
   </div>
 
   {{end}}
-<section/>
+  </div>
+</section>
 {{ end }}

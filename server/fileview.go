@@ -290,6 +290,7 @@ type SimpleGitLog struct {
 	CommitLinkPrefix string // like xvandish/livegrep xvandish=parent livegrep=repo
 	Repo             config.RepoConfig
 	PathSegments     []breadCrumbEntry
+	Path             string
 }
 
 func getPathSegments(pathSplits []string, repo config.RepoConfig) []breadCrumbEntry {
@@ -345,6 +346,7 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
 	simpleGitLog.Repo = repo
 	simpleGitLog.PathSegments = getPathSegments(strings.Split(cleanPath, "/"), repo)
+	simpleGitLog.Path = cleanPath
 
 	return &simpleGitLog, nil
 }

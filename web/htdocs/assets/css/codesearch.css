@@ -432,12 +432,11 @@ button:hover {
 }
 
 /* File viewer */
-.file-viewer {
+.file-viewer, .git-show, .simple-git-log {
     border-collapse: collapse;
     margin: 0;
     line-height: 1.2;
     width: 100%;
-    overflow: visible; /* Allow code content to overflow */
     font-family: "Menlo", "Consolas", "Monaco", monospace;
     font-size: 14px;
 }
@@ -936,7 +935,7 @@ div.example {
 }
 
 
-.simple-git-log {
+.git-log-wrapper {
     max-width: 1300px;
     margin: auto;
     margin-top: 5rem;
@@ -1014,7 +1013,7 @@ div.example {
     color: red;
 }
 
-.git-show {
+.git-show-wrapper {
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
