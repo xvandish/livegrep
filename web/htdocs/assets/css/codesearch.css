@@ -1027,6 +1027,7 @@ div.example {
     border: 1px solid #eaeaea;
     border-radius: 5px;
     padding: 10px;
+    white-space: pre-wrap;
 }
 
 .git-show-wrapper {
