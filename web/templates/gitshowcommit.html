@@ -81,7 +81,7 @@
   <div class="diff-data">
     {{ range $diff := .Diffs }}
 <pre id="{{ printf "%s%d" "hunk" $diff.HunkNum }}">
-<b>{{ $diff.Header }}</b>{{ range $hL := $diff.HeaderLines }}{{ $hL }}{{ end }}{{ $diff.ChunkLine }}{{ range $line := $diff.Lines }}<span data-line-type="{{ $line.LineType }}">{{ $line.Line }}</span>{{ end }}
+<b><a href="{{ printf "#%s%d" "hunk" $diff.HunkNum }}">#</a> {{ $diff.Header }}</b><div>{{ range $hL := $diff.HeaderLines }}{{ $hL }}{{ end }}{{ $diff.ChunkLine }}{{ range $line := $diff.Lines }}<span data-line-type="{{ $line.LineType }}">{{ $line.Line }}</span>{{ end }}</div>
 </pre>
     {{ end }}
   </div>

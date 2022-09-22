@@ -1026,8 +1026,21 @@ div.example {
 .diff-data pre {
     border: 1px solid #eaeaea;
     border-radius: 5px;
-    padding: 10px;
     white-space: pre-wrap;
+    scroll-margin-top: 4rem; /* this is so hash links aren't hiddent by the stick header */
+}
+
+/* this is where the header is */
+.diff-data pre b {
+    position: sticky;
+    top: 53px !important;
+    padding: 10px;
+    background-color: #f6f8fa;
+    display: flex;
+}
+
+.diff-data pre div {
+    padding: 10px;
 }
 
 .git-show-wrapper {
