@@ -1017,10 +1017,14 @@ div.example {
 
 .diff-data span[data-line-type="insert"] {
     color: green;
+    background-color: #e6ffec;
+    display: block;
 }
 
 .diff-data span[data-line-type="delete"] {
     color: red;
+    background-color: #ffebe9;
+    display: block;
 }
 
 .diff-data pre {
