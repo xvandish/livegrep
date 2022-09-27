@@ -453,6 +453,8 @@ func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 
 		// treat a merge commit as a diff against the first parent
 		"--first-parent",
+
+		"--diff-algorithm=histogram",
 	)
 
 	stdout, err := cmd.StdoutPipe()
