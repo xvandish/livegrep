@@ -94,6 +94,7 @@ void walk_repos(int estimatedReposPerThread) {
 }
 
 DEFINE_string(path, "", "Path containing bare git repos");
+DEFINE_string(line_pat, "", "Search pattern. Can be regex.");
 
 int main(int argc, char **argv) {
     gflags::SetUsageMessage("Usage: " + string(argv[0]) + " <options> REFS");
@@ -199,9 +200,9 @@ void walk_tree(const string& pfx, const string& repopath, git_tree *tree, git_re
 
     for (int i = 0; i < num_entries; ++i) {
         const git_tree_entry *ent = git_tree_entry_byindex(tree, i);
-        /* git_object *obj; */
-        smart_object<git_object> obj;
-        git_tree_entry_to_object(obj, curr_repo, ent);
+        git_object *obj;
+        /* smart_object<git_object> obj; */
+        git_tree_entry_to_object(&obj, curr_repo, ent);
 
         const string path = pfx + git_tree_entry_name(ent);
         if (git_tree_entry_type(ent) == GIT_OBJ_TREE) {
@@ -213,14 +214,14 @@ void walk_tree(const string& pfx, const string& repopath, git_tree *tree, git_re
 
             // TODO: fix the malloc error, I know its something todo with
             // PartialMatch
-            /* const char *data = static_cast<const char*>(git_blob_rawcontent(obj)); */
-            /* StringPiece st_piece = StringPiece(data, git_blob_rawsize(obj)); */
+            const char *data = static_cast<const char*>(git_blob_rawcontent((git_blob*) obj));
+            StringPiece st_piece = StringPiece(data, git_blob_rawsize((git_blob*) obj));
 
-            /* if(RE2::PartialMatch(data, "webpack")) { */
-            /*     fprintf(stderr, "this package.json has 'webpack' in it\n"); */
-            /* } */
+            if(RE2::PartialMatch(st_piece, FLAGS_line_pat)) {
+                fprintf(stderr, "this package.json has '%s' in it\n", FLAGS_line_pat.c_str());
+            }
 
-            /* git_object_free(obj); */
+            git_object_free(obj);
             // read the blob that's stored in obj
             // use RE2 to search it for line_pat
             // options:
