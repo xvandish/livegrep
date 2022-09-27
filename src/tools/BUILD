@@ -63,8 +63,22 @@ cc_binary(
 ) for t in [
     "analyze-re",
     "dump-file",
-    "inspect-index",
+    "inspect-index"
 ]]
+
+cc_binary(
+    name = "search-bare-git-repos",
+    srcs = [
+        "search-bare-git-repos.cc",
+    ],
+    copts = [
+        "-Wno-sign-compare",
+    ],
+    deps = [
+        "//src:codesearch",
+    ],
+)
+
 
 pkg_tar(
     name = "cc_tools",
@@ -75,6 +89,7 @@ pkg_tar(
         ":dump-file",
         ":grpc_server",
         ":inspect-index",
+        ":search-bare-git-repos",
     ],
     package_dir = "bin/",
 )
