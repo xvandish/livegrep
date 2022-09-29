@@ -14,12 +14,24 @@ using std::string;
 using re2::RE2;
 using re2::StringPiece;
 
+
+struct simple_match {
+    string filename;
+    StringPiece line;
+    vector<match_bound> match_bounds;
+    int num_matches;
+};
+
 // file's to search, for now just pacakge.json
 string file_pat = "package.json";
 string line_pat;
+RE2 re2_line_pat("");
 string base_path;
 std::atomic<int> next_repo_to_process_idx_(0);
 std::vector<string> repos_to_walk_;
+
+std::mutex mtx;
+std::vector<simple_match> matches_;
 
 void walk_tree(const string& pfx, const string& repopath, git_tree *tree, git_repository *curr_repo);
 
@@ -91,6 +103,7 @@ void walk_repos(int estimatedReposPerThread) {
 
         idx_to_process = get_next_repo_idx();
     }
+    return;
 }
 
 DEFINE_string(path, "", "Path containing bare git repos");
@@ -144,6 +157,8 @@ int main(int argc, char **argv) {
 
     if (num_threads == 0) {
         walk_repos(repos_to_walk_.size());
+        fprintf(stderr, "    done.\n");
+        fprintf(stdout, "found %d matches\n", matches_.size());
         return 0;
     }
 
@@ -158,6 +173,7 @@ int main(int argc, char **argv) {
         it->join();
     }
     fprintf(stderr, "    done.\n");
+    fprintf(stdout, "found %d matches\n", matches_.size());
     // now, spin up x threads. Each thread will take a subset of the
     // repos_to_walk, and work in its piece. No work sharing for now. 
 
@@ -194,7 +210,71 @@ bool is_package_json(string file_name) {
     return true;
 }
 
+#ifdef __APPLE__
+/*
+ * Reverse memchr()
+ * Find the last occurrence of 'c' in the buffer 's' of size 'n'.
+ */
+void *
+memrchr(const void *s,
+        int c,
+        size_t n)
+{
+    const unsigned char *cp;
+
+    if (n != 0) {
+	cp = (unsigned char *)s + n;
+	do {
+	    if (*(--cp) == (unsigned char)c)
+		return (void *)cp;
+	} while (--n != 0);
+    }
+    return (void *)0;
+}
+#endif
+
+StringPiece find_line(const StringPiece& chunk, const StringPiece& match) {
+    const char *start, *end;
+    assert(match.data() >= chunk.data());
+    assert(match.data() <= chunk.data() + chunk.size());
+    assert(match.size() <= (chunk.size() - (match.data() - chunk.data())));
+    start = static_cast<const char*>
+        (memrchr(chunk.data(), '\n', match.data() - chunk.data()));
+    if (start == NULL)
+        start = chunk.data();
+    else
+        start++;
+    end = static_cast<const char*>
+        (memchr(match.data() + match.size(), '\n',
+                chunk.size() - (match.data() - chunk.data()) - match.size()));
+    if (end == NULL)
+        end = chunk.data() + chunk.size();
+    return StringPiece(start, end - start);
+}
+
+// Given a line that contains a match, find the line number within `chunk`
+int get_lno(const StringPiece& chunk, const StringPiece& line) {
+    // Should just be able to just count the number of newlines going backwards
+    int lineNum = 1;
+    const char *start;
+
+    start = static_cast<const char*> (memrchr(chunk.data(), '\n', line.data() - chunk.data()));
+
+    // how do 
+    while (start != NULL) {
+        lineNum += 1;
+
+        start = static_cast<const char*> (memrchr(chunk.data(), '\n', start - 1 - chunk.data()));
+    }
+
+    return lineNum;
+}
+
 void walk_tree(const string& pfx, const string& repopath, git_tree *tree, git_repository *curr_repo) {
+
+    RE2::Options opts;
+    opts.set_case_sensitive(false);
+    RE2 re2_line_pat(FLAGS_line_pat, opts);
 
     int num_entries = git_tree_entrycount(tree);
 
@@ -212,14 +292,56 @@ void walk_tree(const string& pfx, const string& repopath, git_tree *tree, git_re
         } else if (git_tree_entry_type(ent) == GIT_OBJ_BLOB && is_package_json(path)) {
             fprintf(stderr, "found package.json at %s in repo=%s!\n", path.c_str(), repopath.c_str());
 
-            // TODO: fix the malloc error, I know its something todo with
-            // PartialMatch
             const char *data = static_cast<const char*>(git_blob_rawcontent((git_blob*) obj));
-            StringPiece st_piece = StringPiece(data, git_blob_rawsize((git_blob*) obj));
+            StringPiece blob_data = StringPiece(data, git_blob_rawsize((git_blob*) obj));
+            StringPiece match;
 
-            if(RE2::PartialMatch(st_piece, FLAGS_line_pat)) {
-                fprintf(stderr, "this package.json has '%s' in it\n", FLAGS_line_pat.c_str());
+            if (re2_line_pat.Match(blob_data, 0, blob_data.length(), RE2::UNANCHORED, &match, 1)) {
+                int matchleft = match.data() - blob_data.data();
+                int matchright = matchleft + match.length();
+                /* int matchleft = utf8::distance(line.data(), match.data()); */
+                /* int matchright = matchleft + utf8::distance(match.data(), match.data() + match.size()); */
+                fprintf(stderr, "match=%s i=%d left=%d right=%d\n", match.ToString().c_str(), i, matchleft, matchright);
+
+                // find the line containing this match
+                StringPiece match_line = find_line(blob_data, match);
+                fprintf(stderr, "line is: %s\n", match_line.ToString().c_str());
+
+                // now, get the line number for the line.
+                int lno = get_lno(blob_data, match_line);
+                fprintf(stderr, "lno=%d\n", lno);
+
+                simple_match sm;
+                match_bound mb;
+                mb.matchleft = matchleft;
+                mb.matchright = matchright;
+                
+                sm.match_bounds.push_back(mb);
+                sm.line = match_line;
+                sm.filename = path;
+                
+                // TODO: do a while loop to count multiple matches per file
+
+
+    /* string filename; */
+    /* StringPiece line; */
+    /* vector<match_bound> match_bounds; */
+    /* int num_matches; */
+
+                // TODO: get backwards and forwards context... probably
+                // unnecessary
+                //
+
+                mtx.lock();
+                matches_.push_back(sm);
+                mtx.unlock();
             }
+
+
+
+            /* if(RE2::PartialMatch(st_piece, FLAGS_line_pat)) { */
+            /*     fprintf(stderr, "this package.json has '%s' in it\n", FLAGS_line_pat.c_str()); */
+            /* } */
 
             git_object_free(obj);
             // read the blob that's stored in obj
