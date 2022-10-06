@@ -31,6 +31,7 @@ message SearchResult {
     repeated string context_after = 6;
     repeated Bounds bounds = 7;
     string line = 8;
+    int64 num_matches = 9;
 }
 
 message FileResult {

@@ -808,6 +808,10 @@ div.example {
     background-color: rgba(255, 234, 170, 0.75);
 }
 
+.cr-header .meta {
+    color: #3d464d;
+}
+
 .code-result .cr-lines {
     padding: 10px;
 }

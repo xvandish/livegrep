@@ -92,6 +92,9 @@
         <span>›</span>
         <a class="path-link" href="/delve/{{$repo}}/blob/{{$commit}}/{{$path}}">{{.Path}}</a>
       </div>
+      <div class="meta">
+        <span>{{.NumMatches}} {{ if gt .NumMatches 1 }}matches{{else}}match{{end}}</span>
+      </div>
     </div>
     <div class="cr-lines">
       {{range $i, $e := .Lines}}
