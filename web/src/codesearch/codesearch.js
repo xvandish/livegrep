@@ -34,24 +34,34 @@ function livePoll() {
 
         var split = text.split(",");
         var status = split[0];
+        var isBackup = split[2] === "1";
+        var prefix = isBackup ? "Backup " : "";
         if (status === "0") {
           // TODO: If the indexTime here is different than what we have in
           // state, then add a "reload" button
 
-          liveDot.dataset.status = "up";
-          liveText.innerText = "Connected. Index age: " + split[1];
+          if (isBackup) {
+            liveDot.dataset.status = "warn";
+          } else {
+            liveDot.dataset.status = "up";
+          }
+
+          liveText.innerText = prefix + "Connected. Index age: " + split[1];
+          if (isBackup) {
+            liveText.innerText = liveText.innerText + ". Queries on the backup index may be slower.";
+          }
         } else {
           var timeDown = split[1];
 
           // https://pkg.go.dev/google.golang.org/grpc@v1.45.0/codes#Code
           if (status === "14") {
-            liveDot.dataset.status = "reloading";
-            liveText.innerText = "Index reloading.. (" + timeDown + ")";
+            liveDot.dataset.status = "down";
+            liveText.innerText = prefix + "Index Unavailable.. (" + timeDown + ")";
             return;
           }
           // Some other unhandled grpc issue
           liveDot.dataset.status = "down";
-          liveText.innerText = "Disconnected. (" + timeDown + ")";
+          liveText.innerText = prefix + "Disconnected. (" + timeDown + ")";
         }
       })
       .catch(function (error) {

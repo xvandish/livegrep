@@ -239,28 +239,25 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		ctx = metadata.AppendToOutgoingContext(ctx, "Request-Id", string(id))
 	}
 
+	// if the backend isn't up... don't bother, try the backup
+	// it's possible backend hasn't been initialized yet (if frontend started and
+	// backend not started yet), so we need a nil check
+	var backendToUse *Backend = backend
 	if !backend.Up.IsUp {
-		// if the backend isn't up... don't bother, try the backup
-		if backend.BackupBackend.Up.IsUp {
-			log.Printf(ctx, "primary down, backup up, querying backup\n")
-			search, err = backend.BackupBackend.Codesearch.Search(
-				ctx, q,
-				grpc.FailFast(false),
-			)
-		} else { // if backup is down, send to the primary anyways
-			log.Printf(ctx, "primary down, backup down, querying primary\n")
-			search, err = backend.Codesearch.Search(
-				ctx, q,
-				grpc.FailFast(false), // wait until its back up, hopefully soon
-			)
+		if backend.BackupBackend != nil && backend.BackupBackend.Up.IsUp {
+			backendToUse = backend.BackupBackend
+			log.Printf(ctx, "primary be=%s down, backup be=%s up, querying backup", backend.Id, backendToUse.Id)
+		} else {
+			log.Printf(ctx, "primary be=%s down, backup be=%s down, querying primary", backend.Id, backendToUse.Id)
 		}
-	} else {
-		log.Printf(ctx, "primary up, querying primary\n")
-		search, err = backend.Codesearch.Search(
-			ctx, q,
-			grpc.FailFast(false),
-		)
 	}
+
+	// So, what should we do here? If we start without an available backend,
+	// should searches go through or should we cancel them?
+	search, err = backendToUse.Codesearch.Search(
+		ctx, q,
+		grpc.FailFast(false),
+	)
 
 	// check the GRPC error
 

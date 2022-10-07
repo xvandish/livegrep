@@ -416,8 +416,16 @@ func (s *server) ServeBackendStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	isBackup := 0
+	if !bk.Up.IsUp {
+		if bk.BackupBackend != nil && bk.BackupBackend.Up.IsUp {
+			bk = bk.BackupBackend
+			isBackup = 1
+		}
+	}
+
 	statusCode, age := bk.getStatus()
-	io.WriteString(w, fmt.Sprintf("%d,%s", statusCode, age))
+	io.WriteString(w, fmt.Sprintf("%d,%s,%d", statusCode, age, isBackup))
 }
 
 func (s *server) requestProtocol(r *http.Request) string {
