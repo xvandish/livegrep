@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/livegrep/livegrep/src/proto/go_proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 
 	"github.com/livegrep/livegrep/server/config"
@@ -38,30 +39,62 @@ type Availability struct {
 }
 
 type Backend struct {
-	Id         string
-	Addr       string
-	I          *I
-	Codesearch pb.CodeSearchClient
-	Up         *Availability
+	Id            string
+	Addr          string
+	I             *I
+	Codesearch    pb.CodeSearchClient
+	Up            *Availability
+	BackupBackend *Backend
 }
 
+// Should I.... have the backup backend be a seperate backend or a nested backend?
+// I think I'm going to tailor it to us
+
+// NewBackend can now be recursively called since BackupBackend can be nested...
+// is this a terrible idea?
 func NewBackend(be config.Backend) (*Backend, error) {
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 	if be.MaxMessageSize == 0 {
 		be.MaxMessageSize = 10 << 20 // default to 10MiB
 	}
-	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(be.MaxMessageSize)))
 
+	// this reconnect continually retries a connection.
+	// This is desirable in our case since we want to reconnect as soon as
+	// possible after a disconnect, since we actually expect several disconnects
+	// per hour that last up to a minute, and sometimes last up to an hour in error
+	// scenarios. The default exponential delay can make it so we don't reconnect
+	// to a previously disconnected index until much after is re-available
+	shortFlatReconnect := grpc.ConnectParams{
+		Backoff: backoff.Config{
+			BaseDelay:  100 * time.Millisecond,
+			Multiplier: 1,
+			Jitter:     1,
+			MaxDelay:   100 * time.Millisecond,
+		},
+		MinConnectTimeout: 100 * time.Millisecond,
+	}
+	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(be.MaxMessageSize)), grpc.WithConnectParams(shortFlatReconnect))
 	client, err := grpc.Dial(be.Addr, opts...)
 	if err != nil {
 		return nil, err
 	}
+
+	var backupBk *Backend
+	if be.BackupBackend != nil && be.BackupBackend.Addr != "" {
+		backupBk, err = NewBackend(*be.BackupBackend)
+		if err != nil {
+			return nil, err
+		}
+		// start the backup polling!
+		backupBk.Start()
+	}
 	bk := &Backend{
-		Id:         be.Id,
-		Addr:       be.Addr,
-		I:          &I{Name: be.Id},
-		Codesearch: pb.NewCodeSearchClient(client),
-		Up:         &Availability{},
+		Id:            be.Id,
+		Addr:          be.Addr,
+		I:             &I{Name: be.Id},
+		Codesearch:    pb.NewCodeSearchClient(client),
+		Up:            &Availability{},
+		BackupBackend: backupBk,
 	}
 	return bk, nil
 }
@@ -141,7 +174,7 @@ func (bk *Backend) updateIndexAge() {
 // This occurs on startup and on codesearch backend reloads
 func (bk *Backend) poll() {
 	for {
-		quickInfo, e := bk.Codesearch.QuickInfo(context.Background(), &pb.Empty{}, grpc.FailFast(true))
+		quickInfo, e := bk.Codesearch.QuickInfo(context.Background(), &pb.Empty{}, grpc.WaitForReady(false))
 		bk.Up.Lock()
 		// If the backend index hash changed out on us, get the detailed info
 		if e == nil {
@@ -160,7 +193,7 @@ func (bk *Backend) poll() {
 			}
 		}
 		bk.Up.Unlock()
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

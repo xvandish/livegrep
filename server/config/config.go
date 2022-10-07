@@ -5,9 +5,10 @@ import (
 )
 
 type Backend struct {
-	Id             string `json:"id"`
-	Addr           string `json:"addr"`
-	MaxMessageSize int    `json:"maxMessageSize"`
+	Id             string   `json:"id"`
+	Addr           string   `json:"addr"`
+	MaxMessageSize int      `json:"maxMessageSize"`
+	BackupBackend  *Backend `json:"backup_addr"`
 }
 
 // For more options - https://pkg.go.dev/gopkg.in/alexcesaro/statsd.v2#pkg-index

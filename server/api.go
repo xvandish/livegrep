@@ -239,10 +239,30 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		ctx = metadata.AppendToOutgoingContext(ctx, "Request-Id", string(id))
 	}
 
-	search, err = backend.Codesearch.Search(
-		ctx, q,
-		grpc.FailFast(false),
-	)
+	if !backend.Up.IsUp {
+		// if the backend isn't up... don't bother, try the backup
+		if backend.BackupBackend.Up.IsUp {
+			log.Printf(ctx, "primary down, backup up, querying backup\n")
+			search, err = backend.BackupBackend.Codesearch.Search(
+				ctx, q,
+				grpc.FailFast(false),
+			)
+		} else { // if backup is down, send to the primary anyways
+			log.Printf(ctx, "primary down, backup down, querying primary\n")
+			search, err = backend.Codesearch.Search(
+				ctx, q,
+				grpc.FailFast(false), // wait until its back up, hopefully soon
+			)
+		}
+	} else {
+		log.Printf(ctx, "primary up, querying primary\n")
+		search, err = backend.Codesearch.Search(
+			ctx, q,
+			grpc.FailFast(false),
+		)
+	}
+
+	// check the GRPC error
 
 	if err != nil {
 		log.Printf(ctx, "error talking to backend err=%s", err)
@@ -403,6 +423,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	return reply, nil
 }
 
+// TODO:(xvandish) Rename this to indicate that if not in query, pick first
 func getBackendFromQuery(s *server, r *http.Request) (string, *Backend) {
 	backendName := r.URL.Query().Get(":backend")
 	var backend *Backend
