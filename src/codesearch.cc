@@ -147,7 +147,6 @@ public:
         if (exit_reason_)
             return;
         if (max_matches_ && matches >= max_matches_) {
-            fprintf(stderr, "setting exit reason: %d > %d\n", matches, max_matches_);
             exit_reason_ = kExitMatchLimit;
         }
     }
