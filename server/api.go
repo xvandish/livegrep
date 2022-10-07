@@ -267,10 +267,12 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	}
 
 	reply := &api.ReplySearchV2{
-		Results:     make([]*api.ResultV2, 0),
-		FileResults: make([]*api.FileResult, 0),
-		TreeResults: make([]*api.TreeResult, 0),
-		SearchType:  "normal",
+		Results:       make([]*api.ResultV2, 0),
+		FileResults:   make([]*api.FileResult, 0),
+		TreeResults:   make([]*api.TreeResult, 0),
+		SearchType:    "normal",
+		IndexAge:      time.Since(time.Unix(search.IndexTime, 0)).Round(time.Minute).String(),
+		BackupIdxUsed: backendToUse.IsBackup,
 	}
 
 	if q.FilenameOnly {

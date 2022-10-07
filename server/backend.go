@@ -45,6 +45,7 @@ type Backend struct {
 	Codesearch    pb.CodeSearchClient
 	Up            *Availability
 	BackupBackend *Backend
+	IsBackup      bool
 }
 
 // Should I.... have the backup backend be a seperate backend or a nested backend?
@@ -82,6 +83,7 @@ func NewBackend(be config.Backend) (*Backend, error) {
 	var backupBk *Backend
 	if be.BackupBackend != nil && be.BackupBackend.Addr != "" {
 		backupBk, err = NewBackend(*be.BackupBackend)
+		backupBk.IsBackup = true
 		if err != nil {
 			return nil, err
 		}
