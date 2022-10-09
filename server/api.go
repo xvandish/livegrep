@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -441,6 +442,31 @@ func getBackendFromQuery(s *server, r *http.Request) (string, *Backend) {
 	return backendName, backend
 }
 
+// we provide users a "show more" link that just multiples the current
+// max_matches value by 3. Being careful not to modify max_matches if
+// it is wrapped in () to escape it
+func getNextPageUrl(searchQ url.Values, q *pb.Query, exitReason string) string {
+	if exitReason == "NONE" {
+		return ""
+	}
+
+	currQuery := searchQ.Get("q")
+	newQuery := ""
+	nextMaxMatches := int(q.MaxMatches) * 3
+
+	// if the ` max_matches:` string already exists, replace its value
+	if strings.Contains(currQuery, " max_matches:") {
+		newQuery = strings.Replace(currQuery, fmt.Sprintf(" max_matches:%d", q.MaxMatches), fmt.Sprintf(" max_matches:%d", nextMaxMatches), 1)
+
+	} else {
+		newQuery = fmt.Sprintf("%s max_matches:%d", currQuery, nextMaxMatches)
+	}
+
+	searchQ.Set("q", newQuery)
+
+	return "?" + searchQ.Encode()
+}
+
 // This function is internal to the app and not exposed.
 // It is used to perform a search, and those results are then rendered to HTML
 func (s *server) ServerSideAPISearchV2(ctx context.Context, w http.ResponseWriter, r *http.Request) (reply *api.ReplySearchV2, errCode int, errorMsg string, errorMsgLong string) {
@@ -476,6 +502,8 @@ func (s *server) ServerSideAPISearchV2(ctx context.Context, w http.ResponseWrite
 		errCode, errorMsg, errorMsgLong = getQueryError(err)
 		return nil, errCode, errorMsg, errorMsgLong
 	}
+
+	reply.NextUrl = getNextPageUrl(r.URL.Query(), &q, reply.Info.ExitReason)
 
 	if s.statsd != nil {
 		s.statsd.Increment("api.search.v2.invocations")
