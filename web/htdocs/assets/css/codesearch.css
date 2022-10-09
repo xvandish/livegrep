@@ -432,17 +432,16 @@ button:hover {
 }
 
 /* File viewer */
-.file-viewer {
+.file-viewer, .git-show, .simple-git-log {
     border-collapse: collapse;
     margin: 0;
     line-height: 1.2;
     width: 100%;
-    overflow: visible; /* Allow code content to overflow */
     font-family: "Menlo", "Consolas", "Monaco", monospace;
     font-size: 14px;
 }
 
-.file-viewer .header {
+.sticky-header {
     position: fixed;
     top: 0;
     width: 100%;
@@ -460,15 +459,19 @@ button:hover {
     box-shadow: 0 0 5px rgba(0,0,0,0.15);
 }
 
-.file-viewer .header .repo {
+.sticky-header .repo {
     color: rgba(0, 0, 0, 0.5);
 }
 
-.file-viewer .header .repo:hover {
+.sticky-header .repo:hover {
     color: rgba(0, 0, 0, 1.0);
 }
 
-.file-viewer .header-title {
+.sticky-header .ch {
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.sticky-header .header-title {
     font-size: 13px;
     padding: 0;
     margin: 0 0 5px 0;
@@ -588,6 +591,11 @@ button:hover {
 .header-action .shortcut {
     font-weight: bolder;
     text-decoration: underline;
+}
+
+.header-action.new a {
+    color: #de035e;
+    font-weight: bold;
 }
 /* END */
 
@@ -800,6 +808,10 @@ div.example {
     background-color: rgba(255, 234, 170, 0.75);
 }
 
+.cr-header .meta {
+    color: #3d464d;
+}
+
 .code-result .cr-lines {
     padding: 10px;
 }
@@ -933,4 +945,124 @@ div.example {
 .select-with-icon-container select:hover {
     cursor: pointer;
     background-color: var(--hover-highlight-color);
+}
+
+
+.git-log-wrapper {
+    max-width: 1300px;
+    margin: auto;
+    margin-top: 5rem;
+    margin-bottom: 2rem;
+}
+
+#log-table {
+    margin-bottom: 2rem;
+    width: 100%;
+}
+
+#log-table tr {
+    display: grid;
+    /* shortHash, name, commitTime, commitMsg */
+    grid-template-columns: 140px 15% 200px 500px 1fr;
+    justify-content: flex-start;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,0,0,0.12); /* hairline color from cs.opensource.google */
+}
+
+#log-table tr:hover {
+    background-color: #FAFAFA;
+}
+
+#log-table th {
+    padding: 10px;
+}
+
+#log-table td {
+    padding: 10px;
+}
+
+#log-table .expanded-row-content {
+    border-top: none;
+    display: grid;
+    grid-column: 1/-1;
+    justify-content: flex-start;
+    font-size: 14px;
+}
+
+#log-table .expanded-row-content pre {
+    white-space: pre-wrap;
+}
+
+#log-table .hide-row {
+    display: none;
+}
+
+#log-table .hidden-text-expander {
+    position: relative;
+    top: -1px;
+    display: inline-block;
+    margin-left: 5px;
+    line-height: 0;
+}
+
+#log-table .ellipses-expander {
+    display: inline-block;
+    height: 12px;
+    padding: 0 5px 5px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 6px;
+    text-decoration: none;
+    vertical-align: middle;
+    background: rgba(175,184,193,0.2);
+    border: 0;
+    border-radius: 1px;
+}
+
+.diff-data span[data-line-type="insert"] {
+    color: green;
+    background-color: #e6ffec;
+    display: block;
+}
+
+.diff-data span[data-line-type="delete"] {
+    color: red;
+    background-color: #ffebe9;
+    display: block;
+}
+
+.diff-data pre {
+    border: 1px solid #eaeaea;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    scroll-margin-top: 4rem; /* this is so hash links aren't hiddent by the stick header */
+}
+
+/* this is where the header is */
+.diff-data pre b {
+    position: sticky;
+    top: 53px !important;
+    padding: 10px;
+    background-color: #f6f8fa;
+    display: flex;
+}
+
+.diff-data pre div {
+    padding: 10px;
+}
+
+.git-show-wrapper {
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 5rem;
+  padding: 10px;
+}
+
+.green {
+  color: green;
+}
+
+.red {
+  color: red;
 }

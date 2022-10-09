@@ -1,0 +1,42 @@
+{{ define "gitlogtable" }}
+<table id="log-table">
+  {{ if not .IsPaginationReq }}
+  <thead>
+    <tr>
+      <th>Short Hash</th>
+      <th>Author</th>
+      <th>Commit Date</th>
+      <th>Subject</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  {{ end }}
+  <tbody>
+    {{range $commit := .Commits }}
+      <tr>
+        <td><a href="{{$.CommitLinkPrefix}}/commit/{{$commit.Hash}}">{{$commit.ShortHash}}</a></td>
+        <td>{{$commit.AuthorName}}</td>
+        <td>{{$commit.Date}}</td>
+        <td>
+          <span>
+          {{$commit.Subject}}
+          </span>
+          {{ if ne $commit.Body "" }}
+            <span class="hidden-text-expander">
+              <button type="button" class="ellipses-expander" data-action="expandText">…</button>
+            </span>
+          {{ end }}
+        </td>
+        <td>
+          <a href="{{$.CommitLinkPrefix}}/blob/{{$commit.Hash}}/{{$.Path}}/" title="View this file at this commit">View file</a>
+        </td>
+        {{ if ne $commit.Body "" }}
+        <td class='expanded-row-content hide-row'>
+          <pre>{{$commit.Body}}</pre>
+        </td>
+        {{ end }}
+      </tr>
+    {{ end }}
+  </tbody>
+</table>
+{{ end }}

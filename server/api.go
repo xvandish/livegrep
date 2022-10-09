@@ -276,8 +276,10 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 				Version:      r.Version,
 				Path:         r.Path,
 				ContextLines: make(map[int]*api.ResultLine),
+				NumMatches:   0,
 			}
 		}
+		existingResult.NumMatches += int(r.NumMatches)
 
 		var contextLinesInit []string
 		contextLinesInit = append(contextLinesInit, reverse(r.ContextBefore)...)

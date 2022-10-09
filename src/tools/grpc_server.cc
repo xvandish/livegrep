@@ -193,6 +193,7 @@ public:
         result->set_version(m->file->tree->version);
         result->set_path(m->file->path);
         result->set_line_number(m->lno);
+        result->set_num_matches(m->num_matches);
         for (auto &piece : m->context_before) {
             insert_string_back(result->mutable_context_before(), piece);
         }

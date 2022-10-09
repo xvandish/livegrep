@@ -42,6 +42,7 @@ type server struct {
 	bk          map[string]*Backend
 	bkOrder     []string
 	repos       map[string]config.RepoConfig
+	newRepos    map[string]map[string]config.RepoConfig
 	inner       http.Handler
 	Templates   map[string]*template.Template
 	OpenSearch  *texttemplate.Template
@@ -123,8 +124,183 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 	})
 }
 
+func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// repoName, filePath, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/git-show/")
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	commit := r.URL.Query().Get(":commitHash")
+	repoName := parent + "/" + repo
+	// rev := r.URL.Query().Get(":rev")
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repoConfig, ok := s.repos[repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	// given /git-show/repo/some/path/here/commit/{commitHash}
+	// TODO: We should think about restructuring the URL patterns so that
+	// our modifiers come after.
+	// E.g
+	// /repo/some/path/commit/x
+	// /repo/some/path/log
+
+	if commit == "" {
+		http.Error(w, "commit is empty", 500)
+		return
+	}
+
+	data, err := gitShowCommit(repoConfig, commit)
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error doing git-show: %v\n", err), 500)
+		return
+	}
+
+	s.renderPage(ctx, w, r, "gitshowcommit.html", &page{
+		Title:         "Git Show",
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
+func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	path := pat.Tail("/delve/:parent/:repo/commits/:rev/", r.URL.Path)
+	firstParent := r.URL.Query().Get("firstParent")
+
+	if firstParent == "" {
+		firstParent = "HEAD"
+	}
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[parent+"/"+repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := buildSimpleGitLogData(path, firstParent, repo)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
+		return
+	}
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName + "/"
+
+	if !data.MaybeLastPage {
+		w.Header().Set("X-next-parent", data.NextParent)
+		w.Header().Set("X-maybe-last", fmt.Sprintf("%v", data.MaybeLastPage))
+	}
+
+	// we render a partial page rather than the whole thing
+	// eventually we'll probably want this as a seperate route
+	if r.URL.Query().Get("partial") == "true" {
+		templateName := "simplegitlogpaginated.html"
+		t, ok := s.Templates[templateName]
+		if !ok {
+			log.Printf(ctx, "Error: no template named %v", templateName)
+			return
+		}
+
+		err := t.ExecuteTemplate(w, templateName, struct {
+			Data interface{}
+		}{
+			Data: data,
+		})
+
+		if err != nil {
+			log.Printf(ctx, "Error rendering %v: %s", templateName, err)
+			return
+		}
+		return
+	}
+
+	s.renderPage(ctx, w, r, "simplegitlog.html", &page{
+		Title:         "simplegitlog",
+		ScriptName:    "gitlog",
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
+func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	// start := time.Now()
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	// m.Add("GET", "/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
+	fmt.Printf("r.URL.Path=%s\n", r.URL.Path)
+
+	// TODO(xvandish): this is temporary. Soon we can split out blob and directory code all the way
+	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
+	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
+	// "ServeGitBlob" function works for both entitites
+	path := ""
+	if strings.HasPrefix(r.URL.Path, "/delve/"+parent+"/"+repo+"/tree/") {
+		path = pat.Tail("/delve/:parent/:repo/tree/:rev/", r.URL.Path)
+	} else {
+		path = pat.Tail("/delve/:parent/:repo/blob/:rev/", r.URL.Path)
+	}
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	data, err := buildFileData(path, repoConfig, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+	// We build this carefully increase /blob/ is in the path to the file that
+	// we're actually viewing
+	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
+	// if we were going to permalink, make it what we want
+	// TODO(xvandish): do this in fileview.go
+	if data.Permalink != "" {
+		data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+	} else if data.Headlink != "" {
+		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
+	}
+
+	script_data := &struct {
+		RepoInfo   config.RepoConfig `json:"repo_info"`
+		FilePath   string            `json:"file_path"`
+		Commit     string            `json:"commit"`
+		CommitHash string            `json:"commit_hash"`
+	}{repoConfig, path, rev, data.CommitHash}
+
+	s.renderPage(ctx, w, r, "fileview.html", &page{
+		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
+		ScriptName:    "fileview",
+		ScriptData:    script_data,
+		IncludeHeader: false,
+		Data:          data,
+	})
+
+}
+
 func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path)
+	repoName, path, err := getRepoPathFromURL(s.serveFilePathRegex, r.URL.Path, "/view/")
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -355,9 +531,10 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 
 func New(cfg *config.Config) (http.Handler, error) {
 	srv := &server{
-		config: cfg,
-		bk:     make(map[string]*Backend),
-		repos:  make(map[string]config.RepoConfig),
+		config:   cfg,
+		bk:       make(map[string]*Backend),
+		repos:    make(map[string]config.RepoConfig),
+		newRepos: make(map[string]map[string]config.RepoConfig),
 	}
 	srv.loadTemplates()
 
@@ -413,6 +590,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 
 	serveFilePathRegex, err := buildRepoRegex(repoNames)
+	buildReposAndParents(srv, repoNames)
 	if err != nil {
 		return nil, err
 	}
@@ -425,10 +603,34 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/search/:backend", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/search/", srv.Handler(srv.ServeSearch))
 	m.Add("GET", "/view/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/delve/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlob))
+	m.Add("GET", "/delve/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
+	m.Add("GET", "/delve/:parent/:repo/commit/:commitHash/", srv.Handler(srv.ServeGitShow))
+	m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/delve/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
+
+	// no matter what, the structure of urls for repos is
+	// /project|user|org/repo
+	//
+	// For directories
+	// /org/repo/tree/{commitHash}|{branchName}/path...
+	//
+	// For blobs
+	// /org/repo/blob/{commitHash}|{branchName}/path...
+	//
+	// GitLab uses a seperator /-/tree/main between the reponame and the tree/blob
+
+	// we can loop through repos to get the allowed prefixes, and the allowed suffixes
+	// we can make it a map
+	// {
+	//    "parent": ["repo1", "repo2", "repo3" ]
+	//  }
 
 	m.Add("GET", "/api/v1/search/:backend", srv.Handler(srv.ServeAPISearch))
 	m.Add("GET", "/api/v1/search/", srv.Handler(srv.ServeAPISearch))
@@ -451,6 +653,23 @@ func New(cfg *config.Config) (http.Handler, error) {
 	srv.inner = mux
 
 	return srv, nil
+}
+
+func buildReposAndParents(srv *server, repoNames []string) {
+	parents := make(map[string]map[string]config.RepoConfig)
+	for _, parentAndRepo := range repoNames {
+		firstSlash := strings.Index(parentAndRepo, "/")
+		parent := parentAndRepo[:firstSlash]
+		if len(parents[parent]) == 0 {
+			parents[parent] = make(map[string]config.RepoConfig)
+		}
+		onlyRepoName := parentAndRepo[firstSlash+1:]
+
+		// fmt.Printf("srv.repos[%s]: %+v\n", parentAndRepo, srv.repos[parentAndRepo])
+		parents[parent][onlyRepoName] = srv.repos[parentAndRepo]
+	}
+
+	srv.newRepos = parents
 }
 
 func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {
@@ -476,8 +695,8 @@ func buildRepoRegex(repoNames []string) (*regexp.Regexp, error) {
 	return repoFileRegex, nil
 }
 
-func getRepoPathFromURL(repoRegex *regexp.Regexp, url string) (repo string, path string, err error) {
-	matches := repoRegex.FindStringSubmatch(pat.Tail("/view/", url))
+func getRepoPathFromURL(repoRegex *regexp.Regexp, url, pathPrefix string) (repo string, path string, err error) {
+	matches := repoRegex.FindStringSubmatch(pat.Tail(pathPrefix, url))
 	if len(matches) == 0 {
 		return "", "", serveUrlParseError
 	}

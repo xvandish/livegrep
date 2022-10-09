@@ -1,0 +1,32 @@
+{{template "layout" .}}
+
+{{define "body"}}
+<!-- start with table, move to divs with <flex if useful -->
+<section class="simple-git-log">
+  <header class="sticky-header">
+    <nav class="header-title">
+      {{$repo := .Data.Repo.Name}}
+      <a href="/delve/{{ $repo }}/tree/HEAD/" class="path-segment repo">{{$repo}}</a>
+      {{range $i, $e := .Data.PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+    </nav>
+    <ul class="header-actions">
+      <li class="header-action">
+        <a href="/search">New global search</a> 
+      </li>,
+      <li class="header-action">
+        <!-- TODO(xvandish): Decide whether blob or tree -->
+        <a href="/delve/{{$repo}}/blob/HEAD/{{ .Data.Path }}">Back to browsing</a> 
+      </li>
+    </ul>
+  </header>
+  {{ with .Data }}
+    <div class="git-log-wrapper">
+      {{ template "gitlogtable" . }}
+
+      {{ if not .MaybeLastPage }}
+      <button type="button" id="next-page-fetcher" data-action="getNextPage" value={{ .NextParent }}>Load More</button>
+      {{ end }}
+    </div>
+  {{end}}
+</section>
+{{end}}

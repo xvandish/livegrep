@@ -1,0 +1,92 @@
+{{ template "layout" .}}
+
+{{ define "body" }}
+<section class="git-show">
+  <header class="sticky-header">
+    <nav class="header-title">
+      {{$repo := .Data.Repo.Name}}
+      <a href="/delve/{{ $repo }}/tree/HEAD/" class="path-segment repo">{{$repo}}</a>
+    </nav>
+    <ul class="header-actions">
+      <li class="header-action">
+        <a href="/search">New global search</a> 
+      </li>,
+      <li class="header-action">
+        <a href="/delve/{{$repo}}/commits/HEAD">Back to commit history</a> 
+      </li>
+    </ul>
+  </header>
+  <div class="git-show-wrapper">
+  {{ with .Data }}
+
+  <div class="commit-metadata">
+  
+    {{ with .Commit }}
+      <div>
+      <div class="body-&-subject">
+        <!-- TODO: add emphasis to subject -->
+        <span>{{ .Subject }}</span>
+        <pre>{{ .Body }}</pre>
+      </div>
+
+        <div>
+          <span>commit </span>
+          <a href="../{{ .Hash }}">{{ .Hash }}</a>
+        </div>
+        <div>
+          <span>parent(s) </span> 
+          {{ range $ph := .ParentHashes }}
+            <a href="../{{$ph}}">{{ $ph }}</a>
+          {{ end }}
+        </div>
+        <div>
+          <span>Author </span> 
+          <span>{{ .AuthorName }}
+          &lt;<a href="mailto:{{.AuthorEmail}}">{{ .AuthorEmail}}</a>&gt;
+          </span>
+        </div>
+        <div>
+          <span>Date </span> 
+          {{ .Date }}</div>
+      </div>
+
+    {{ end }}
+
+    {{ with .DiffStat }}
+      <div class="diffstat">
+        <h3>Diffstat</h3>    
+        <table>
+          <tbody>
+            {{ range $sL := .StatLines }}
+              <tr>
+                <td><a href="{{ printf "#%s%d" "hunk" $sL.HunkNum }}">{{$sL.Path}}</a></td>
+                <td> | </td>
+                <td>{{$sL.LinesChanged}}</td>
+                <td>
+                  <span class="green">{{$sL.GraphStringPlus}}</span>
+                  <span class="red">{{$sL.GraphStringMinus}}</span>
+                </td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+
+        <span>{{.SummaryLine}}</span>
+      </div>
+    {{ end }}
+
+  </div>
+
+  <hr />
+  <div class="diff-data">
+    {{ range $diff := .Diffs }}
+<pre id="{{ printf "%s%d" "hunk" $diff.HunkNum }}">
+<b><a href="{{ printf "#%s%d" "hunk" $diff.HunkNum }}">#</a> {{ $diff.Header }}</b><div>{{ range $hL := $diff.HeaderLines }}{{ $hL }}{{ end }}{{ $diff.ChunkLine }}{{ range $line := $diff.Lines }}<span data-line-type="{{ $line.LineType }}">{{ $line.Line }}</span>{{ end }}</div>
+</pre>
+    {{ end }}
+  </div>
+
+  {{end}}
+  </div>
+</section>
+{{ end }}

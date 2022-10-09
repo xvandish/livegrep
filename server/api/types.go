@@ -68,6 +68,7 @@ type ResultV2 struct {
 	Lines   []*ResultLine `json:"lines"`
 	// Will never be sent over wire, used to deduplicate
 	ContextLines map[int]*ResultLine `json:"-"`
+	NumMatches   int                 `json:"num_matches"`
 }
 
 type Bounds struct {

@@ -21,9 +21,9 @@
     {{range $i, $e := .Data.FileResults }}
       <div class="cr-header">
         <div class="links">
-          <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+          <a class="repo-link" href="/delve/{{.Tree}}/tree/{{.Version}}">{{.Tree}}</a>
           <span>›</span>
-          <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+          <a class="path-link" href="/delve/{{.Tree}}/blob/{{.Version}}/{{.Path}}">
             {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
                 <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
           </a>
@@ -34,9 +34,9 @@
     {{range $i, $e := getFirstNFiles .Data.FileResults 10 }}
       <div class="cr-header">
         <div class="links">
-          <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+          <a class="repo-link" href="/delve/{{.Tree}}/tree/{{.Version}}/">{{.Tree}}</a>
           <span>›</span>
-          <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+          <a class="path-link" href="/delve/{{.Tree}}/blob/{{.Version}}/{{.Path}}">
             {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
                 <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
           </a>
@@ -49,9 +49,9 @@
       {{range $i, $e := (slice .Data.FileResults 10 )}}
           <div class="cr-header">
             <div class="links">
-              <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+              <a class="repo-link" href="/delve/{{.Tree}}/tree/{{.Version}}/">{{.Tree}}</a>
               <span>›</span>
-              <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">
+              <a class="path-link" href="/delve/{{.Tree}}/blob/{{.Version}}/{{.Path}}">
                 {{ $lineParts := splitCodeLineIntoParts .Path (slice .Bounds) }}
                     <span>{{$lineParts.Prefix}}</span><span class="highlighted">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
               </a>
@@ -70,7 +70,7 @@
 <div class="tree-results">
   {{ range .Data.TreeResults }}
     <div class="treename-match">
-      <a class="label header result-path" href="/view/{{.Name}}/">
+      <a class="label header result-path" href="/delve/{{.Name}}/tree/{{.Version}}/">
       {{ $lineParts := splitCodeLineIntoParts .Name (slice .Bounds) }}
           <span>{{$lineParts.Prefix}}</span><span class="matchstr">{{$lineParts.Highlighted}}</span><span>{{$lineParts.Suffix}}</span>
       </a>
@@ -82,14 +82,18 @@
   {{range .Data.Results}}
   {{$repo := .Tree}}
   {{$path := .Path}}
+  {{$commit := .Version}}
   {{$numLines := len .Lines }}
   {{$lines := .Lines }}
   <div class="code-result">
     <div class="cr-header">
       <div class="links">
-        <a class="repo-link" href="/view/{{.Tree}}/">{{.Tree}}</a>
+        <a class="repo-link" href="/delve/{{$repo}}/tree/{{$commit}}/">{{.Tree}}</a>
         <span>›</span>
-        <a class="path-link" href="/view/{{.Tree}}/{{.Path}}">{{.Path}}</a>
+        <a class="path-link" href="/delve/{{$repo}}/blob/{{$commit}}/{{$path}}">{{.Path}}</a>
+      </div>
+      <div class="meta">
+        <span>{{.NumMatches}} {{ if gt .NumMatches 1 }}matches{{else}}match{{end}}</span>
       </div>
     </div>
     <div class="cr-lines">
@@ -101,7 +105,7 @@
           </div>
         {{ end }}
         <div class="code-line">
-          <a rel="noreferrer noopener" href="/view/{{$repo}}/{{$path}}#L{{.LineNumber}}" class="{{ getLineNumberLinkClass .Bounds }}">
+          <a rel="noreferrer noopener" href="/delve/{{$repo}}/blob/{{$commit}}/{{$path}}#L{{.LineNumber}}" class="{{ getLineNumberLinkClass .Bounds }}">
             {{.LineNumber}} 
           </a>
           <div class="line">

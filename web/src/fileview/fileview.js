@@ -263,7 +263,13 @@ function processKeyEvent(event) {
     var permalinkLink = document.getElementById("permalink");
     if (permalinkLink) {
       permalinkLink.focus();
-      window.location.href = permalinkLink.getAttribute("href"); // .attr('href');
+      // get the current url
+      var curr = window.location.href;
+      var searchingFor = "/blob/"+commit+"/";
+      var replacingWith = "/blob/"+commitHash+"/";
+      curr = curr.replace(searchingFor, replacingWith);
+
+      window.location.href = curr;
     }
   } else if (
     String.fromCharCode(event.which) == "N" ||
@@ -274,6 +280,10 @@ function processKeyEvent(event) {
     if (selectedText) {
       window.find(selectedText, false /* case sensitive */, goBackwards);
     }
+  } else if (String.fromCharCode(event.which) == 'H') {
+    var logLink = document.getElementById("commit-history");
+    logLink.focus();
+    window.location = logLink.getAttribute("href");
   }
   return true;
 }
@@ -324,11 +334,13 @@ var hideSelectionReminder = function () {
 };
 
 function initializePage(initData) {
+  console.log({ initData });
   urlPattern = initData.repo_info.metadata["url_pattern"];
   githubUrl = initData.repo_info.metadata["github"];
   fullRepoName = initData.repo_info.name;
   filePath = initData.file_path;
   commit = initData.commit;
+  commitHash = initData.commit_hash;
 
   root = document.getElementsByClassName("file-content")[0];
   lineNumberContainer = document.querySelector(".file-content");
@@ -410,6 +422,7 @@ var initData;
 var urlPattern;
 var githubUrl;
 var commit;
+var commitHash;
 var fullRepoName;
 var filePath;
 
