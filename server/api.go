@@ -266,13 +266,17 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		return nil, err
 	}
 
+	newYork, err := time.LoadLocation("America/New_York")
 	reply := &api.ReplySearchV2{
-		Results:       make([]*api.ResultV2, 0),
-		FileResults:   make([]*api.FileResult, 0),
-		TreeResults:   make([]*api.TreeResult, 0),
-		SearchType:    "normal",
-		IndexAge:      time.Since(time.Unix(search.IndexTime, 0)).Round(time.Minute).String(),
-		BackupIdxUsed: backendToUse.IsBackup,
+		Results:        make([]*api.ResultV2, 0),
+		FileResults:    make([]*api.FileResult, 0),
+		TreeResults:    make([]*api.TreeResult, 0),
+		SearchType:     "normal",
+		IndexAge:       time.Since(time.Unix(search.IndexTime, 0)).Round(time.Minute).String(),
+		LastIndexed:    time.Unix(search.IndexTime, 0).UTC().In(newYork).Format("2006-01-02 3:04PM ET"),
+		BackupIdxUsed:  backendToUse.IsBackup,
+		NextMaxMatches: int(q.MaxMatches) * 3,
+		CurrMaxMatches: int(q.MaxMatches),
 	}
 
 	if q.FilenameOnly {

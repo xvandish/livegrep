@@ -47,9 +47,10 @@ func main() {
 	}
 
 	cfg := &config.Config{
-		DocRoot: *docRoot,
-		Listen:  *serveAddr,
-		Reload:  *reload,
+		DefaultMaxMatches: 50,
+		DocRoot:           *docRoot,
+		Listen:            *serveAddr,
+		Reload:            *reload,
 		Backends: []config.Backend{
 			{Id: "", Addr: *backendAddr, BackupBackend: &config.Backend{
 				Id: "backup-idx", Addr: *backupBackendAddr,

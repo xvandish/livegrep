@@ -531,6 +531,26 @@ func (s *server) ServeRenderedSearchResults(ctx context.Context, w http.Response
 		return
 	}
 
+	// TODO(xvandish): Put this in the api
+	if data.Info.ExitReason != "NONE" {
+		// we provide users a "show more" link that just multiples the current
+		// max_matches value by 3. Being careful not to modify max_matches if
+		// it is wrapped in () to escape it
+		curr := r.URL.Query()
+		currQuery := curr.Get("q")
+
+		// if the ` max_matches:` string already exists, replace its value
+		if strings.Contains(currQuery, " max_matches:") {
+			newQuery := strings.Replace(currQuery, fmt.Sprintf(" max_matches:%d", data.CurrMaxMatches), fmt.Sprintf(" max_matches:%d", data.NextMaxMatches), 1)
+			curr.Set("q", newQuery)
+
+		} else {
+			curr.Set("q", fmt.Sprintf("%s max_matches:%d", currQuery, data.NextMaxMatches))
+		}
+
+		data.NextUrl = "?" + curr.Encode()
+	}
+
 	s.renderPage(ctx, w, r, "searchresults_partial.html", &page{
 		IncludeHeader: false,
 		Data:          data,

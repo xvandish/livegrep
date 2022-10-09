@@ -313,6 +313,14 @@ function init() {
       toggleMoreFileMatches(e);
     } else if (btn && btn.classList.contains("file-extension")) {
       handleFileExtBtnClick(e);
+    } else if (e.target.tagName == "A" && e.target.href != "" && e.target.id == "next-page") {
+      e.preventDefault();
+      // just update the search input with the value of "q"
+      var sp = new URLSearchParams(e.target.href);
+      var newQ = sp.get("q");
+      searchOptions.q = newQ;
+      searchBox.value = newQ;
+      updateSearchParamState();
     }
   });
 

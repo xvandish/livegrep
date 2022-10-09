@@ -1,16 +1,18 @@
 <div id="countarea">
   <div>
-    <span id="numresults">{{ .Data.Info.NumMatches }}{{ if ne .Data.Info.ExitReason "NONE" }}+{{end}}</span> matches found
+    <span id="numresults">{{ .Data.Info.NumMatches }}{{ if ne .Data.Info.ExitReason "NONE" }}+{{end}}</span> results in
     <span id='searchtimebox'>
-      <span class='label'>&asymp;</span>
       <!-- js will embed the time here -->
-      <span id='searchtime'></span>
+      <span id='searchtime'></span>.
+      {{ if ne .Data.Info.ExitReason "NONE" }}
+      <a id="next-page" href="{{ .Data.NextUrl }}">Show more.</a>
+      {{ end }}
     </span>
   </div>
   <div style="font-size: smaller;">
-    <span style="display:block;">Index age: {{ .Data.IndexAge }}</span>
+    <span style="display:block;">Index created: {{ .Data.LastIndexed }}</span>
     {{ if .Data.BackupIdxUsed }}
-      <span style="display:block;">Results served from a backup index.</span>
+      <span style="display:block; text-decoration: underline; text-decoration-color: red;">Results served from a backup index.</span>
     {{ end }}
   </div>
 </div>
