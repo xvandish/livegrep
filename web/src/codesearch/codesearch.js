@@ -83,7 +83,7 @@ function doSearch() {
       resultsContainer.innerHTML = text;
       errorsBox.style.display = "none";
 
-      var timeTaken = ((time2 - time1) / 1000).toFixed(4);
+      var timeTaken = ((time2 - time1) / 1000).toFixed(3);
       document.getElementById("searchtime").innerText = timeTaken + "s";
       document.getElementById("searchtimebox").style.display = "initial";
     })
