@@ -268,13 +268,20 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	}
 
 	newYork, err := time.LoadLocation("America/New_York")
+
+	if err != nil {
+		// Fall back to UTC time if there was an error loading location
+		log.Printf(ctx, "error loading America/New_York time: %v\n. Falling back to UTC", err)
+		newYork = time.UTC
+	}
+
 	reply := &api.ReplySearchV2{
 		Results:        make([]*api.ResultV2, 0),
 		FileResults:    make([]*api.FileResult, 0),
 		TreeResults:    make([]*api.TreeResult, 0),
 		SearchType:     "normal",
 		IndexAge:       time.Since(time.Unix(search.IndexTime, 0)).Round(time.Minute).String(),
-		LastIndexed:    time.Unix(search.IndexTime, 0).UTC().In(newYork).Format("2006-01-02 3:04PM ET"),
+		LastIndexed:    time.Unix(search.IndexTime, 0).In(newYork).Format("2006-01-02 3:04PM ET"),
 		BackupIdxUsed:  backendToUse.IsBackup,
 		NextMaxMatches: int(q.MaxMatches) * 3,
 		CurrMaxMatches: int(q.MaxMatches),
