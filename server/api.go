@@ -243,36 +243,48 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// if the backend isn't up... don't bother, try the backup
 	// it's possible backend hasn't been initialized yet (if frontend started and
 	// backend not started yet), so we need a nil check
+
 	var backendToUse *Backend = backend
 	if !backend.Up.IsUp {
-		if backend.BackupBackend != nil && backend.BackupBackend.Up.IsUp {
-			backendToUse = backend.BackupBackend
-			log.Printf(ctx, "primary be=%s down, backup be=%s up, querying backup", backend.Id, backendToUse.Id)
-		} else {
-			log.Printf(ctx, "primary be=%s down, backup be=%s down, querying primary", backend.Id, backendToUse.Id)
+		if backend.BackupBackend == nil {
+			return nil, errors.New(fmt.Sprintf("backend=%s DOWN, no backup available, returning", backend.Id))
 		}
+		if !backend.BackupBackend.Up.IsUp {
+			return nil, errors.New(fmt.Sprintf("backend=%s and backup=%s DOWN.", backend.Id, backend.BackupBackend.Id))
+		}
+
+		backendToUse = backend.BackupBackend
+		log.Printf(ctx, "primary be=%s DOWN, backup be=%s UP, querying backup", backend.Id, backend.BackupBackend.Id)
 	}
 
-	// So, what should we do here? If we start without an available backend,
-	// should searches go through or should we cancel them?
 	search, err = backendToUse.Codesearch.Search(
 		ctx, q,
-		grpc.FailFast(false),
+		grpc.FailFast(true),
 	)
 
-	// check the GRPC error
+	// if whatever backend we chose to use suddenly can't be connected too, say because it
+	// is reloading, then check if the "other" backend is available
+	if err != nil && grpc.Code(err) == 14 {
+		log.Printf(ctx, "be=%s can't connect, checking if alternative available", backendToUse.Id)
+		if backendToUse.IsBackup && backend.Up.IsUp { // reset to primary if avail
+			backendToUse = backend
+		} else if backend.BackupBackend.Up.IsUp { // use backup if available
+			backendToUse = backend.BackupBackend
+		} else {
+			log.Printf(ctx, "the backup and primary are both down. Returning error")
+			return nil, err
+		}
+		log.Printf(ctx, "found be=%s to use as alternative\n", backendToUse.Id)
+
+		search, err = backendToUse.Codesearch.Search(
+			ctx, q,
+			grpc.FailFast(true),
+		)
+	}
 
 	if err != nil {
 		log.Printf(ctx, "error talking to backend err=%s", err)
 		return nil, err
-	}
-
-	newYork, err := time.LoadLocation("America/New_York")
-
-	if err != nil {
-		// Fall back to UTC time if there was an error loading location
-		log.Printf(ctx, "error loading America/New_York time: %v\n. Falling back to UTC", err)
-		newYork = time.UTC
 	}
 
 	reply := &api.ReplySearchV2{
@@ -281,7 +293,7 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 		TreeResults:    make([]*api.TreeResult, 0),
 		SearchType:     "normal",
 		IndexAge:       time.Since(time.Unix(search.IndexTime, 0)).Round(time.Minute).String(),
-		LastIndexed:    time.Unix(search.IndexTime, 0).In(newYork).Format("2006-01-02 3:04PM ET"),
+		LastIndexed:    time.Unix(search.IndexTime, 0).In(newYorkTime).Format("2006-01-02 3:04PM ET"),
 		BackupIdxUsed:  backendToUse.IsBackup,
 		NextMaxMatches: int(q.MaxMatches) * 3,
 		CurrMaxMatches: int(q.MaxMatches),

@@ -25,6 +25,7 @@ import (
 )
 
 var serveUrlParseError = fmt.Errorf("failed to parse repo and path from URL")
+var newYorkTime *time.Location
 
 type page struct {
 	Title         string
@@ -545,9 +546,17 @@ func New(cfg *config.Config) (http.Handler, error) {
 		newRepos: make(map[string]map[string]config.RepoConfig),
 	}
 	srv.loadTemplates()
+	ctx := context.Background()
+
+	log.Printf(ctx, "loading New_York/America time")
+	newYork, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		log.Printf(ctx, "error loading America/New_York time: %v\n. Falling back to local/system", err)
+		newYork = time.Local
+	}
+	newYorkTime = newYork
 
 	if cfg.StatsD.Address != "" {
-		ctx := context.Background()
 		log.Printf(ctx, "Initializing StatsD client")
 		args := []statsd.Option{statsd.Address(cfg.StatsD.Address)}
 
