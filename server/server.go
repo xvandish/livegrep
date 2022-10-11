@@ -83,26 +83,18 @@ func (s *server) ServeRoot(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	urls := make(map[string]map[string]string, len(s.bk))
 	backends := make([]*Backend, 0, len(s.bk))
 	sampleRepo := ""
 	// Used to display a connection status. Default selected is first backend.
-	firstBkShortStatus := ""
-	firstBkStatus := ""
-	for idx, bkId := range s.bkOrder {
+	for _, bkId := range s.bkOrder {
 		bk := s.bk[bkId]
 		backends = append(backends, bk)
 		bk.I.Lock()
-		m := make(map[string]string, len(bk.I.Trees))
-		urls[bk.Id] = m
 		for _, r := range bk.I.Trees {
 			if sampleRepo == "" {
 				sampleRepo = r.Name
+				break
 			}
-			m[r.Name] = r.Url
-		}
-		if idx == 0 {
-			firstBkShortStatus, firstBkStatus = bk.getTextStatus()
 		}
 		bk.I.Unlock()
 	}
@@ -112,15 +104,11 @@ func (s *server) ServeSearch(ctx context.Context, w http.ResponseWriter, r *http
 		ScriptName:    "codesearch",
 		IncludeHeader: true,
 		Data: struct {
-			Backends                []*Backend
-			SampleRepo              string
-			FirstBackendShortStatus string
-			FirstBackendStatus      string
+			Backends   []*Backend
+			SampleRepo string
 		}{
-			Backends:                backends,
-			SampleRepo:              sampleRepo,
-			FirstBackendShortStatus: firstBkShortStatus,
-			FirstBackendStatus:      firstBkStatus,
+			Backends:   backends,
+			SampleRepo: sampleRepo,
 		},
 	})
 }
