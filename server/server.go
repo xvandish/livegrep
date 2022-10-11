@@ -161,11 +161,12 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repoName := r.URL.Query().Get(":repo")
+
 	path := pat.Tail("/delve/:parent/:repo/commits/:rev/", r.URL.Path)
 	firstParent := r.URL.Query().Get("firstParent")
 
 	if firstParent == "" {
-		firstParent = "HEAD"
+		firstParent = r.URL.Query().Get(":rev")
 	}
 
 	if len(s.repos) == 0 {
