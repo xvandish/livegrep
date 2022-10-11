@@ -7,15 +7,23 @@
     <tbody class="chroma">
     {{ range $i, $e := $highlightedContent.Content }}
       {{$lineNum := toLineNum $i}}
-      <tr>
-        <td>
+      {{$rowCls := ""}}
+      {{$prevSha := "" }}
+      {{$currSha := "" }}
+      {{ if (index $blameData.LinesToBlameChunk $i) }}
+        {{$rowCls = "blame-gray"}}
+        {{$prevSha = (index $blameData.LinesToBlameChunk $i) }}
+        {{$currSha = (index $blameData.LinesToBlameChunk $lineNum) }}
+      {{ end }}
+      <tr class="{{ if eq $prevSha $currSha }}{{$rowCls}}{{end}}">
+        <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
+        <td id="LC{{$lineNum}}" style="white-space: pre;">{{ $e }}</td>
+        <td class="blame-pane">
         {{ with (index $blameData.LinesToBlameChunk $lineNum) }}
         <a href="{{ .CommitLink }}">{{ .ShortHash }}</a>
         <span>- {{ .AuthorName }}</span>
         {{ end }}
         </td>
-        <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
-        <td id="LC{{$lineNum}}" style="white-space: pre;">{{ $e }}</td>
       </tr>
     {{ end }}
     </tbody>

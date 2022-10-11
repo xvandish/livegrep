@@ -1068,3 +1068,7 @@ div.example {
 .red {
   color: red;
 }
+
+.blame-gray {
+    background-color: #f4f4f4;
+}

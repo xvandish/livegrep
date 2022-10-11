@@ -5,6 +5,12 @@ var KeyCodes = {
   SLASH_OR_QUESTION_MARK: 191,
 };
 
+function toggleBlamePane() {
+  document.querySelectorAll(".blame-pane").forEach((e) => {
+    e.classList.toggle('hidden');
+  });
+}
+
 function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
@@ -299,6 +305,7 @@ function initializeActionButtons() {
       return doSearch(null, false, true);
     },
     help: showHelp,
+    toggleBlame: toggleBlamePane,
   };
 
   for (var actionName in ACTION_MAP) {
