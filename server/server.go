@@ -263,6 +263,8 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 	}
 
 	data, err := buildFileData(path, repoConfig, rev)
+	blameData, err := gitBlameBlob(path, repoConfig, rev)
+	data.FileContent.BlameData = blameData
 	if err != nil {
 		errMsg := fmt.Sprintf("delve-error: Error reading file path=%s, rev=%s - %s", path, rev, err)
 		logAndServeError(ctx, w, errMsg, 500)

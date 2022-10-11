@@ -1,12 +1,19 @@
 {{define "filecontent"}}
 <div class="file-content">
   {{ $lang := .Language }}
+  {{ $blameData := .BlameData }}
   {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang .Filename }}
   <table>
     <tbody class="chroma">
     {{ range $i, $e := $highlightedContent.Content }}
       {{$lineNum := toLineNum $i}}
       <tr>
+        <td>
+        {{ with (index $blameData.LinesToBlameChunk $lineNum) }}
+        <a href="{{ .CommitLink }}">{{ .ShortHash }}</a>
+        <span>- {{ .AuthorName }}</span>
+        {{ end }}
+        </td>
         <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
         <td id="LC{{$lineNum}}" style="white-space: pre;">{{ $e }}</td>
       </tr>

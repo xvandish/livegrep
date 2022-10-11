@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,6 +104,7 @@ type fileViewerContext struct {
 	Permalink      string
 	Headlink       string
 	LogLink        string
+	BlameData      *BlameResult
 }
 
 type sourceFileContent struct {
@@ -110,6 +112,7 @@ type sourceFileContent struct {
 	LineCount int
 	Language  string
 	Filename  string
+	BlameData *BlameResult
 }
 
 type directoryContent struct {
@@ -622,6 +625,206 @@ func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 	gitShow.Repo = repo
 
 	return &gitShow, nil
+}
+
+type BlameResult struct {
+	Path              string // the filepath of the file being blamed
+	Commit            string // the commit of the file being blamed
+	Lines             []*BlameLine
+	LinesToBlameChunk map[int]*BlameChunk
+}
+
+type BlameLine struct {
+	AuthorName  string
+	AuthorEmail string
+	CommitHash  string
+
+	// TODO(xvandish): Parents so we can continually walk balk for a blame
+}
+
+// Blame chunk represents `n` contigous BlameLines that are from the same commit
+type BlameChunk struct {
+	CommitHash         string // the SHA that all lines within this chunk represent
+	ShortHash          string
+	CommitLink         string
+	PrevCommitHash     string
+	AuthorName         string
+	AuthorEmail        string
+	AuthorTime         int64 // ?
+	CommitterName      string
+	CommitterEmail     string
+	CommitterTime      int64
+	CommitSummary      string
+	Filename           string
+	PreviousFilename   string
+	PreviousCommitHash string
+	alreadyFilled      bool
+}
+
+var BlameChunkHeader = regexp.MustCompile(`\A([0-9a-f]{40})\s(\d+)\s(\d+)\s(\d+)\z`)
+var LineInChunkHeader = regexp.MustCompile(`\A[0-9a-f]{40}\s\d+\s(\d+)\z`)
+
+const (
+	AuthorKey        = "author "
+	AuthorMailKey    = "author-mail "
+	AuthorTimeKey    = "author-time "
+	CommitterKey     = "committer "
+	CommitterMailKey = "committer-mail "
+	CommitterTimeKey = "committer-time " // TODO(xvandish): Committer TZ
+	SummaryKey       = "summary "
+	PreviousKey      = "previous "
+	FilenameKey      = "filename "
+)
+
+// Given a repo, a file in that repo and a commit, get the git blame for that file
+//
+
+func deleteKey(line, key string) string {
+	return strings.Replace(line, key, "", 1)
+}
+
+func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*BlameChunk, lineNumberToChunkMap map[int]*BlameChunk, repoPath string, filePath string) (moreChunkLeft bool, err error) {
+	// read the first line. This will be in the following format
+	// <gitCommitHash> <lnoInOriginalFile> <lnoInFinalFile> <linesInChunk>
+	// like:
+	// 549be0aad5faaa57160cdb5d3d4c75feee29ceed 1 1 6
+	// so for example, the header above says:
+	//   1. Line 1 came from commit 549be0aad5faaa57160cdb5d3d4c75feee29ceed
+	//   2. The following 5 lines (6 - 1) are also from that commit
+	moreLeft := scanner.Scan()
+	if !moreLeft {
+		return false, nil
+	}
+
+	// TODO: check if hit EOF
+	headerLine := scanner.Text()
+
+	matches := BlameChunkHeader.FindStringSubmatch(headerLine)
+	if matches == nil {
+		return false, fmt.Errorf("unexpected format of line %#v in git blame output.", headerLine)
+	}
+
+	commitHash := matches[1]
+
+	// Get or create the BlameChunk for this commitHash
+	chunk := commitHashToChunkMap[commitHash]
+	if chunk == nil {
+		chunk = &BlameChunk{}
+		chunk.CommitHash = commitHash
+		chunk.ShortHash = commitHash[:8]
+		chunk.CommitLink = fmt.Sprintf("/delve/%s/commit/%s", repoPath, commitHash)
+		chunk.alreadyFilled = false
+		commitHashToChunkMap[commitHash] = chunk
+	}
+
+	currLineNumber, err := strconv.Atoi(matches[3])
+	linesInChunk, err := strconv.Atoi(matches[4])
+
+	if err != nil {
+		return false, err
+	}
+
+	// now, keep scanning until we hit `linesInChunk` codeLines (`\t` lines
+	for linesInChunk != 0 {
+		scanner.Scan()
+		line := scanner.Text()
+
+		if matches := LineInChunkHeader.FindStringSubmatch(line); matches != nil {
+			currLineNumber, err = strconv.Atoi(matches[1])
+		} else if strings.HasPrefix(line, "\t") {
+			if !chunk.alreadyFilled {
+				chunk.alreadyFilled = true
+			}
+			lineNumberToChunkMap[currLineNumber] = chunk
+			linesInChunk -= 1
+		}
+
+		// if we've already input this info, don't redo
+		if chunk.alreadyFilled {
+			fmt.Printf("skipping ahead, alreadyFilled\n")
+			continue
+		}
+
+		fmt.Printf("line=%s\n", line)
+		if strings.HasPrefix(line, AuthorKey) {
+			chunk.AuthorName = deleteKey(line, AuthorKey)
+		} else if strings.HasPrefix(line, AuthorMailKey) {
+			chunk.AuthorEmail = deleteKey(line, AuthorMailKey)
+		} else if strings.HasPrefix(line, AuthorTimeKey) {
+			authorTime := deleteKey(line, AuthorTimeKey)
+			timestamp, err := strconv.ParseInt(authorTime, 10, 64)
+			if err != nil {
+				return true, nil
+			}
+			chunk.AuthorTime = timestamp
+		} else if strings.HasPrefix(line, CommitterKey) {
+			chunk.CommitterName = deleteKey(line, CommitterKey)
+		} else if strings.HasPrefix(line, CommitterMailKey) {
+			chunk.CommitterEmail = deleteKey(line, CommitterMailKey)
+		} else if strings.HasPrefix(line, CommitterTimeKey) {
+			committerTime := deleteKey(line, CommitterTimeKey)
+			timestamp, err := strconv.ParseInt(committerTime, 10, 64)
+			if err != nil {
+				return true, nil
+			}
+			chunk.CommitterTime = timestamp
+		} else if strings.HasPrefix(line, SummaryKey) {
+			chunk.CommitSummary = deleteKey(line, SummaryKey)
+		} else if strings.HasPrefix(line, FilenameKey) {
+			chunk.Filename = deleteKey(line, FilenameKey)
+		} else if strings.HasPrefix(line, PreviousKey) {
+			chunk.PreviousCommitHash = line[:40]
+			chunk.PreviousFilename = line[41:]
+		}
+	}
+
+	return true, nil
+}
+
+func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*BlameResult, error) {
+	defer timeTrack(time.Now(), "gitBlameBlob")
+
+	// technically commiId isn't required, but we always blame with a commit
+	// git -C <repo> blame --porcelain <filename> [<commitId>]
+	start := time.Now()
+	cleanPath := path.Clean(relativePath)
+	cmd := exec.Command("git", "-C", repo.Path, "blame", cleanPath, commit, "--porcelain")
+
+	stdout, err := cmd.StdoutPipe()
+	fmt.Printf("took %s to do command\n", time.Since(start))
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+
+	var blameRes BlameResult
+
+	commitHashToChunkMap := make(map[string]*BlameChunk)
+	lnoToChunkMap := make(map[int]*BlameChunk)
+
+	for {
+		hasMore, err := processNextChunk(scanner, commitHashToChunkMap, lnoToChunkMap, repo.Name, cleanPath)
+		if !hasMore {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+
+	}
+	fmt.Printf("chunkMap: %+v\n", lnoToChunkMap)
+	fmt.Printf("chunkMap hash: %+v\n", commitHashToChunkMap)
+
+	fmt.Printf("blameRes: %+v\n", blameRes)
+	blameRes.LinesToBlameChunk = lnoToChunkMap
+
+	return &blameRes, nil
 }
 
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
