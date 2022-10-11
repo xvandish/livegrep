@@ -245,16 +245,18 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// backend not started yet), so we need a nil check
 
 	var backendToUse *Backend = backend
-	if !backend.Up.IsUp {
+	if !backendToUse.grpcReadyOrIdle() {
 		if backend.BackupBackend == nil {
-			return nil, errors.New(fmt.Sprintf("backend=%s DOWN, no backup available, returning", backend.Id))
+			log.Printf(ctx, "SEARCH ERROR: backend=%s DOWN conn=%s, no backup available, returning", backend.Id, backend.Up)
+			return nil, errors.New("primary backend down and no backup exists. Try again in a few seconds")
 		}
-		if !backend.BackupBackend.Up.IsUp {
-			return nil, errors.New(fmt.Sprintf("backend=%s and backup=%s DOWN.", backend.Id, backend.BackupBackend.Id))
+		if !backend.BackupBackend.grpcReadyOrIdle() {
+			log.Printf(ctx, "SEARCH ERROR: backend=%s DOWN conn=%s backup=%s DOWN conn=%s", backend.Id, backend.GrpcClient.GetState(), backend.BackupBackend.Id, backend.BackupBackend.GrpcClient.GetState())
+			return nil, errors.New("primary and backup backend down. Try again in a few seconds.")
 		}
 
 		backendToUse = backend.BackupBackend
-		log.Printf(ctx, "primary be=%s DOWN, backup be=%s UP, querying backup", backend.Id, backend.BackupBackend.Id)
+		log.Printf(ctx, "primary be=%s DOWN conn=%s, backup be=%s UP, querying backup", backend.Id, backend.GrpcClient.GetState(), backend.BackupBackend.Id)
 	}
 
 	search, err = backendToUse.Codesearch.Search(
@@ -265,16 +267,22 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	// if whatever backend we chose to use suddenly can't be connected too, say because it
 	// is reloading, then check if the "other" backend is available
 	if err != nil && grpc.Code(err) == 14 {
+		prevBackend := backendToUse
 		log.Printf(ctx, "be=%s can't connect, checking if alternative available", backendToUse.Id)
-		if backendToUse.IsBackup && backend.Up.IsUp { // reset to primary if avail
+		if backendToUse.IsBackup && backend.grpcReadyOrIdle() { // reset to primary if avail
 			backendToUse = backend
-		} else if backend.BackupBackend.Up.IsUp { // use backup if available
-			backendToUse = backend.BackupBackend
+		} else if !backendToUse.IsBackup && backendToUse.grpcReadyOrIdle() { // reset to backup if avail
+			backendToUse = backendToUse // retry on backup
 		} else {
-			log.Printf(ctx, "the backup and primary are both down. Returning error")
-			return nil, err
+			log.Printf(ctx, "SEARCH ERROR: primary be=%s DOWN conn=%s and backup be=%s DOWN conn=%s", backend.Id, backend.GrpcClient.GetState(), backend.BackupBackend.Id, backend.BackupBackend.GrpcClient.GetState())
+			return nil, errors.New("primary and backup backend down. Try again in a few seconds")
 		}
-		log.Printf(ctx, "found be=%s to use as alternative\n", backendToUse.Id)
+
+		if prevBackend == backendToUse {
+			log.Printf(ctx, "retrying with same backend")
+		} else {
+			log.Printf(ctx, "found be=%s to use as alternative", backendToUse.Id)
+		}
 
 		search, err = backendToUse.Codesearch.Search(
 			ctx, q,
@@ -283,6 +291,9 @@ func (s *server) doSearchV2(ctx context.Context, backend *Backend, q *pb.Query) 
 	}
 
 	if err != nil {
+		if grpc.Code(err) == 14 {
+			return nil, errors.New("backend(s) down. Try again in a few seconds")
+		}
 		log.Printf(ctx, "error talking to backend err=%s", err)
 		return nil, err
 	}

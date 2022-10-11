@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"strings"
+	"os"
 	"sync"
 	"time"
 
@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 
 	"github.com/livegrep/livegrep/server/config"
 )
@@ -28,7 +29,6 @@ type I struct {
 	Trees []Tree
 	sync.Mutex
 	IndexTime time.Time
-	IndexAge  time.Duration
 }
 
 type Availability struct {
@@ -43,6 +43,7 @@ type Backend struct {
 	Addr          string
 	I             *I
 	Codesearch    pb.CodeSearchClient
+	GrpcClient    *grpc.ClientConn
 	Up            *Availability
 	BackupBackend *Backend
 	IsBackup      bool
@@ -95,6 +96,7 @@ func NewBackend(be config.Backend) (*Backend, error) {
 		Addr:          be.Addr,
 		I:             &I{Name: be.Id},
 		Codesearch:    pb.NewCodeSearchClient(client),
+		GrpcClient:    client,
 		Up:            &Availability{},
 		BackupBackend: backupBk,
 	}
@@ -106,68 +108,55 @@ func (bk *Backend) Start() {
 		bk.I = &I{Name: bk.Id}
 	}
 	go bk.poll()
-	go bk.updateIndexAge()
 }
 
-func (bk *Backend) getStatus() (int, string) {
-	bk.Up.Lock()
-	defer bk.Up.Unlock()
+type BackendStatus struct {
+	GrpcStatus   connectivity.State `json:"grpc_status"`
+	IndexAge     string             `json:"index_age"`
+	IndexName    string             `json:"index_name"`
+	BuGrpcStatus connectivity.State `json:"bu_grpc_status"`
+	BuIndexAge   string             `json:"bu_index_age"`
+	BuIndexName  string             `json:"bu_index_name"`
+}
 
-	var statusCode int
-	var normalizedAge string
-
-	if bk.Up.IsUp {
-		// 0s -> 0m and anthing0s -> anything
-		statusCode = 0
-		normalizedAge = fmt.Sprintf("%s", bk.I.IndexAge)
-		if "0s" == normalizedAge {
-			normalizedAge = "0m"
-		} else {
-			normalizedAge = strings.TrimSuffix(normalizedAge, "0s")
-		}
-	} else {
-		statusCode = int(bk.Up.DownCode)
-		normalizedAge = time.Since(bk.Up.DownSince).Round(time.Second).String()
+func (bk *Backend) getStatus() *BackendStatus {
+	// given a backend, want to print it, ands its backups status
+	s := bk.GrpcClient.GetState()
+	age := ""
+	if bk.grpcReadyOrIdle() {
+		age = time.Since(bk.I.IndexTime).Round(time.Minute).String()
 	}
 
-	return statusCode, normalizedAge
-}
-
-func (bk *Backend) getTextStatus() (string, string) {
-	statusCode, age := bk.getStatus()
-
-	var oneWordStatus string
-	var status string
-
-	if statusCode == 0 {
-		oneWordStatus = "up"
-		status = fmt.Sprintf("Connected. Index age: %s", age)
-	} else if statusCode == 14 {
-		oneWordStatus = "reloading"
-		status = fmt.Sprintf("Index reloading.. (%s)", age)
-	} else {
-		oneWordStatus = "down"
-		status = fmt.Sprintf("Disconnected. (%s)", age)
-	}
-
-	return oneWordStatus, status
-}
-
-func (bk *Backend) updateIndexAge() {
-	ticker := time.NewTicker(1 * time.Minute)
-	for {
-		select {
-		case <-ticker.C:
-			bk.I.Lock()
-			if bk.I.IndexTime.IsZero() {
-				bk.I.Unlock()
-				continue
-			}
-			mSince := time.Since(bk.I.IndexTime).Round(time.Minute)
-			bk.I.IndexAge = mSince
-			bk.I.Unlock()
+	// now get backup info
+	if bk.BackupBackend == nil {
+		return &BackendStatus{
+			GrpcStatus: s,
+			IndexAge:   age,
+			IndexName:  bk.I.Name,
 		}
 	}
+
+	bus := bk.BackupBackend.GrpcClient.GetState()
+	buAge := ""
+	if bk.BackupBackend.grpcReadyOrIdle() {
+		buAge = time.Since(bk.BackupBackend.I.IndexTime).Round(time.Minute).String()
+	}
+	return &BackendStatus{
+		GrpcStatus:   s,
+		IndexAge:     age,
+		IndexName:    bk.I.Name,
+		BuGrpcStatus: bus,
+		BuIndexAge:   buAge,
+		BuIndexName:  bk.BackupBackend.Id,
+	}
+
+}
+
+func (bk *Backend) grpcReadyOrIdle() bool {
+	s := bk.GrpcClient.GetState()
+	// https://cs.github.com/grpc/grpc-go/blob/c672451950653990bd607c8ba08733d6f36d85fc/connectivity/connectivity.go#L51
+	// 0 == Idle 2 == Ready
+	return s == connectivity.Ready || s == connectivity.Idle
 }
 
 // We continuosly poll for QuickInfo every second
@@ -182,12 +171,16 @@ func (bk *Backend) poll() {
 		if e == nil {
 			newTime := time.Unix(quickInfo.IndexTime, 0)
 			if !bk.Up.IsUp || bk.I.IndexTime.Before(newTime) {
+				fmt.Printf("quickPoll for be=%s -- fetching getInfo(). was_up=%t new_index_available=%t\n", bk.Id, bk.Up.IsUp, bk.I.IndexTime.Before(newTime))
 				bk.getInfo()
 			}
 			bk.Up.IsUp = true
 			bk.Up.DownSince = time.Time{}
 			bk.Up.DownCode = 0
 		} else {
+			if os.Getenv("LOG_BK_QUICKPOLL_FAIL") == "true" {
+				fmt.Printf("quickPoll for be=%s -- ERROR: %s\n", bk.Id, grpc.Code(e))
+			}
 			if bk.Up.IsUp || bk.Up.DownSince.IsZero() {
 				bk.Up.IsUp = false
 				bk.Up.DownSince = time.Now()
@@ -195,7 +188,7 @@ func (bk *Backend) poll() {
 			}
 		}
 		bk.Up.Unlock()
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -219,7 +212,6 @@ func (bk *Backend) refresh(info *pb.ServerInfo) {
 
 	newIndexTime := time.Unix(info.IndexTime, 0)
 	bk.I.IndexTime = newIndexTime
-	bk.I.IndexAge = time.Since(newIndexTime).Round(time.Minute)
 
 	if len(info.Trees) > 0 {
 		bk.I.Trees = nil
