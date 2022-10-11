@@ -68,7 +68,7 @@ func NewBackend(be config.Backend) (*Backend, error) {
 	// to a previously disconnected index until much after is re-available
 	shortFlatReconnect := grpc.ConnectParams{
 		Backoff: backoff.Config{
-			BaseDelay:  100 * time.Millisecond,
+			BaseDelay:  20 * time.Millisecond,
 			Multiplier: 1,
 			Jitter:     1,
 			MaxDelay:   100 * time.Millisecond,
