@@ -49,11 +49,7 @@ type Backend struct {
 	IsBackup      bool
 }
 
-// Should I.... have the backup backend be a seperate backend or a nested backend?
-// I think I'm going to tailor it to us
-
 // NewBackend can now be recursively called since BackupBackend can be nested...
-// is this a terrible idea?
 func NewBackend(be config.Backend) (*Backend, error) {
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 	if be.MaxMessageSize == 0 {
@@ -114,9 +110,11 @@ type BackendStatus struct {
 	GrpcStatus   connectivity.State `json:"grpc_status"`
 	IndexAge     string             `json:"index_age"`
 	IndexName    string             `json:"index_name"`
+	Up           *Availability      `json:"up"`
 	BuGrpcStatus connectivity.State `json:"bu_grpc_status"`
 	BuIndexAge   string             `json:"bu_index_age"`
 	BuIndexName  string             `json:"bu_index_name"`
+	BuUp         *Availability      `json:"bu_up"`
 }
 
 func (bk *Backend) getStatus() *BackendStatus {
@@ -127,13 +125,15 @@ func (bk *Backend) getStatus() *BackendStatus {
 		age = time.Since(bk.I.IndexTime).Round(time.Minute).String()
 	}
 
+	bkStatus := &BackendStatus{
+		GrpcStatus: s,
+		IndexAge:   age,
+		IndexName:  bk.I.Name,
+		Up:         bk.Up,
+	}
 	// now get backup info
 	if bk.BackupBackend == nil {
-		return &BackendStatus{
-			GrpcStatus: s,
-			IndexAge:   age,
-			IndexName:  bk.I.Name,
-		}
+		return bkStatus
 	}
 
 	bus := bk.BackupBackend.GrpcClient.GetState()
@@ -141,21 +141,17 @@ func (bk *Backend) getStatus() *BackendStatus {
 	if bk.BackupBackend.grpcReadyOrIdle() {
 		buAge = time.Since(bk.BackupBackend.I.IndexTime).Round(time.Minute).String()
 	}
-	return &BackendStatus{
-		GrpcStatus:   s,
-		IndexAge:     age,
-		IndexName:    bk.I.Name,
-		BuGrpcStatus: bus,
-		BuIndexAge:   buAge,
-		BuIndexName:  bk.BackupBackend.Id,
-	}
 
+	bkStatus.BuGrpcStatus = bus
+	bkStatus.BuIndexAge = buAge
+	bkStatus.BuIndexName = bk.BackupBackend.Id
+	bkStatus.BuUp = bk.BackupBackend.Up
+
+	return bkStatus
 }
 
 func (bk *Backend) grpcReadyOrIdle() bool {
 	s := bk.GrpcClient.GetState()
-	// https://cs.github.com/grpc/grpc-go/blob/c672451950653990bd607c8ba08733d6f36d85fc/connectivity/connectivity.go#L51
-	// 0 == Idle 2 == Ready
 	return s == connectivity.Ready || s == connectivity.Idle
 }
 
