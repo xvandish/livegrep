@@ -158,6 +158,33 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 	})
 }
 
+func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/git-log/:parent/:repo/:rev/", r.URL.Path)
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[parent+"/"+repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := buildSimpleGitLogData(path, rev, repo)
+
+	if err != nil {
+		replyJSON(ctx, w, 500, data)
+	}
+
+	replyJSON(ctx, w, 200, data)
+	// now we need to marshal data to json
+}
+
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repoName := r.URL.Query().Get(":repo")
@@ -185,7 +212,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
 		return
 	}
-	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName + "/"
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName
 
 	if !data.MaybeLastPage {
 		w.Header().Set("X-next-parent", data.NextParent)
@@ -223,9 +250,55 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 	})
 }
 
-func logAndServeError(ctx context.Context, w http.ResponseWriter, errMsg string, errCode int) {
-	log.Printf(ctx, errMsg)
-	http.Error(w, errMsg, errCode)
+func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+
+	path := ""
+	if strings.HasPrefix(r.URL.Path, "/delve/"+parent+"/"+repo+"/tree/") {
+		path = pat.Tail("/raw/:parent/:repo/tree/:rev/", r.URL.Path)
+	} else {
+		path = pat.Tail("/raw/:parent/:repo/blob/:rev/", r.URL.Path)
+	}
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	data, err := buildFileData(path, repoConfig, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+	// We build this carefully increase /blob/ is in the path to the file that
+	// we're actually viewing
+	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
+	// if we were going to permalink, make it what we want
+	// TODO(xvandish): do this in fileview.go
+	if data.Permalink != "" {
+		data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+	} else if data.Headlink != "" {
+		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
+	}
+
+	log.Printf(ctx, "going to print raw thing")
+	log.Printf(ctx, "data is %+v", data)
+	s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
+		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
+		IncludeHeader: false,
+		Data:          data,
+	})
 }
 
 func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -351,6 +424,12 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 		IncludeHeader: true,
 	})
 }
+func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	s.renderPage(ctx, w, r, "experimental.html", &page{
+		Title:         "experimental",
+		IncludeHeader: false,
+	})
+}
 
 func (s *server) ServeHelp(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// Help is now shown in the main search page when no search has been entered.
@@ -469,6 +548,7 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 		log.Printf(ctx, "Error: no template named %v", templateName)
 		return
 	}
+	log.Printf(ctx, "found template %s", templateName)
 
 	pageData.Config = s.config
 	pageData.AssetHashes = s.AssetHashes
@@ -484,6 +564,8 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 		log.Printf(ctx, "Error rendering %v: %s", templateName, err)
 		return
 	}
+
+	log.Printf(ctx, "success %s", templateName)
 }
 
 type reloadHandler struct {
@@ -617,7 +699,14 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/delve/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
 	m.Add("GET", "/delve/:parent/:repo/commit/:commitHash/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
+
 	m.Add("GET", "/delve/", srv.Handler(srv.ServeFile))
+
+	// the following handlers render HTML that JS code fetches and inlines into the page
+	// so the pages don't have any headers or extra things
+	m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
+	m.Add("GET", "/raw/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlobRaw))
+	m.Add("GET", "/experimental", srv.Handler(srv.ServeExperimental))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
@@ -649,6 +738,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v2/getRenderedSearchResults/:backend", srv.Handler(srv.ServeRenderedSearchResults))
 	m.Add("GET", "/api/v2/getRenderedSearchResults/", srv.Handler(srv.ServeRenderedSearchResults))
+	// m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
+	m.Add("GET", "/api/v2/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
 
 	var h http.Handler = m
 

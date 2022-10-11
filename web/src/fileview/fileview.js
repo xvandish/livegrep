@@ -29,7 +29,7 @@ function toggleHistoryPane() {
 function getGitHistory() {
   console.log('in getGitHistory');
   var logLink = document.getElementById("commit-history");
-  logLink = logLink.getAttribute('href');
+  logLink = logLink.getAttribute('href') + "?partial=true";
   console.log({ logLink });
 
   var historyPane = document.getElementById("history-pane");
@@ -42,6 +42,25 @@ function getGitHistory() {
     .then(function (html) {
       historyPane.insertAdjacentHTML("beforeend", html);
     })
+}
+
+function swapRawBlob(clickedBlobLink) {
+  // given a click on a link to a blob, we intercept it (we should)
+  // switch to a button eventually <- TODO(xvandish)
+
+  // then, we call the same link, except we swap `/delve/` with `/raw/`
+  var rawUrl = clickedBlobLink.replace("/delve/", "/raw/");
+  console.log({ rawUrl });
+
+  fetch(rawUrl)
+    .then(function (r) {
+      return r.text();
+    })
+    .then(function (html) {
+      var contentWrapper = document.getElementsByClassName("content-wrapper")[0]
+        contentWrapper.replaceChildren();
+        contentWrapper.innerHTML = html;
+    });
 }
 
 function getSelectedText() {
@@ -451,8 +470,20 @@ function initializePage(initData) {
     }
 
     if (event.target.id = "toggle-history-pane") {
-      toggleHistoryPane();
-      console.log("toggling history pane");
+      // toggleHistoryPane();
+      // console.log("toggling history pane");
+    }
+
+    if (event.target.nodeName == "A") {
+        event.preventDefault();
+        // TODO: make sure this is a click on a blob...
+        var targetUrl = event.target.href;
+        console.log({ targetUrl });
+        if (targetUrl.includes("/delve/") && targetUrl.includes("/blob/")) {
+        swapRawBlob(event.target.href);
+
+        // TODO: get the commit hash and replace the url.
+      }
     }
   });
 }

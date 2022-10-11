@@ -1,0 +1,121 @@
+
+<html>
+  <head>
+
+<style>
+
+body { margin: 0; min-height: 100vh; }
+.parent { 
+    display: flex;
+    box-sizing: border-box;
+    flex-direction: row;
+    flex: 1 1 100%;
+    min-height: 100vh; /* temp */
+}
+.repository-navigation {
+  background-color: #eaeaea; 
+      display: flex;
+    width: 276px;
+    flex-direction: column;
+    max-width: calc(100% - 510px)!important;
+    position: relative;
+    flex: 0 0 auto;
+    background-color: #f6f7f9;
+    box-sizing: border-box;
+    border-color: #dadcd0;
+    border-right: 1px solid;
+}
+.repository-detail { 
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: auto;
+  overflow: auto;
+}
+
+.repository-detail .main-view {
+  display: flex;
+    flex-direction: column;
+    overflow: auto;
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    min-width: auto;
+}
+
+.repository-detail .main-view .middle-view {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+
+.repository-detail .main-view .middle-view .file-detail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    outline: 0;
+    flex: 1 1 100%;
+    min-height: 100px;
+}
+
+
+.repository-detail .main-view .middle-view .file-detail .file-header {
+      display: flex;
+    box-sizing: border-box;
+    flex-direction: row;
+    overflow: auto;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+    flex: 0 0 auto;
+    border-color: #dadcd0;
+    background-color: #d2e3fc;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content {
+      overflow: auto;
+    position: relative;
+    outline: 0;
+    flex: 1 1 100%;
+}
+
+.repository-detail .main-view .middle-view .git-detail {
+    overflow: hidden;
+    border-top-style: solid;
+    border-top-width: 1px;
+    flex: 1 0 auto;
+    height: 50%;
+    max-height: calc(100% - 110px); /* when not closed */
+    min-height: 40px;
+    position: relative;
+    max-height: 40px;
+    border-color: #dadcd0;
+    background-color: #d3e3fc;
+}
+
+</style>
+  </head>
+
+  <body>
+    <div class="parent">
+      <div class="repository-navigation"> </div>
+      <div class="repository-detail">
+        <div class="main-view">
+          <div class="middle-view">
+            <div class="file-detail">
+              <div class="file-header">Header...</div>
+              <div class="file-content"></div>
+            </div>
+            <div class="git-detail">
+              Git details...
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </body>
+
+</html>
