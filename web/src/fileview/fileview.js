@@ -11,6 +11,39 @@ function toggleBlamePane() {
   });
 }
 
+// open/close the pane
+function toggleHistoryPane() {
+  var historyPane = document.getElementById("history-pane");
+  var isOpen = historyPane.dataset.open == "true";
+  console.log({ isOpen });
+
+  if (isOpen) {
+    historyPane.style.height = "40px";
+    historyPane.dataset.open = "false"
+  } else {
+    historyPane.style.height = "100%";
+    historyPane.dataset.open = "true";
+  }
+}
+
+function getGitHistory() {
+  console.log('in getGitHistory');
+  var logLink = document.getElementById("commit-history");
+  logLink = logLink.getAttribute('href');
+  console.log({ logLink });
+
+  var historyPane = document.getElementById("history-pane");
+  var historyGetBtn = document.getElementById("load-more-history-btn");
+
+  fetch(logLink)
+    .then(function (r) {
+      return r.text();
+    })
+    .then(function (html) {
+      historyPane.insertAdjacentHTML("beforeend", html);
+    })
+}
+
 function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
@@ -353,6 +386,8 @@ function initializePage(initData) {
   lineNumberContainer = document.querySelector(".file-content");
   helpScreen = document.getElementsByClassName("help-screen")[0];
 
+  getGitHistory();
+
   // The native browser handling of hashes in the location is to scroll
   // to the element that has a name matching the id. We want to prevent
   // this since we want to take control over scrolling ourselves, and the
@@ -413,6 +448,11 @@ function initializePage(initData) {
     ) {
       // check against card, not overlay
       hideHelp();
+    }
+
+    if (event.target.id = "toggle-history-pane") {
+      toggleHistoryPane();
+      console.log("toggling history pane");
     }
   });
 }

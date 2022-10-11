@@ -82,6 +82,17 @@
         {{ template "filecontent" . }}
       {{end}}
   </div>
+  <div id="history-pane" data-open="true">
+    <div class="title-bar" style="height:40px;">
+      <div class="tabs">
+        <button>History</button>
+      </div>
+      <div class="actions">
+        <button id="toggle-history-pane">O/C</button>
+      </div>
+    </div>
+    <button id="load-more-history-btn">Load more</button>
+  </div>
 
   <section class="help-screen u-modal-overlay hidden">
     <div class="help-screen-card u-modal-content">
