@@ -222,6 +222,11 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 	})
 }
 
+func logAndServeError(ctx context.Context, w http.ResponseWriter, errMsg string, errCode int) {
+	log.Printf(ctx, errMsg)
+	http.Error(w, errMsg, errCode)
+}
+
 func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// start := time.Now()
 	parent := r.URL.Query().Get(":parent")
@@ -244,20 +249,23 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 	parentMap, ok := s.newRepos[parent]
 
 	if !ok {
-		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		errMsg := fmt.Sprintf("delve-error: parent: %s not found\n", parent)
+		logAndServeError(ctx, w, errMsg, 500)
 		return
 	}
 
 	repoConfig, ok := parentMap[repo]
 
 	if !ok {
-		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		errMsg := fmt.Sprintf("delve-error: repo: %s not found\n", repo)
+		logAndServeError(ctx, w, errMsg, 500)
 		return
 	}
 
 	data, err := buildFileData(path, repoConfig, rev)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		errMsg := fmt.Sprintf("delve-error: Error reading file path=%s, rev=%s - %s", path, rev, err)
+		logAndServeError(ctx, w, errMsg, 500)
 		return
 	}
 	// We build this carefully increase /blob/ is in the path to the file that
@@ -307,13 +315,15 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	repo, ok := s.repos[repoName]
 	if !ok {
-		http.Error(w, "No such repo", 404)
+		errMsg := fmt.Sprintf("Error: No such repo: %s", repoName)
+		logAndServeError(ctx, w, errMsg, 500)
 		return
 	}
 
 	data, err := buildFileData(path, repo, commit)
 	if err != nil {
-		http.Error(w, "Error reading file", 500)
+		errMsg := fmt.Sprintf("Error: reading file - %s", err)
+		logAndServeError(ctx, w, errMsg, 500)
 		return
 	}
 
