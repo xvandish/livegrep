@@ -514,7 +514,7 @@ func (s *server) ServerSideAPISearchV2(ctx context.Context, w http.ResponseWrite
 
 	log.Printf(ctx,
 		"responding success results=%d why=%s stats=%s",
-		len(reply.Results),
+		reply.Info.NumMatches,
 		reply.Info.ExitReason,
 		asJSON{reply.Info})
 
