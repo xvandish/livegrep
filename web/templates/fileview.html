@@ -73,7 +73,9 @@
           </ul>
           {{ with .ReadmeContent }}
             <div style="width:85%;">
-              {{ template "filecontent" . }}
+              <div class="file-content">
+                {{ template "filecontent" . }}
+              </div>
             </div>
           {{end}}
         </div>

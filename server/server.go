@@ -158,11 +158,41 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 	})
 }
 
+func (s *server) ServeGitBlameJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/json/git-blame/:parent/:repo/:rev/", r.URL.Path)
+
+	fullRepoPath := parent + "/" + repoName
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repoConfig, ok := s.repos[fullRepoPath]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	blameData, err := gitBlameBlob(path, repoConfig, rev)
+
+	if err != nil {
+		w.WriteHeader(500)
+		return
+		// w.Write((err.Error()))
+	}
+
+	replyJSON(ctx, w, 200, blameData)
+}
+
 func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repoName := r.URL.Query().Get(":repo")
 	rev := r.URL.Query().Get(":rev")
-	path := pat.Tail("/api/v2/git-log/:parent/:repo/:rev/", r.URL.Path)
+	path := pat.Tail("/api/v2/json/git-log/:parent/:repo/:rev/", r.URL.Path)
 
 	if len(s.repos) == 0 {
 		http.Error(w, "File browsing and git commands not enabled", 404)
@@ -425,9 +455,59 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := "nytimes"
+	repo := "eventtracker-server"
+	rev := "HEAD"
+
+	// TODO(xvandish): this is temporary. Soon we can split out blob and directory code all the way
+	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
+	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
+	// "ServeGitBlob" function works for both entitites
+	path := "service.go"
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+	data, err := buildFileData(path, repoConfig, rev)
+	blameData, err := gitBlameBlob(path, repoConfig, rev)
+	data.FileContent.BlameData = blameData
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+	// We build this carefully increase /blob/ is in the path to the file that
+	// we're actually viewing
+	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
+	// if we were going to permalink, make it what we want
+	// TODO(xvandish): do this in fileview.go
+	if data.Permalink != "" {
+		data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+	} else if data.Headlink != "" {
+		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
+	}
+
+	script_data := &struct {
+		RepoInfo   config.RepoConfig `json:"repo_info"`
+		FilePath   string            `json:"file_path"`
+		Commit     string            `json:"commit"`
+		CommitHash string            `json:"commit_hash"`
+	}{repoConfig, path, rev, data.CommitHash}
+
 	s.renderPage(ctx, w, r, "experimental.html", &page{
 		Title:         "experimental",
 		IncludeHeader: false,
+		ScriptName:    "fileview",
+		ScriptData:    script_data,
+		Data:          data,
 	})
 }
 
@@ -739,7 +819,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/getRenderedSearchResults/:backend", srv.Handler(srv.ServeRenderedSearchResults))
 	m.Add("GET", "/api/v2/getRenderedSearchResults/", srv.Handler(srv.ServeRenderedSearchResults))
 	// m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
-	m.Add("GET", "/api/v2/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
+	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
+
+	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
 
 	var h http.Handler = m
 

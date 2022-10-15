@@ -94,17 +94,19 @@ type directoryListEntry struct {
 }
 
 type fileViewerContext struct {
-	PathSegments   []breadCrumbEntry
-	Repo           config.RepoConfig
-	Commit         string
-	CommitHash     string
-	DirContent     *directoryContent
-	FileContent    *sourceFileContent
-	ExternalDomain string
-	Permalink      string
-	Headlink       string
-	LogLink        string
-	BlameData      *BlameResult
+	PathSegments    []breadCrumbEntry
+	Repo            config.RepoConfig
+	Commit          string
+	CommitHash      string
+	ShortCommitHash string
+	DirContent      *directoryContent
+	FileContent     *sourceFileContent
+	ExternalDomain  string
+	Permalink       string
+	Headlink        string
+	LogLink         string
+	BlameData       *BlameResult
+	FileName        string
 }
 
 type sourceFileContent struct {
@@ -628,18 +630,11 @@ func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 }
 
 type BlameResult struct {
-	Path              string // the filepath of the file being blamed
-	Commit            string // the commit of the file being blamed
-	Lines             []*BlameLine
-	LinesToBlameChunk map[int]*BlameChunk
-}
-
-type BlameLine struct {
-	AuthorName  string
-	AuthorEmail string
-	CommitHash  string
-
-	// TODO(xvandish): Parents so we can continually walk balk for a blame
+	Path               string              // the filepath of the file being blamed
+	Commit             string              // the commit of the file being blamed
+	LinesToBlameChunk  map[int]*BlameChunk `json:"-"`
+	BlameChunks        []*BlameChunk
+	LineNumsToBlameIdx map[int]int
 }
 
 // Blame chunk represents `n` contigous BlameLines that are from the same commit
@@ -683,7 +678,7 @@ func deleteKey(line, key string) string {
 	return strings.Replace(line, key, "", 1)
 }
 
-func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*BlameChunk, lineNumberToChunkMap map[int]*BlameChunk, repoPath string, filePath string) (moreChunkLeft bool, err error) {
+func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*BlameChunk, lineNumberToChunkMap map[int]*BlameChunk, blameChunks []*BlameChunk, repoPath string, filePath string) (moreChunkLeft bool, err error) {
 	// read the first line. This will be in the following format
 	// <gitCommitHash> <lnoInOriginalFile> <lnoInFinalFile> <linesInChunk>
 	// like:
@@ -715,6 +710,7 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 		chunk.CommitLink = fmt.Sprintf("/delve/%s/commit/%s", repoPath, commitHash)
 		chunk.alreadyFilled = false
 		commitHashToChunkMap[commitHash] = chunk
+		blameChunks = append(blameChunks, chunk)
 	}
 
 	currLineNumber, err := strconv.Atoi(matches[3])
@@ -808,9 +804,10 @@ func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 
 	commitHashToChunkMap := make(map[string]*BlameChunk)
 	lnoToChunkMap := make(map[int]*BlameChunk)
+	blameChunks := make([]*BlameChunk, 0)
 
 	for {
-		hasMore, err := processNextChunk(scanner, commitHashToChunkMap, lnoToChunkMap, repo.Name, cleanPath)
+		hasMore, err := processNextChunk(scanner, commitHashToChunkMap, lnoToChunkMap, blameChunks, repo.Name, cleanPath)
 		if !hasMore {
 			break
 		} else if err != nil {
@@ -823,6 +820,7 @@ func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 
 	fmt.Printf("blameRes: %+v\n", blameRes)
 	blameRes.LinesToBlameChunk = lnoToChunkMap
+	blameRes.BlameChunks = blameChunks
 
 	return &blameRes, nil
 }
@@ -933,14 +931,15 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	}
 
 	return &fileViewerContext{
-		PathSegments:   segments,
-		Repo:           repo,
-		Commit:         commit,
-		CommitHash:     commitHash[:16],
-		DirContent:     dirContent,
-		FileContent:    fileContent,
-		ExternalDomain: externalDomain,
-		Permalink:      permalink,
-		Headlink:       headlink,
+		PathSegments:    segments,
+		Repo:            repo,
+		Commit:          commit,
+		CommitHash:      commitHash[:16],
+		ShortCommitHash: commitHash[:8],
+		DirContent:      dirContent,
+		FileContent:     fileContent,
+		ExternalDomain:  externalDomain,
+		Permalink:       permalink,
+		Headlink:        headlink,
 	}, nil
 }

@@ -5,12 +5,32 @@
 <style>
 
 body { margin: 0; min-height: 100vh; }
-.parent { 
+.repository-browser {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  flex: 1 1 100%;
+  border-color: #dadcd0;
+  min-height: 100%;
+}
+.browse-repository-breadcrumb {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 36px;
+    max-height: none;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+    border-color: #dadcd0;
+}
+
+.browse-repository-contents { 
     display: flex;
     box-sizing: border-box;
     flex-direction: row;
     flex: 1 1 100%;
-    min-height: 100vh; /* temp */
 }
 .repository-navigation {
   background-color: #eaeaea; 
@@ -72,13 +92,47 @@ body { margin: 0; min-height: 100vh; }
     flex: 0 0 auto;
     border-color: #dadcd0;
     background-color: #d2e3fc;
+    min-height: 40px;
 }
 
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper {
+box-sizing: border-box;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: row;
+    place-content: center space-between;
+    align-items: center;
+}
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions {
+  padding: 0 10px;
+}
 .repository-detail .main-view .middle-view .file-detail .file-content {
       overflow: auto;
     position: relative;
     outline: 0;
     flex: 1 1 100%;
+}
+.repository-detail .main-view .middle-view .file-detail .file-content table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.blame-col {
+  background-color: wheat;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table .blame-line {
+  width: 240px;
+  white-space: nowrap;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno {
+  background-color: #f7f7f7;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-right: 1px solid #ddd;
+  border-color: #dadcd0;
+
 }
 
 .repository-detail .main-view .middle-view .git-detail {
@@ -95,27 +149,59 @@ body { margin: 0; min-height: 100vh; }
     background-color: #d3e3fc;
 }
 
-</style>
-  </head>
 
+
+</style>
+
+    {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
+    {{linkTag .Nonce "stylesheet" "/assets/css/codesearch.min.css" .AssetHashes}}
+  </head>
+  {{ with .Data }}
   <body>
-    <div class="parent">
-      <div class="repository-navigation"> </div>
-      <div class="repository-detail">
-        <div class="main-view">
-          <div class="middle-view">
-            <div class="file-detail">
-              <div class="file-header">Header...</div>
-              <div class="file-content"></div>
-            </div>
-            <div class="git-detail">
-              Git details...
+    <div class="repository-browser">
+      <div class="browse-repository-breadcrumb">
+        <nav>
+          {{$repo := .Repo.Name}}
+          {{$repo}}:
+          {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}{{ if ne .Commit "HEAD" }}<span class="ch">@{{.CommitHash}}</span>{{ end }}
+        </nav>
+      </div>
+      <div class="browse-repository-contents">
+        <div class="repository-navigation"> </div>
+        <div class="repository-detail">
+          <div class="main-view">
+            <div class="middle-view">
+              <div class="file-detail">
+                <div class="file-header">
+                  <div class="file-header-wrapper">
+                    <div class="file-info">
+                      <span class="filename">{{.FileContent.Filename}}</span>
+                      <span class="commit-info">(@ <a href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
+                    </div>
+                    <div class="file-actions">
+                      <button id="toggle-blame">Blame</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="file-content">
+                  {{ template "filecontent" .FileContent }}
+                </div>
+              </div>
+              <div class="git-detail">
+                Git details...
+              </div>
             </div>
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   </body>
+  {{ end }}
 
+  <script>
+    document.getElementById("toggle-blame").addEventListener("click", function() {
+
+    });
+  </script>
 </html>
