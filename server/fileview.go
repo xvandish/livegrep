@@ -106,7 +106,7 @@ type fileViewerContext struct {
 	Headlink        string
 	LogLink         string
 	BlameData       *BlameResult
-	FileName        string
+	FilePath        string
 }
 
 type sourceFileContent struct {
@@ -1000,5 +1000,6 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		ExternalDomain:  externalDomain,
 		Permalink:       permalink,
 		Headlink:        headlink,
+		FilePath:        relativePath,
 	}, nil
 }
