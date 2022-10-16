@@ -206,6 +206,7 @@ func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWrite
 	}
 
 	data, err := buildSimpleGitLogData(path, rev, repo)
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName
 
 	if err != nil {
 		replyJSON(ctx, w, 500, data)
@@ -456,14 +457,14 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 }
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := "nytimes"
-	repo := "eventtracker-server"
+	repo := "eventtracker-dataflow"
 	rev := "HEAD"
 
 	// TODO(xvandish): this is temporary. Soon we can split out blob and directory code all the way
 	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
 	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
 	// "ServeGitBlob" function works for both entitites
-	path := "service.go"
+	path := "Dockerfile"
 	parentMap, ok := s.newRepos[parent]
 
 	if !ok {

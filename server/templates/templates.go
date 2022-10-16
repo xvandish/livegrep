@@ -113,16 +113,27 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit stri
 	// TODO(xvandish): skip/ignore the root dir when rendering so all file's
 	// aren't indented.
 	// rather than having this as a template,
-	outHtml := "<ul>"
+	paddingLeft := 15
+	if depth > 1 {
+		paddingLeft = (depth - 1) * 15
+	}
+	outHtml := fmt.Sprintf("<ul style=\"padding-left: %dpx\">", paddingLeft)
+
+	// don't nest everything under a ul
 	if depth == 0 {
 		outHtml = "<nav id='side-nav'>" + outHtml
 	}
 
-	link := getTreeItemLink(rootDir, repoName, commit)
-	if rootDir.Type == "tree" {
-		outHtml += "<li>" + link + "/</li>"
-	} else {
-		outHtml += "<li>" + link + "</li>"
+	if depth > 0 {
+
+		link := getTreeItemLink(rootDir, repoName, commit)
+		imgLink := "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
+		if rootDir.Type == "tree" {
+			outHtml += "<li>" + link + "/</li>"
+		} else {
+			outHtml += "<li>" + imgLink + link + "</li>"
+		}
+
 	}
 
 	if len(rootDir.Children) > 0 {

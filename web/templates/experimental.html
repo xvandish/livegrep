@@ -4,7 +4,7 @@
 
 <style>
 
-body { margin: 0; min-height: 100vh; }
+body { margin: 0; min-height: 100vh; overflow: hidden; }
 .repository-browser {
   display: flex;
   box-sizing: border-box;
@@ -44,8 +44,26 @@ body { margin: 0; min-height: 100vh; }
     box-sizing: border-box;
     border-color: #dadcd0;
     border-right: 1px solid;
-    max-height: 90%;
+    max-height: 97vh;
+    overflow: auto;
 }
+
+.repository-navigation #side-nav {
+  overflow: scroll;
+  max-height: calc(100% - 10px); /* account for horizontal scrollbar height */
+}
+
+.repository-navigation #side-nav ul {
+  list-style: none;
+  margin: 0px;
+}
+
+.repository-navigation #side-nav ul li {
+  display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .repository-detail { 
   display: flex;
   flex-direction: column;
@@ -302,6 +320,9 @@ box-sizing: border-box;
   </body>
 
   <script>
+    var fileIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false"><path d="M0 0h18v18H0V0z" fill="none"></path><path d="M10.5 1.5H2.9v15h12V6l-4.4-4.5zm-.7 5.3V2.6l4.1 4.1H9.8z"></path></svg>"';
+
+
     var blameShown = false;
     var commitForLastBlame = "";
     document.getElementById("toggle-blame").addEventListener("click", function(e) {
@@ -311,6 +332,7 @@ box-sizing: border-box;
                   blameLines[i].classList.add("hidden");
             }
             e.target.dataset.shown = "false";
+            blameShown = false;
           } else {
               if (blameShown && commitForLastBlame == window.scriptData.commitHash) {
                 var blameLines = document.querySelectorAll("td.blame-col .blame-line");
@@ -318,6 +340,7 @@ box-sizing: border-box;
                       blameLines[i].classList.remove("hidden");
                 }
                 e.target.dataset.shown = "true";
+                blameShown = true;
                 return;
               }
               loadBlame();
@@ -420,6 +443,12 @@ box-sizing: border-box;
 
           var commits = gitHistory.Commits;
 
+          // clear out the existing table
+          var existingTable = document.getElementById("git-history-table");
+          if (existingTable) {
+            existingTable.remove();
+          }
+
           var table = document.createElement('table');
           table.id = "git-history-table";
 
@@ -459,7 +488,7 @@ box-sizing: border-box;
               .appendChild(expandContainer);
           
             var commitDiffLink = document.createElement("a");
-            commitDiffLink.href = gitHistory.CommitLinkPrefix + +"/commits/" + commit.Hash;
+            commitDiffLink.href = gitHistory.CommitLinkPrefix +"/commit/" + commit.Hash;
             commitDiffLink.innerHTML = commit.ShortHash;
             tr.appendChild(document.createElement("td"))
                 .appendChild(commitDiffLink);
@@ -526,6 +555,9 @@ box-sizing: border-box;
           commitLink.innerHTML = commitHash.slice(0, 8)
 
           // TODO(xvandish): replace the url part once we actually load via urls..
+          var prevCommitHash = window.scriptData.commitHash;
+          var prevFilepath = window.scriptData.filepath;
+          var prevFilename = window.scriptData.filename;
           window.scriptData.commitHash = commitHash;
           window.scriptData.filepath = path;
           window.scriptData.filename = path.split(/[\\/]/).pop();
@@ -543,6 +575,13 @@ box-sizing: border-box;
             loadBlame();
             commitForLastBlame = commitHash;
           }
+
+          // only reload history if we switched to a different file
+          if (!historyPanel.classList.contains("closed") && prevFilepath != path) {
+            fetchHistory();
+          }
+
+          // if the commitHistory was open, re-load it's contents
         }
 
         function expandLogLine(event) {
@@ -559,14 +598,16 @@ box-sizing: border-box;
 
         var sideNav = document.getElementById("side-nav");
         window.addEventListener("click", function(event) {
-          if (event.target.href == "blah" && event.target.innerHTML == "view") {
+          console.log(event.target.pathname, event.target.innerHTML)
+          if (event.target.pathname == "/blah" && event.target.innerHTML == "view") {
             console.log('viewing')
             event.preventDefault();
             viewFileAtCommit(event, window.scriptData.filepath, event.target.dataset.commit, "commit-history");
           }
 
-          if (event.target.href != "" && sideNav.contains(event.target)) {
+          if (event.target.tagName == "A" && event.target.href && sideNav.contains(event.target)) {
             console.log('side nav click');
+            console.log(event.target.href)
             event.preventDefault();
             // take the href and split it into parts
             // /experimental/nytimes/eventtracker-server/HEAD/blob/fixtures/one_after_another_p2.json
