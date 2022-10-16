@@ -193,6 +193,23 @@ box-sizing: border-box;
   width: 100%;
 }
 
+#git-history-table {
+  font-size: 0.9rem;
+}
+
+#git-history-table tr {
+  display: grid;
+  grid-template-columns: 40px 100px 200px 200px 1fr 40px;
+  justify-content: flex-start;
+  text-align: left;
+  border-bottom: 1px solid rgba(0,0,0,.12);
+}
+
+#git-history-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #git-history-table tr:hover {
   background-color: aliceblue; 
   cursor: pointer;
@@ -211,6 +228,21 @@ box-sizing: border-box;
 
 #git-history-table tr > .actions-container {
   opacity: 0;
+}
+
+#git-history-table .expanded-row-content {
+  border-top: none;
+    display: grid;
+    grid-column: 1/-1;
+    justify-content: flex-start;
+    font-size: 14px;
+}
+#git-history-table .expanded-row-content pre {
+  white-space: pre-wrap;
+}
+
+#git-history-table .hide-row {
+  display: none;
 }
 </style>
 
@@ -390,12 +422,14 @@ box-sizing: border-box;
           table.id = "git-history-table";
 
           var thead = document.createElement('thead');
-          var headerItems = ["Short Hash", "Author", "Commit Date", "Subject", ""];
+          var theadRow = document.createElement("tr");
+          thead.appendChild(theadRow);
+          var headerItems = ["", "Short Hash", "Author", "Commit Date", "Subject", ""];
           for (var i = 0; i < headerItems.length; i++) {
-            thead.appendChild(document.createElement("th")).
+            theadRow.appendChild(document.createElement("th")).
                   appendChild(document.createTextNode(headerItems[i]));
           }
-          table.appendChild(thead);
+          table.appendChild(thead)
 
           for (var i = 0; i < commits.length; i++) {
             const tr = table.insertRow();
@@ -406,6 +440,21 @@ box-sizing: border-box;
             } else if (i == 0) { // TODO(xvandish): On server, decide if HEAD
               tr.classList.add("current-commit")
             } 
+
+            var expandContainer = document.createElement("div");
+            expandContainer.classList.add("row-expander");
+            if (commit.Body.length > 0) {
+              console.log("commit here")
+              var btn = document.createElement("button");
+              btn.classList.add("expand-body");
+              btn.dataset.expanded = "false";
+              btn.innerHTML = "Exp"
+              expandContainer.appendChild(btn);
+            }
+
+            // always add this, in case some row can expand we dont want shifts
+            tr.appendChild(document.createElement("td"))
+              .appendChild(expandContainer);
           
             var commitDiffLink = document.createElement("a");
             commitDiffLink.href = gitHistory.CommitLinkPrefix + +"/commits/" + commit.Hash;
@@ -433,8 +482,18 @@ box-sizing: border-box;
             // viewLink.addEventListener("click", viewFileAtCommit.bind(this, gitHistory.Path, commit.Hash), false);
 
             buttonsContainer.appendChild(viewLink);
+            tr.appendChild(document.createElement("td"))
+              .appendChild(buttonsContainer);
 
-            tr.appendChild(buttonsContainer);
+            // now append the collapsible commit body
+            if (commit.Body.length > 0) {
+              var collapsibleCell = document.createElement("td");
+              collapsibleCell.classList.add("expanded-row-content");
+              collapsibleCell.classList.add("hide-row");
+              collapsibleCell.appendChild(document.createElement("pre"))
+                .appendChild(document.createTextNode(commit.Body))
+              tr.appendChild(collapsibleCell);
+            }
 
           }
 
@@ -477,6 +536,11 @@ box-sizing: border-box;
             commitForLastBlame = commitHash;
           }
         }
+
+        function expandLogLine(event) {
+          var row = event.target.closest("tr");
+          row.querySelector(".expanded-row-content").classList.toggle("hide-row");
+        }
         window.scriptData = {
           repo: {{ $repo }},
           commitHash: {{ .Commit }},
@@ -490,6 +554,11 @@ box-sizing: border-box;
             console.log('viewing')
             event.preventDefault();
             viewFileAtCommit(event, window.scriptData.filepath, event.target.dataset.commit);
+          }
+
+          if (event.target.classList.contains("expand-body")) {
+            console.log("row expander clicked");
+            expandLogLine(event);
           }
         })
   </script>
