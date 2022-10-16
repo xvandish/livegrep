@@ -12,15 +12,15 @@
       {{$rowCls = "blame-gray"}}
       <!-- <tr class="{{ if eq $prevSha $currSha }}{{$rowCls}}{{end}}"> -->
       <tr>
-        <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
         <td class="blame-col">
-          <div class="blame-line">
-          {{ with (index $blameData.LinesToBlameChunk $lineNum) }}
-          <a href="{{ .CommitLink }}">{{ .ShortHash }}</a>
-          <span>- {{ .AuthorName }}</span>
-          {{ end }}
-          </div>
+          <!-- <div class="blame-line"> -->
+          <!-- {{ with (index $blameData.LinesToBlameChunk $lineNum) }} -->
+          <!-- <a href="{{ .CommitLink }}">{{ .ShortHash }}</a> -->
+          <!-- <span>- {{ .AuthorName }}</span> -->
+          <!-- {{ end }} -->
+          <!-- </div> -->
         </td>
+        <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
         <td id="LC{{$lineNum}}" style="white-space: pre;padding-left: 1rem;">{{ $e }}</td>
       </tr>
     {{ end }}

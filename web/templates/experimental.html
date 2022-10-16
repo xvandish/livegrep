@@ -118,21 +118,30 @@ box-sizing: border-box;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.blame-col {
-  background-color: wheat;
+  background-color: #f9fafb;
+  vertical-align: top;
+
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table .blame-line {
   width: 240px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 10px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table .blame-line.hidden {
+  width: 0px;
+  padding: 0px;
+  margin: 0px;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno {
   background-color: #f7f7f7;
-  padding-left: 5px;
+  padding-left: 15px;
   padding-right: 5px;
-  border-right: 1px solid #ddd;
-  border-color: #dadcd0;
-
+  border-left: 1px solid #dadcd0;
 }
 
 .repository-detail .main-view .middle-view .git-detail {
@@ -148,7 +157,6 @@ box-sizing: border-box;
     border-color: #dadcd0;
     background-color: #d3e3fc;
 }
-
 
 
 </style>
@@ -200,8 +208,141 @@ box-sizing: border-box;
   {{ end }}
 
   <script>
-    document.getElementById("toggle-blame").addEventListener("click", function() {
+    var blameShown = false;
+    document.getElementById("toggle-blame").addEventListener("click", function(e) {
+          if (e.target.dataset.shown == "true") {
+            var blameLines = document.querySelectorAll("td.blame-col .blame-line");
+            for (var i = 0; i < blameLines.length; i++) {
+                  blameLines[i].classList.add("hidden");
+            }
+            e.target.dataset.shown = "false";
+          } else {
+              if (blameShown) {
+                var blameLines = document.querySelectorAll("td.blame-col .blame-line");
+                for (var i = 0; i < blameLines.length; i++) {
+                      blameLines[i].classList.remove("hidden");
+                }
+                e.target.dataset.shown = "true";
+                return;
+              }
+              loadBlame();
+              var blameCols = document.querySelectorAll("td.blame-col");
+              e.target.dataset.shown = "true";
+              blameShown = true;
 
+          }
     });
+
+    async function loadBlame () {
+      console.log("in onload func");
+      var blame = await fetch("/api/v2/json/git-blame/nytimes/eventtracker-server/HEAD/service.go")
+            .then((r) => r.json())
+            .then((j) => j);
+
+      // Now that we have blame, we need to:
+      // Iterate each blame chunk.
+           // get the td at each StartLine
+            // fill in the <div class="blame-line">
+            // 
+
+      var blameCols = document.querySelectorAll("td.blame-col");
+      var seenStartLines = new Map();
+
+      // TODO(xvandish): Add highlights/striping to alternating blame chunks
+      var blame_chunks = blame.blame_chunks;
+      for (var i = 0; i < blame_chunks.length; i++) {
+        var chunk = blame_chunks[i];
+        console.log("processing chunk with has=" + chunk.ShortHash);
+        
+        for (var j = 0; j < chunk.LineRanges.length; j++) {
+          var chunkRange = chunk.LineRanges[j];
+          var startLine = chunkRange.StartLine;
+          var endLine = chunkRange.EndLine;
+
+
+          var blameContainer = document.createElement("div");
+          blameContainer.classList.add("blame-line")
+
+          var linkToDiff = document.createElement("a");
+          linkToDiff.href = chunk.CommitLink;
+          linkToDiff.innerHTML = chunk.CommitSummary;
+
+          blameContainer.appendChild(linkToDiff);
+
+              if (seenStartLines.has(startLine - 1)) {
+                console.error("startLine=" + (startLine-1) + " has been seen before")
+                  }
+
+          console.log("commitHash=" + chunk.ShortHash + " startLine=" + startLine + " startLine+1=" + (startLine+1))
+          var blameCol = blameCols[startLine - 1];
+          blameCol.setAttribute("rowspan", (endLine - startLine) + 1);
+          blameCol.style.borderBottom = "1px solid #dadcd0";
+          blameCol.classList.add("blame-col");
+          blameCol.appendChild(blameContainer);
+          seenStartLines.set(startLine-1, "true");
+
+        // now mark all the empty blameCols in between start and end as ready to be deleted
+        for (var l = startLine; l < endLine; l++) {
+          blameCols[l].id="to-delete";
+            }
+
+        // var contentStartLine = contentLines[startLine - 1];
+        // var contentEndLine = contentLines[chunk.EndLine - 1];
+
+        // contentStartLine.insertBefore(blameCol, contentStartLine.firstChild);
+
+        // get the TD associated with this startLine
+        }
+      }
+      for (var i = 0; i < blameCols.length; i++) {
+            if (blameCols[i].id == "to-delete") {
+              blameCols[i].remove();
+                }
+          }
+
+    };
   </script>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

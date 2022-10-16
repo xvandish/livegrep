@@ -633,8 +633,13 @@ type BlameResult struct {
 	Path               string              // the filepath of the file being blamed
 	Commit             string              // the commit of the file being blamed
 	LinesToBlameChunk  map[int]*BlameChunk `json:"-"`
-	BlameChunks        []*BlameChunk
-	LineNumsToBlameIdx map[int]int
+	BlameChunks        []*BlameChunk       `json:"blame_chunks"`
+	LineNumsToBlameIdx map[int]int         `json:"linenums_to_blame_idx"`
+}
+
+type LineRange struct {
+	StartLine int
+	EndLine   int
 }
 
 // Blame chunk represents `n` contigous BlameLines that are from the same commit
@@ -653,6 +658,7 @@ type BlameChunk struct {
 	Filename           string
 	PreviousFilename   string
 	PreviousCommitHash string
+	LineRanges         []*LineRange
 	alreadyFilled      bool
 }
 
@@ -678,7 +684,7 @@ func deleteKey(line, key string) string {
 	return strings.Replace(line, key, "", 1)
 }
 
-func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*BlameChunk, lineNumberToChunkMap map[int]*BlameChunk, blameChunks []*BlameChunk, repoPath string, filePath string) (moreChunkLeft bool, err error) {
+func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*BlameChunk, lineNumberToChunkMap map[int]*BlameChunk, repoPath string, filePath string) (moreChunkLeft bool, err error) {
 	// read the first line. This will be in the following format
 	// <gitCommitHash> <lnoInOriginalFile> <lnoInFinalFile> <linesInChunk>
 	// like:
@@ -701,6 +707,12 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 
 	commitHash := matches[1]
 
+	currLineNumber, err := strconv.Atoi(matches[3])
+	linesInChunk, err := strconv.Atoi(matches[4])
+	if err != nil {
+		return false, err
+	}
+
 	// Get or create the BlameChunk for this commitHash
 	chunk := commitHashToChunkMap[commitHash]
 	if chunk == nil {
@@ -709,21 +721,44 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 		chunk.ShortHash = commitHash[:8]
 		chunk.CommitLink = fmt.Sprintf("/delve/%s/commit/%s", repoPath, commitHash)
 		chunk.alreadyFilled = false
+		// chunk.LineRanges = append(chunk.LineRanges, LineRange{StartLine: currLineNumber, EndLine: currLineNumber + (linesInChunk - 1)})
+		// chunk.StartLine = currLineNumber
+		// chunk.EndLine = currLineNumber + (linesInChunk - 1)
 		commitHashToChunkMap[commitHash] = chunk
-		blameChunks = append(blameChunks, chunk)
 	}
 
-	currLineNumber, err := strconv.Atoi(matches[3])
-	linesInChunk, err := strconv.Atoi(matches[4])
-
-	if err != nil {
-		return false, err
+	// attempt to merge this chunk interval with the previous, if they're consecutive. Sometimes blame
+	// doesn't do this for us
+	startLine := currLineNumber
+	endLine := currLineNumber + (linesInChunk - 1)
+	lastIdx := len(chunk.LineRanges) - 1
+	if chunk.ShortHash == "8aba1988" {
+		fmt.Printf("%s - currLineNumber=%d linesInChunk=%d\n", commitHash[:8], currLineNumber, linesInChunk)
+		fmt.Printf("headerLine=%s\n", headerLine)
+	}
+	if lastIdx >= 0 && chunk.ShortHash == "8aba1988" {
+		prevRange := chunk.LineRanges[lastIdx]
+		fmt.Printf("prevRange=%+v\n", prevRange)
+		fmt.Printf("startLine=%d endLine=%d\n", startLine, endLine)
+		fmt.Printf("wouldMerge=%t\n", endLine-1 == prevRange.EndLine)
+	}
+	if lastIdx >= 0 && endLine-1 == chunk.LineRanges[lastIdx].EndLine {
+		chunk.LineRanges[lastIdx].EndLine = endLine
+		if chunk.ShortHash == "8aba1988" {
+			fmt.Printf("merged interval\n")
+		}
+	} else {
+		chunk.LineRanges = append(chunk.LineRanges, &LineRange{StartLine: startLine, EndLine: endLine})
 	}
 
 	// now, keep scanning until we hit `linesInChunk` codeLines (`\t` lines
 	for linesInChunk != 0 {
 		scanner.Scan()
 		line := scanner.Text()
+
+		if chunk.ShortHash == "8aba1988" {
+			fmt.Printf("chunk-line=%s\n", line)
+		}
 
 		if matches := LineInChunkHeader.FindStringSubmatch(line); matches != nil {
 			currLineNumber, err = strconv.Atoi(matches[1])
@@ -737,11 +772,9 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 
 		// if we've already input this info, don't redo
 		if chunk.alreadyFilled {
-			fmt.Printf("skipping ahead, alreadyFilled\n")
 			continue
 		}
 
-		fmt.Printf("line=%s\n", line)
 		if strings.HasPrefix(line, AuthorKey) {
 			chunk.AuthorName = deleteKey(line, AuthorKey)
 		} else if strings.HasPrefix(line, AuthorMailKey) {
@@ -777,6 +810,25 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 	return true, nil
 }
 
+// func collapseBlameRanges(blameChunks []*BlameChunk) {
+// 	// sometimes, git blame will show report two consecutive lines from the same commit as being
+// 	// different chunks. I.e
+// 	// 12345 1 1 1
+// 	// .... (meta info)
+// 	// 12345 2 1 1
+
+// 	// so we iterate all lineRanges for each chunk, and collapse them if they're found to be consecutive
+// 	for _, chunk := range blameChunks {
+// 		for i, lineRange := range chunk.LineRanges {
+// 			if i - 1 < 0 {
+// 				continue
+// 			}
+
+// 			prevChunk
+// 		}
+// 	}
+// }
+
 func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*BlameResult, error) {
 	defer timeTrack(time.Now(), "gitBlameBlob")
 
@@ -804,10 +856,9 @@ func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 
 	commitHashToChunkMap := make(map[string]*BlameChunk)
 	lnoToChunkMap := make(map[int]*BlameChunk)
-	blameChunks := make([]*BlameChunk, 0)
 
 	for {
-		hasMore, err := processNextChunk(scanner, commitHashToChunkMap, lnoToChunkMap, blameChunks, repo.Name, cleanPath)
+		hasMore, err := processNextChunk(scanner, commitHashToChunkMap, lnoToChunkMap, repo.Name, cleanPath)
 		if !hasMore {
 			break
 		} else if err != nil {
@@ -815,9 +866,17 @@ func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 		}
 
 	}
-	fmt.Printf("chunkMap: %+v\n", lnoToChunkMap)
-	fmt.Printf("chunkMap hash: %+v\n", commitHashToChunkMap)
+	// fmt.Printf("chunkMap: %+v\n", lnoToChunkMap)
+	// fmt.Printf("chunkMap hash: %+v\n", commitHashToChunkMap)
 
+	blameChunks := make([]*BlameChunk, 0, len(commitHashToChunkMap))
+	for _, chunk := range commitHashToChunkMap {
+		blameChunks = append(blameChunks, chunk)
+	}
+	// sort.Slice(blameChunks, func(i, j int) bool {
+	// 	return blameChunks[i].StartLine < blameChunks[j].StartLine
+	// })
+	fmt.Printf("there are %d commits in map, and len of chunks is %d\n", len(commitHashToChunkMap), len(blameChunks))
 	fmt.Printf("blameRes: %+v\n", blameRes)
 	blameRes.LinesToBlameChunk = lnoToChunkMap
 	blameRes.BlameChunks = blameChunks
