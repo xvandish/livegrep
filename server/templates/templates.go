@@ -104,6 +104,42 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 	return codeParts
 }
 
+func getTreeItemLink(node *api.TreeNode, repoName, commit string) string {
+	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, commit, node.Type, node.Path)
+	return fmt.Sprintf("<a href=\"%s\">%s</a>", link, node.Name)
+}
+
+func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit string) template.HTML {
+	// TODO(xvandish): skip/ignore the root dir when rendering so all file's
+	// aren't indented.
+	// rather than having this as a template,
+	outHtml := "<ul>"
+	if depth == 0 {
+		outHtml = "<nav id='side-nav'>" + outHtml
+	}
+
+	link := getTreeItemLink(rootDir, repoName, commit)
+	if rootDir.Type == "tree" {
+		outHtml += "<li>" + link + "/</li>"
+	} else {
+		outHtml += "<li>" + link + "</li>"
+	}
+
+	if len(rootDir.Children) > 0 {
+		for _, child := range rootDir.Children {
+			outHtml += string(renderDirectoryTree(child, depth+1, repoName, commit))
+
+		}
+	}
+
+	outHtml += "</ul>"
+	if depth == 0 {
+		outHtml += "</nav>"
+	}
+
+	return template.HTML(outHtml)
+}
+
 // used to cap slice iteration
 func min(a, b int) int {
 	if a < b {
@@ -294,6 +330,7 @@ func getFuncs() map[string]interface{} {
 		"renderCodeLine":                   renderCodeLine,
 		"convertContentBlobToArrayOfLines": convertContentBlobToArrayOfLines,
 		"getSyntaxHighlightedContent":      getSyntaxHighlightedContent,
+		"renderDirectoryTree":              renderDirectoryTree,
 	}
 }
 

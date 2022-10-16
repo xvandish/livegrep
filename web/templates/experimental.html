@@ -44,6 +44,7 @@ body { margin: 0; min-height: 100vh; }
     box-sizing: border-box;
     border-color: #dadcd0;
     border-right: 1px solid;
+    max-height: 90%;
 }
 .repository-detail { 
   display: flex;
@@ -212,7 +213,6 @@ box-sizing: border-box;
 
 #git-history-table tr:hover {
   background-color: aliceblue; 
-  cursor: pointer;
 }
 
 #git-history-table tr.current-commit {
@@ -260,7 +260,9 @@ box-sizing: border-box;
         </nav>
       </div>
       <div class="browse-repository-contents">
-        <div class="repository-navigation"> </div>
+        <div class="repository-navigation">
+          {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit }}
+        </div>
         <div class="repository-detail">
           <div class="main-view">
             <div class="middle-view">
@@ -329,7 +331,7 @@ box-sizing: border-box;
 
     async function loadBlame () {
       console.log("in onload func");
-      var blame = await fetch(`/api/v2/json/git-blame/nytimes/eventtracker-server/${window.scriptData.commitHash}/service.go`)
+      var blame = await fetch(`/api/v2/json/git-blame/${window.scriptData.repo}/${window.scriptData.commitHash}/${window.scriptData.filepath}`)
             .then((r) => r.json())
             .then((j) => j);
 
@@ -407,7 +409,7 @@ box-sizing: border-box;
         });
 
         async function fetchHistory() {
-          var gitHistory = await fetch("/api/v2/json/git-log/nytimes/eventtracker-server/HEAD/service.go")
+          var gitHistory = await fetch(`/api/v2/json/git-log/${window.scriptData.repo}/${window.scriptData.commitHash}/${window.scriptData.filepath}`)
                 .then(r => r.json())
                 .then(r => r);
           console.log({ gitHistory });
@@ -500,16 +502,18 @@ box-sizing: border-box;
           document.getElementsByClassName("lower-detail-content")[0].appendChild(table);
         }
 
+        // var historyPanel = document.getElementsByClassName("lower-detail-content")[0];
         // TODO(xvandish): Switch to global handler so that we use less memory
-        async function viewFileAtCommit(event, path, commitHash) {
+        async function viewFileAtCommit(event, path, commitHash, clickLocation) {
           console.log({ path, commitHash })
           console.log(this);
 
-          if (window.scriptData.commitHash == commitHash) {
+          if (window.scriptData.filepath == path && window.scriptData.commitHash == commitHash) {
             return;
           }
 
-          var fileContent = await fetch(`/raw/nytimes/eventtracker-server/blob/${commitHash}/${path}`)
+          // TODO(blob or tree)
+          var fileContent = await fetch(`/raw/${window.scriptData.repo}/blob/${commitHash}/${path}`)
             .then(r => r.text())
             .then(r => r)
           
@@ -518,17 +522,21 @@ box-sizing: border-box;
 
           // Replace the header that says at what hash we're at
           var commitLink = document.getElementById("short-hash-link");
-          commitLink.href = `/delve/nytimes/eventtracker-server/commit/${commitHash}`;
+          commitLink.href = `/delve/${window.scriptData.repo}/commit/${commitHash}`;
           commitLink.innerHTML = commitHash.slice(0, 8)
 
           // TODO(xvandish): replace the url part once we actually load via urls..
           window.scriptData.commitHash = commitHash;
+          window.scriptData.filepath = path;
+          window.scriptData.filename = path.split(/[\\/]/).pop();
 
-          // replace the current "selected" commit in the history pane
-          document.querySelector("tr.current-commit").classList.remove("current-commit");
+          if (clickLocation == "commit-history") {
+            // replace the current "selected" commit in the history pane
+            document.querySelector("tr.current-commit").classList.remove("current-commit");
 
-          // now select the tr that contains the "view" button that was pressed
-          event.target.closest("tr").classList.add("current-commit");
+            // now select the tr that contains the "view" button that was pressed
+            event.target.closest("tr").classList.add("current-commit");
+          }
 
           // if the blameLayer was open, re-open it
           if (blameShown) {
@@ -549,11 +557,26 @@ box-sizing: border-box;
         };
         console.log(window.scriptData);
 
+        var sideNav = document.getElementById("side-nav");
         window.addEventListener("click", function(event) {
-          if (event.target.href = "blah" && event.target.innerHTML == "view") {
+          if (event.target.href == "blah" && event.target.innerHTML == "view") {
             console.log('viewing')
             event.preventDefault();
-            viewFileAtCommit(event, window.scriptData.filepath, event.target.dataset.commit);
+            viewFileAtCommit(event, window.scriptData.filepath, event.target.dataset.commit, "commit-history");
+          }
+
+          if (event.target.href != "" && sideNav.contains(event.target)) {
+            console.log('side nav click');
+            event.preventDefault();
+            // take the href and split it into parts
+            // /experimental/nytimes/eventtracker-server/HEAD/blob/fixtures/one_after_another_p2.json
+            var filePath = event.target.pathname.replace(`/experimental/${window.scriptData.repo}/${window.scriptData.commitHash}/`, "")
+
+            // TODO(xvandish): Indicate in anchor whether this is blob or tree so we don't have to guess
+            filePath = filePath.replace("blob/", "").replace("tree/", "")
+            console.log(event.target.href)
+            console.log({ filePath })
+            viewFileAtCommit(event, filePath, window.scriptData.commitHash, "side-nav");
           }
 
           if (event.target.classList.contains("expand-body")) {
@@ -561,6 +584,7 @@ box-sizing: border-box;
             expandLogLine(event);
           }
         })
+
   </script>
   {{ end }}
 </html>

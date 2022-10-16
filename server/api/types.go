@@ -1,5 +1,7 @@
 package api
 
+import "io/fs"
+
 type InnerError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -107,4 +109,26 @@ type TreeResult struct {
 	Version  string    `json:"version"`
 	Metadata *Metadata `json:"metadata"`
 	Bounds   [2]int    `json:"bounds"`
+}
+
+// TODO:(xvandish) Find a way to colocate this type closer to the fileview.
+// The server has access to fileview structs, but template.go does not. If we
+// decide to JS render instead of server render that fixes our problems...
+// When this is a treeNode
+
+// TODO(xvandish): Going to to to tie a set of TreeNodes to a spefici repo/commit
+type DirTree struct {
+	RootDir *TreeNode
+	Commit  string
+	Repo    string
+}
+
+type TreeNode struct {
+	Name      string // like service.go
+	Path      string // like src/service.go
+	Mode      fs.FileMode
+	Hash      string
+	ParentDir *TreeNode
+	Type      string
+	Children  []*TreeNode
 }

@@ -479,7 +479,9 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	}
 	data, err := buildFileData(path, repoConfig, rev)
 	blameData, err := gitBlameBlob(path, repoConfig, rev)
+	tree := buildDirectoryTree(path, repoConfig, rev)
 	data.FileContent.BlameData = blameData
+	data.DirectoryTree = tree
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
 		return

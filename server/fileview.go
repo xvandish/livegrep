@@ -3,7 +3,9 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -15,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/config"
 )
 
@@ -107,6 +110,7 @@ type fileViewerContext struct {
 	LogLink         string
 	BlameData       *BlameResult
 	FilePath        string
+	DirectoryTree   *api.TreeNode
 }
 
 type sourceFileContent struct {
@@ -732,21 +736,21 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 	startLine := currLineNumber
 	endLine := currLineNumber + (linesInChunk - 1)
 	lastIdx := len(chunk.LineRanges) - 1
-	if chunk.ShortHash == "8aba1988" {
-		fmt.Printf("%s - currLineNumber=%d linesInChunk=%d\n", commitHash[:8], currLineNumber, linesInChunk)
-		fmt.Printf("headerLine=%s\n", headerLine)
-	}
-	if lastIdx >= 0 && chunk.ShortHash == "8aba1988" {
-		prevRange := chunk.LineRanges[lastIdx]
-		fmt.Printf("prevRange=%+v\n", prevRange)
-		fmt.Printf("startLine=%d endLine=%d\n", startLine, endLine)
-		fmt.Printf("wouldMerge=%t\n", endLine-1 == prevRange.EndLine)
-	}
+	// if chunk.ShortHash == "8aba1988" {
+	// 	fmt.Printf("%s - currLineNumber=%d linesInChunk=%d\n", commitHash[:8], currLineNumber, linesInChunk)
+	// 	fmt.Printf("headerLine=%s\n", headerLine)
+	// }
+	// if lastIdx >= 0 && chunk.ShortHash == "8aba1988" {
+	// 	prevRange := chunk.LineRanges[lastIdx]
+	// 	fmt.Printf("prevRange=%+v\n", prevRange)
+	// 	fmt.Printf("startLine=%d endLine=%d\n", startLine, endLine)
+	// 	fmt.Printf("wouldMerge=%t\n", endLine-1 == prevRange.EndLine)
+	// }
 	if lastIdx >= 0 && endLine-1 == chunk.LineRanges[lastIdx].EndLine {
 		chunk.LineRanges[lastIdx].EndLine = endLine
-		if chunk.ShortHash == "8aba1988" {
-			fmt.Printf("merged interval\n")
-		}
+		// if chunk.ShortHash == "8aba1988" {
+		// 	fmt.Printf("merged interval\n")
+		// }
 	} else {
 		chunk.LineRanges = append(chunk.LineRanges, &LineRange{StartLine: startLine, EndLine: endLine})
 	}
@@ -756,9 +760,9 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 		scanner.Scan()
 		line := scanner.Text()
 
-		if chunk.ShortHash == "8aba1988" {
-			fmt.Printf("chunk-line=%s\n", line)
-		}
+		// if chunk.ShortHash == "8aba1988" {
+		// 	fmt.Printf("chunk-line=%s\n", line)
+		// }
 
 		if matches := LineInChunkHeader.FindStringSubmatch(line); matches != nil {
 			currLineNumber, err = strconv.Atoi(matches[1])
@@ -809,25 +813,6 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 
 	return true, nil
 }
-
-// func collapseBlameRanges(blameChunks []*BlameChunk) {
-// 	// sometimes, git blame will show report two consecutive lines from the same commit as being
-// 	// different chunks. I.e
-// 	// 12345 1 1 1
-// 	// .... (meta info)
-// 	// 12345 2 1 1
-
-// 	// so we iterate all lineRanges for each chunk, and collapse them if they're found to be consecutive
-// 	for _, chunk := range blameChunks {
-// 		for i, lineRange := range chunk.LineRanges {
-// 			if i - 1 < 0 {
-// 				continue
-// 			}
-
-// 			prevChunk
-// 		}
-// 	}
-// }
 
 func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*BlameResult, error) {
 	defer timeTrack(time.Now(), "gitBlameBlob")
@@ -1002,4 +987,194 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		Headlink:        headlink,
 		FilePath:        relativePath,
 	}, nil
+}
+
+// TODO: add capability to diff files
+func buildDiffData(relativePath string, repo config.RepoConfig, commitA, commitB string) {}
+
+const (
+	maxTreeDepth      = 1024
+	startingStackSize = 8
+)
+
+var (
+	ErrMaxTreeDepth      = errors.New("maximum tree depth exceeded")
+	ErrFileNotFound      = errors.New("file not found")
+	ErrDirectoryNotFound = errors.New("directory not found")
+	ErrEntryNotFound     = errors.New("entry not found")
+)
+
+// type DirTree struct {
+// 	Entries []*TreeEntry
+// 	Hash string
+
+// 	m map[string]*TreeEntry
+// 	t map[string]*Tree // tree path cache
+// }
+
+// type Dir struct {
+// 	Entries []*TreeEntry
+// }
+
+// type TreeNode struct {
+// 	Name      string
+// 	Mode      fs.FileMode
+// 	Hash      string
+// 	ParentDir *TreeNode
+// 	Type      string
+// 	Children  []*TreeNode
+// }
+
+/*
+Given
+blob    text
+dir    hello
+blob    hello/text
+blob    me
+dir    yo
+blob   yo/hello
+dir    text/
+
+I want to parse it into a tree like so
+
+TreeNode {
+  Children = {
+	TreeNode{ Name=text, Type=blob },
+	TreeNode{ Name=hello, Type=dir
+		Children = [
+			TreeNode{ Name=text, Type=blob}
+		]
+	},
+	TreeNode{ Name=me, Type=blob },
+	TreeNode{ Name=yo, Type=dir
+		Children = [
+			TreeNode{ Name=hello, Type=blob}
+		]
+	},
+	TreeNode{ Name=yo, Type=dir
+		Children = [
+			TreeNode{ Name=hello, Type=blob}
+		]
+	},
+	TreeNode{ Name=yo, Type=dir Children = []},
+
+
+  }
+}
+*/
+
+// At a given commit, build the directory tree
+// The frontend will have to be responsible for traversing it and finding/opening the current
+func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit string) *api.TreeNode {
+	// cleanPath := path.Clean(relativePath)
+	// to start out, we always compute the tree for the root.
+	defer timeTrack(time.Now(), "buildDirectoryTree")
+	cmd := exec.Command("git", "-C", repo.Path, "ls-tree",
+		"--long", // show size
+		"--full-name",
+		"-z",
+		"-r", // for recursion
+		"-t",
+		commit,
+	)
+
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	lines := strings.Split(string(out), "\x00")
+	rootDir := &api.TreeNode{Name: "root"}
+	currDir := rootDir
+	prevDepth := 0
+
+	for i, line := range lines {
+		fmt.Printf("line=%s\n", line)
+		if i == len(lines)-1 {
+			// last entry is empty
+			continue
+		}
+		tabPos := strings.IndexByte(line, '\t')
+		if tabPos == -1 {
+			// return nil, errors.Errorf("invalid `git ls-tree` output: %q", out)
+			log.Fatalf("invalid ls-tree output")
+		}
+
+		info := strings.SplitN(line[:tabPos], " ", 4)
+		name := line[tabPos+1:]
+
+		if len(info) != 4 {
+
+			log.Fatalf("invalid ls-tree output")
+			// return nil, errors.Errorf("invalid `git ls-tree` output: %q", out)
+		}
+
+		typ := info[1] // blob,commit,tree
+		sha := info[2]
+
+		// TODO(xvandish): Check that the sha is a valid git sha
+
+		sizeStr := strings.TrimSpace(info[3])
+		var size int64
+		if sizeStr != "-" {
+			// Size of "-" indicates a dir or submodule.
+			size, err = strconv.ParseInt(sizeStr, 10, 64)
+			if err != nil || size < 0 {
+				// return nil, errors.Errorf("invalid `git ls-tree` size output: %q (error: %s)", sizeStr, err)
+				log.Fatalf("invalid ls-tree output")
+			}
+		}
+
+		modeVal, err := strconv.ParseInt(info[0], 8, 32)
+		if err != nil {
+			log.Fatalf(err.Error())
+			// return nil, err
+		}
+
+		mode := os.FileMode(modeVal)
+
+		treeEntry := &api.TreeNode{
+			Name: name,
+			Path: name,
+			Mode: mode,
+			Hash: sha,
+			Type: typ,
+		}
+
+		// oh no, what about files with a slash in them..
+		pathDepth := strings.Count(name, "/")
+		fmt.Printf("pathDepth=%d\n", pathDepth)
+
+		// 1777b4d56ea1471f155fa21fbf8d2969dcc3ce9e     600       cmd/server/main.go
+		// 60c6f7580d7e6651739c86865e3c012a04650e4d       -       creds (prevDepth == 2)
+		for prevDepth > pathDepth {
+			currDir = currDir.ParentDir
+			prevDepth -= 1
+		}
+
+		fmt.Printf("appending %s to %s children\n", treeEntry.Name, currDir.Name)
+		currDir.Children = append(currDir.Children, treeEntry)
+
+		// now that we've backuped up to the correct location, we "correct" name so that
+		// /folder/file
+		// is stored as
+		// /folder
+		//    /file
+		// instead of
+		// /folder
+		//    /folder/file
+		treeEntry.Name = filepath.Base(treeEntry.Name)
+
+		// if this entry is a directory, set currDir to ourselves, and up prevDepth
+		if typ == "tree" {
+			fmt.Printf("nesting to dir with name=%s\n", treeEntry.Name)
+			treeEntry.ParentDir = currDir
+			currDir = treeEntry
+			prevDepth += 1
+		}
+	}
+
+	fmt.Printf("%+v\n", rootDir)
+	return rootDir
 }
