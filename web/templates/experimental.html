@@ -144,7 +144,7 @@ box-sizing: border-box;
   border-left: 1px solid #dadcd0;
 }
 
-.repository-detail .main-view .middle-view .git-detail {
+.repository-detail .main-view .middle-view .lower-detail-wrapper {
     overflow: hidden;
     border-top-style: solid;
     border-top-width: 1px;
@@ -153,12 +153,58 @@ box-sizing: border-box;
     max-height: calc(100% - 110px); /* when not closed */
     min-height: 40px;
     position: relative;
-    max-height: 40px;
     border-color: #dadcd0;
-    background-color: #d3e3fc;
 }
 
+.repository-detail .main-view .middle-view .lower-detail-wrapper.closed {
+    min-height: 40px;
+    max-height: 40px;
+}
 
+.repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    height: 100%;
+    width: 100%;
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel .lower-detail-header {
+  height: 40px;
+  border-color: #dadcd0;
+  background-color: #d3e3fc;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel .lower-detail-content {
+  position: relative;
+  overflow: scroll; /* TODO: make this hidden like google */
+  display: flex;
+  transition: height 500ms cubic-bezier(0.35, 0, 0.25, 1);
+  height: 100%;
+  width: 100%;
+}
+
+#git-history-table tr:hover {
+  background-color: aliceblue; 
+  cursor: pointer;
+}
+
+#git-history-table tr:hover > .actions-container {
+  opacity: 1;
+}
+
+#git-history-table tr > .actions-container {
+  opacity: 0;
+}
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -184,7 +230,7 @@ box-sizing: border-box;
                   <div class="file-header-wrapper">
                     <div class="file-info">
                       <span class="filename">{{.FileContent.Filename}}</span>
-                      <span class="commit-info">(@ <a href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
+                      <span class="commit-info">(@ <a id="short-hash-link" href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
                     </div>
                     <div class="file-actions">
                       <button id="toggle-blame">Blame</button>
@@ -195,8 +241,16 @@ box-sizing: border-box;
                   {{ template "filecontent" .FileContent }}
                 </div>
               </div>
-              <div class="git-detail">
-                Git details...
+              <div class="lower-detail-wrapper closed">
+                <div class="lower-detail-panel">
+                  <div class="lower-detail-header">
+                    <h4>History</h4>
+                    <button id="toggle-history">Toggle History</button>
+                  </div>
+                  <div class="lower-detail-content">
+                  </div>
+
+                </div> 
               </div>
             </div>
           </div>
@@ -299,8 +353,98 @@ box-sizing: border-box;
               blameCols[i].remove();
                 }
           }
-
     };
+
+        var historyFetched = false;
+        var historyPanel = document.getElementsByClassName("lower-detail-wrapper")[0];
+        document.getElementById("toggle-history").addEventListener("click", function(e) {
+              if (!historyFetched) {
+                  fetchHistory();
+                  historyFetched = true;
+              }
+              
+              historyPanel.classList.toggle("closed");
+        });
+
+        async function fetchHistory() {
+          var gitHistory = await fetch("/api/v2/json/git-log/nytimes/eventtracker-server/HEAD/service.go")
+                .then(r => r.json())
+                .then(r => r);
+          console.log({ gitHistory });
+
+          // build the table in JS for now just to try. Later we can switch back to SSR HTML.
+          
+          // TODO(xvandish): Handle the 0 commit case, if thats possible..?
+
+          var commits = gitHistory.Commits;
+
+          var table = document.createElement('table');
+          table.id = "git-history-table";
+
+          var thead = document.createElement('thead');
+          var headerItems = ["Short Hash", "Author", "Commit Date", "Subject", ""];
+          for (var i = 0; i < headerItems.length; i++) {
+            thead.appendChild(document.createElement("th")).
+                  appendChild(document.createTextNode(headerItems[i]));
+          }
+          table.appendChild(thead);
+
+          for (var i = 0; i < commits.length; i++) {
+            const tr = table.insertRow();
+            var commit = commits[i];
+          
+            var commitDiffLink = document.createElement("a");
+            commitDiffLink.href = gitHistory.CommitLinkPrefix + +"/commits/" + commit.Hash;
+            commitDiffLink.innerHTML = commit.ShortHash;
+            tr.appendChild(document.createElement("td"))
+                .appendChild(commitDiffLink);
+
+            tr.appendChild(document.createElement("td"))
+                .appendChild(document.createTextNode(commit.AuthorEmail));
+
+            tr.appendChild(document.createElement("td"))
+                .appendChild(document.createTextNode(commit.Date));
+
+            tr.appendChild(document.createElement("td"))
+                .appendChild(document.createTextNode(commit.Subject));
+
+            // Now, add the action buttons that only show on hover
+            var buttonsContainer = document.createElement("div");
+            buttonsContainer.classList.add("actions-container");
+
+            var viewLink = document.createElement("a");
+            viewLink.href = "blah"
+            viewLink.innerHTML = "view"
+            viewLink.addEventListener("click", viewFileAtCommit.bind(this, gitHistory.Path, commit.Hash), false);
+
+            buttonsContainer.appendChild(viewLink);
+
+            tr.appendChild(buttonsContainer);
+
+          }
+
+          document.getElementsByClassName("lower-detail-content")[0].appendChild(table);
+        }
+
+        // TODO(xvandish): Switch to global handler so that we use less memory
+        async function viewFileAtCommit(path, commitHash) {
+          event.preventDefault();
+          console.log({ path, commitHash })
+
+          var fileContent = await fetch(`/raw/nytimes/eventtracker-server/blob/${commitHash}/${path}`)
+            .then(r => r.text())
+            .then(r => r)
+          
+          // Now replace the file content
+          document.getElementsByClassName("file-content")[0].innerHTML = fileContent;
+
+          // Replace the header that says at what hash we're at
+          var commitLink = document.getElementById("short-hash-link");
+          commitLink.href = `/delve/nytimes/eventtracker-server/commit/${commitHash}`;
+          commitLink.innerHTML = commitHash.slice(0, 8)
+
+          // TODO(xvandish): replace the url part once we actually load via urls..
+        }
   </script>
 </html>
 
