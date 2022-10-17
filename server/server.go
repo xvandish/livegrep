@@ -206,11 +206,12 @@ func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWrite
 	}
 
 	data, err := buildSimpleGitLogData(path, rev, repo)
-	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName
 
 	if err != nil {
-		replyJSON(ctx, w, 500, data)
+		http.Error(w, err.Error(), 500)
 	}
+	// fmt.Printf("git_log_data=%+v\n", data)
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName
 
 	replyJSON(ctx, w, 200, data)
 	// now we need to marshal data to json
@@ -323,8 +324,8 @@ func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *
 		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
 	}
 
-	log.Printf(ctx, "going to print raw thing")
-	log.Printf(ctx, "data is %+v", data)
+	// log.Printf(ctx, "going to print raw thing")
+	// log.Printf(ctx, "data is %+v", data)
 	s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
 		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
 		IncludeHeader: false,

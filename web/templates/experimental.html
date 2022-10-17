@@ -62,6 +62,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; }
   display: flex;
     align-items: center;
     gap: 10px;
+    padding: 0;
 }
 
 .repository-detail { 
@@ -130,6 +131,7 @@ box-sizing: border-box;
     position: relative;
     outline: 0;
     flex: 1 1 100%;
+    font-family: monospace;
 }
 .repository-detail .main-view .middle-view .file-detail .file-content table {
     border-spacing: 0;
@@ -161,6 +163,7 @@ box-sizing: border-box;
   padding-left: 15px;
   padding-right: 5px;
   border-left: 1px solid #dadcd0;
+  color: #888;
 }
 
 .repository-detail .main-view .middle-view .lower-detail-wrapper {
@@ -214,14 +217,17 @@ box-sizing: border-box;
 
 #git-history-table {
   font-size: 0.9rem;
+  width: 100%;
 }
 
 #git-history-table tr {
   display: grid;
-  grid-template-columns: 40px 100px 200px 200px 1fr 40px;
+  grid-template-columns: 40px 100px 100px 115px 1fr 60px;
   justify-content: flex-start;
   text-align: left;
+  align-items: center;
   border-bottom: 1px solid rgba(0,0,0,.12);
+  min-height: 30px;
 }
 
 #git-history-table td {
@@ -230,30 +236,56 @@ box-sizing: border-box;
 }
 
 #git-history-table tr:hover {
-  background-color: aliceblue; 
+  background-color: #fafafa; 
 }
 
 #git-history-table tr.current-commit {
   background-color: aliceblue;
 }
 
-#git-history-table tr:hover > .actions-container {
-  opacity: 1;
-}
-#git-history-table tr.current-commit > .actions-container {
+#git-history-table tr:hover td div.actions-container {
   opacity: 1;
 }
 
-#git-history-table tr > .actions-container {
+#git-history-table tr:hover td div.actions-container a {
+  background-color: #eaeaea;
+}
+
+#git-history-table tr.current-commit td div.actions-container a {
+  background-color: #3a80b3;
+  color: white;
+}
+#git-history-table tr td div.actions-container a {
+  border-radius: 10px;
+  padding: 5px;
+  padding-top: 7px;
+  padding-bottom: 6px;
+  font-weight: 100;
+  text-decoration: none;
+}
+
+#git-history-table tr.current-commit td div.actions-container {
+  opacity: 1;
+}
+
+#git-history-table tr td div.actions-container {
   opacity: 0;
+}
+
+#git-history-table tr td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #git-history-table .expanded-row-content {
   border-top: none;
-    display: grid;
-    grid-column: 1/-1;
-    justify-content: flex-start;
-    font-size: 14px;
+  display: grid;
+  grid-column: 1/-1;
+  justify-content: flex-start;
+  font-size: 12px;
+  margin-left: 3rem;
+  font-family: 'Courier New', Courier, monospace;
 }
 #git-history-table .expanded-row-content pre {
   white-space: pre-wrap;
@@ -262,6 +294,62 @@ box-sizing: border-box;
 #git-history-table .hide-row {
   display: none;
 }
+
+/* TODO(xvandish): Scope this to the table */
+button.icon-toggle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background-color: transparent;
+}
+button.icon-toggle:hover {
+  background-color: #c6d7e6;
+}
+
+button.icon-toggle[data-toggled='false'] img {
+  transform: rotate(180deg);
+}
+
+button#toggle-history {
+  width: 36px;
+  height: 36px;
+}
+
+button#toggle-history img {
+  width: 20px;
+  height: 20px;
+}
+
+button.expander {
+  background-color: transparent;
+    border: 0;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: 24px;
+    padding: 0;
+    width: 18px;
+}
+
+button.expander .arrow {
+  border-left: 5px solid black;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    display: inline-block;
+    height: 0;
+    margin: 0 5px;
+    transition: -webkit-transform .2s ease;
+    transition: transform .2s ease;
+    transition: transform .2s ease,-webkit-transform .2s ease;
+    width: 0;
+}
+
+/* prevent actions from inside a button to be clicked, so we don't have to
+* handle those cases as carefully */
+button > * {
+  pointer-events: none;
+}
+
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -288,7 +376,7 @@ box-sizing: border-box;
                 <div class="file-header">
                   <div class="file-header-wrapper">
                     <div class="file-info">
-                      <span class="filename">{{.FileContent.Filename}}</span>
+                      <span id="filename">{{.FileContent.Filename}}</span>
                       <span class="commit-info">(@ <a id="short-hash-link" href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
                     </div>
                     <div class="file-actions">
@@ -304,7 +392,9 @@ box-sizing: border-box;
                 <div class="lower-detail-panel">
                   <div class="lower-detail-header">
                     <h4>History</h4>
-                    <button id="toggle-history">Toggle History</button>
+                    <button id="toggle-history" class="icon-toggle" title="toggle commit history" data-toggled="false">
+                      <img src="/assets/img/chevron-down.svg" />
+                    </button>
                   </div>
                   <div class="lower-detail-content">
                   </div>
@@ -423,6 +513,11 @@ box-sizing: border-box;
         var historyFetched = false;
         var historyPanel = document.getElementsByClassName("lower-detail-wrapper")[0];
         document.getElementById("toggle-history").addEventListener("click", function(e) {
+              if (e.target.dataset.toggled == "false") {
+                e.target.dataset.toggled = "true";
+              } else {
+                e.target.dataset.toggled = "false";
+              }
               if (!historyFetched) {
                   fetchHistory();
                   historyFetched = true;
@@ -477,9 +572,18 @@ box-sizing: border-box;
             if (commit.Body.length > 0) {
               console.log("commit here")
               var btn = document.createElement("button");
-              btn.classList.add("expand-body");
-              btn.dataset.expanded = "false";
-              btn.innerHTML = "Exp"
+              var chevron = document.createElement("img");
+              chevron.src = "/assets/img/chevron-down.svg";
+
+              btn.appendChild(chevron);
+              btn.classList.add("icon-toggle")
+              btn.classList.add("log");
+
+              // we use the same css classes/data selectors to control various
+              // things, and sometimes open means ~= face up and sometimes face down
+              // so we eat the confusion and just set "toggled" to somethign
+              // that means, icon down
+              btn.dataset.toggled = "true";
               expandContainer.appendChild(btn);
             }
 
@@ -554,13 +658,20 @@ box-sizing: border-box;
           commitLink.href = `/delve/${window.scriptData.repo}/commit/${commitHash}`;
           commitLink.innerHTML = commitHash.slice(0, 8)
 
+          // Replace the header that tells us what file we're viewing
+          var filename = path.split(/[\\/]/).pop();
+          document.getElementById("filename").innerHTML = filename;
+
+          // TODO(xvandish): replace the breadcrumbs
+
+
           // TODO(xvandish): replace the url part once we actually load via urls..
           var prevCommitHash = window.scriptData.commitHash;
           var prevFilepath = window.scriptData.filepath;
           var prevFilename = window.scriptData.filename;
           window.scriptData.commitHash = commitHash;
           window.scriptData.filepath = path;
-          window.scriptData.filename = path.split(/[\\/]/).pop();
+          window.scriptData.filename = filename;
 
           if (clickLocation == "commit-history") {
             // replace the current "selected" commit in the history pane
@@ -598,7 +709,7 @@ box-sizing: border-box;
 
         var sideNav = document.getElementById("side-nav");
         window.addEventListener("click", function(event) {
-          console.log(event.target.pathname, event.target.innerHTML)
+          console.log(event.target)
           if (event.target.pathname == "/blah" && event.target.innerHTML == "view") {
             console.log('viewing')
             event.preventDefault();
@@ -619,8 +730,15 @@ box-sizing: border-box;
             console.log({ filePath })
             viewFileAtCommit(event, filePath, window.scriptData.commitHash, "side-nav");
           }
+          
+          console.log(event.target.classList)
+          if (event.target.classList.contains("icon-toggle") && event.target.classList.contains("log") ) {
+            if (event.target.dataset.toggled == "true") {
+              event.target.dataset.toggled = "false";
+            } else {
+              event.target.dataset.toggled = "true";
+            }
 
-          if (event.target.classList.contains("expand-body")) {
             console.log("row expander clicked");
             expandLogLine(event);
           }

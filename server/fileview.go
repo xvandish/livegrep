@@ -326,6 +326,7 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	out, err := exec.Command("git", "-C", repo.Path, "log", "-n", "1000", "-z", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath).Output()
 	fmt.Printf("took %s to get git log\n", time.Since(start))
 	if err != nil {
+		fmt.Printf("err=%s\n", err.Error())
 		return nil, err
 	}
 	// Null terminate our thing
@@ -333,6 +334,7 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	out = append(out, byte(rune(0)))
 	err = os.WriteFile("./tmp-log", out, 0644)
 	if err != nil {
+		fmt.Printf("err=%s\n", err.Error())
 		return nil, err
 	}
 
@@ -340,8 +342,15 @@ func buildSimpleGitLogData(relativePath string, firstParent string, repo config.
 
 	simpleGitLog := SimpleGitLog{}
 	simpleGitLog.Commits = make([]*Commit, len(matches))
+	// fmt.Printf("git log out=%s\n", out)
+	// fmt.Printf("git log matches=%+v\n", matches)
 
 	for i, match := range matches {
+		fmt.Printf("match_matches_len=%d\n", len(match))
+		if len(match) != 8 {
+			log.Fatalf("GIT_LOG_ERROR: match len < 8: %+v\n", match)
+			continue
+		}
 		simpleGitLog.Commits[i] = &Commit{
 			Hash:        string(match[1]),
 			ShortHash:   string(match[2]),

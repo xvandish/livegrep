@@ -129,7 +129,8 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit stri
 		link := getTreeItemLink(rootDir, repoName, commit)
 		imgLink := "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
 		if rootDir.Type == "tree" {
-			outHtml += "<li>" + link + "/</li>"
+			buttonExpander := "<button class=\"expander\"><div class=\"arrow\" /></button>"
+			outHtml += "<li>" + buttonExpander + link + "</li>"
 		} else {
 			outHtml += "<li>" + imgLink + link + "</li>"
 		}
