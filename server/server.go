@@ -457,15 +457,23 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	parent := "nytimes"
-	repo := "eventtracker-dataflow"
-	rev := "HEAD"
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	// m.Add("GET", "/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
+	fmt.Printf("r.URL.Path=%s\n", r.URL.Path)
 
 	// TODO(xvandish): this is temporary. Soon we can split out blob and directory code all the way
 	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
 	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
 	// "ServeGitBlob" function works for both entitites
-	path := "Dockerfile"
+	path := ""
+	if strings.HasPrefix(r.URL.Path, "/delve/"+parent+"/"+repo+"/tree/") {
+		path = pat.Tail("/experimental/:parent/:repo/tree/:rev/", r.URL.Path)
+	} else {
+		path = pat.Tail("/experimental/:parent/:repo/blob/:rev/", r.URL.Path)
+	}
+
 	parentMap, ok := s.newRepos[parent]
 
 	if !ok {
@@ -790,7 +798,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	// so the pages don't have any headers or extra things
 	m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
 	m.Add("GET", "/raw/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlobRaw))
-	m.Add("GET", "/experimental", srv.Handler(srv.ServeExperimental))
+	m.Add("GET", "/experimental/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeExperimental))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))

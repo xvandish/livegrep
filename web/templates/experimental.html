@@ -527,10 +527,14 @@ button > * {
         });
 
         async function fetchHistory() {
-          var gitHistory = await fetch(`/api/v2/json/git-log/${window.scriptData.repo}/${window.scriptData.commitHash}/${window.scriptData.filepath}`)
+          // always fetch history at head, in case someone is viewing the file at a non head link, that way 
+          // they'll see future history and be able to navigate to it
+          var gitHistory = await fetch(`/api/v2/json/git-log/${window.scriptData.repo}/HEAD/${window.scriptData.filepath}`)
                 .then(r => r.json())
                 .then(r => r);
           console.log({ gitHistory });
+
+          console.log(window.scriptData.commitHash);
 
           // build the table in JS for now just to try. Later we can switch back to SSR HTML.
           
@@ -561,11 +565,14 @@ button > * {
             const tr = table.insertRow();
             var commit = commits[i];
 
+
             if (window.scriptData.commitHash == commit.Hash) {
               tr.classList.add("current-commit")
-            } else if (i == 0) { // TODO(xvandish): On server, decide if HEAD
+            } else if (window.scriptData.commitHash== "HEAD" && i == 0) {
               tr.classList.add("current-commit")
-            } 
+            }
+
+            // TODO (on server, rev-parse so top commit is always HEAD)
 
             var expandContainer = document.createElement("div");
             expandContainer.classList.add("row-expander");
@@ -638,6 +645,14 @@ button > * {
         // var historyPanel = document.getElementsByClassName("lower-detail-content")[0];
         // TODO(xvandish): Switch to global handler so that we use less memory
         async function viewFileAtCommit(event, path, commitHash, clickLocation) {
+          // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
+          // which is experimental/${repo}/blob/${commitHash}/${filePath}
+          // var oldPath = window.location.pathname;
+          // oldPath = oldPath.replace(`/experimental/${window.scriptData.repo}/blob/${window.scriptData.commitHash}/${window.scriptData.filepath}`, "");
+          var newPath = `/experimental/${window.scriptData.repo}/blob/${commitHash}/${path}`;
+          console.log({ newPath });
+          window.history.pushState({}, "", newPath);
+
           console.log({ path, commitHash })
           console.log(this);
 
@@ -710,7 +725,9 @@ button > * {
         var sideNav = document.getElementById("side-nav");
         window.addEventListener("click", function(event) {
           console.log(event.target)
-          if (event.target.pathname == "/blah" && event.target.innerHTML == "view") {
+          console.log(event.target.pathname)
+          console.log(event.target.innerHTML)
+          if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "view") {
             console.log('viewing')
             event.preventDefault();
             viewFileAtCommit(event, window.scriptData.filepath, event.target.dataset.commit, "commit-history");
