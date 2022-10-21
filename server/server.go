@@ -456,6 +456,39 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 		IncludeHeader: true,
 	})
 }
+
+func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	revA := r.URL.Query().Get(":revA")
+	revB := r.URL.Query().Get(":revB")
+
+	path := pat.Tail("/diff/:parent/:repo/:revA/:revB/", r.URL.Path)
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	data := generateSplitDiffForFile(path, repoConfig, revA, revB)
+	s.renderPage(ctx, w, r, "sidediff.html", &page{
+		Title:         "Diff",
+		IncludeHeader: false,
+		Data:          data,
+	})
+
+	// io.WriteString(w, fmt.Sprintf("<html><body><div style=\"display:flex; gap:10px\">%s%s</div></body></html>", left, right))
+}
+
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -793,6 +826,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
 
 	m.Add("GET", "/delve/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/diff/:parent/:repo/:revA/:revB/", srv.Handler(srv.ServeDiff))
 
 	// the following handlers render HTML that JS code fetches and inlines into the page
 	// so the pages don't have any headers or extra things

@@ -34,6 +34,7 @@ go_library(
         "@org_golang_google_grpc//connectivity",
         "@org_golang_x_net//context:go_default_library",
         "@in_gopkg_alexcesaro_statsd_v2//:go_default_library",
+        "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
     ],
 )
 

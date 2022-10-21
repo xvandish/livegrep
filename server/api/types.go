@@ -1,6 +1,10 @@
 package api
 
-import "io/fs"
+import (
+	"io/fs"
+
+	"github.com/sergi/go-diff/diffmatchpatch"
+)
 
 type InnerError struct {
 	Code    string `json:"code"`
@@ -131,4 +135,27 @@ type TreeNode struct {
 	ParentDir *TreeNode
 	Type      string
 	Children  []*TreeNode
+}
+
+type DiffLine2 struct {
+	// A line can be made of up of eqalities, inserts, deletes or any combination
+	Line []*DiffPart
+	Lno  int
+}
+
+type DiffPart struct {
+	Text string
+	Type diffmatchpatch.Operation
+}
+
+// either a left or right side of the diff
+type SplitDiffHalf struct {
+	Lines []*DiffLine2
+
+	// contentLength, type, filename?
+}
+
+type SplitDiff struct {
+	LeftDiff  *SplitDiffHalf
+	RightDiff *SplitDiffHalf
 }

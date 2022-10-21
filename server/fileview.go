@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sergi/go-diff/diffmatchpatch"
+
 	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/config"
 )
@@ -1187,3 +1189,198 @@ func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 	fmt.Printf("%+v\n", rootDir)
 	return rootDir
 }
+
+func addDiff(sd *api.SplitDiffHalf, text string, diffType diffmatchpatch.Operation) {
+	diffPart := &api.DiffPart{Text: text, Type: diffType}
+
+	if diffType == diffmatchpatch.DiffInsert {
+		fmt.Printf("inserting diffPart = %+v\n", diffPart)
+	}
+
+	if len(sd.Lines) == 0 {
+		newLine := &api.DiffLine2{}
+		newLine.Line = make([]*api.DiffPart, 0)
+		newLine.Line = append(newLine.Line, diffPart)
+		sd.Lines = append(sd.Lines, newLine)
+		fmt.Printf("hit this early case for diffPart: %+v\n", diffPart)
+		return
+	}
+
+	// now, check if the previous line ends in a newline
+	// if so, append the new text to it
+	prevLine := sd.Lines[len(sd.Lines)-1]
+	prevDiff := prevLine.Line[len(prevLine.Line)-1]
+	prevLineNl := strings.HasSuffix(prevDiff.Text, "\n")
+
+	if !prevLineNl {
+
+		fmt.Printf("prev diff =%+v does not end in newline, so appending to it with diffPart: %+v\n", prevDiff, diffPart)
+		prevLine.Line = append(prevLine.Line, diffPart)
+		return
+	}
+
+	// otherwise, just append the new line
+	newLine := &api.DiffLine2{}
+	newLine.Line = make([]*api.DiffPart, 0)
+	newLine.Line = append(newLine.Line, diffPart)
+	sd.Lines = append(sd.Lines, newLine)
+}
+
+func addBlankLine(sd *api.SplitDiffHalf) {
+	newLine := &api.DiffLine2{
+		Lno:  -1,
+		Line: []*api.DiffPart{&api.DiffPart{Text: "----------------------------------\n", Type: diffmatchpatch.DiffEqual}},
+	}
+
+	sd.Lines = append(sd.Lines, newLine)
+}
+
+func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRev, newRev string) (splitDiff *api.SplitDiff) {
+	// cleanPath := path.Clean(relativePath)
+	// if cleanPath == "." {
+	// 	cleanPath = ""
+	// }
+
+	// commitHash := oldRev
+	// out, err := gitCommitHash(oldRev, repo.Path)
+	// if err == nil {
+	// 	commitHash = out[:strings.Index(out, "\n")]
+	// }
+	// obj := commitHash + ":" + cleanPath
+
+	// // for now, assume we're not running this on
+
+	// // fetch the fileContents at revA
+	// oldSrc, err := gitCatBlob(obj, repo.Path)
+	// if err != nil {
+	// 	log.Printf("whats going on\n")
+	// 	log.Fatalf(err.Error())
+	// 	// return nil, err
+	// }
+
+	// // fetch the fileContents at revB
+	// commitHash = newRev
+	// out, err = gitCommitHash(newRev, repo.Path)
+	// if err == nil {
+	// 	commitHash = out[:strings.Index(out, "\n")]
+	// }
+	// obj = commitHash + ":" + cleanPath
+	// newSrc, err := gitCatBlob(obj, repo.Path)
+	// if err != nil {
+	// 	log.Printf("whats going on 2\n")
+	// 	log.Fatalf(err.Error())
+	// 	// return nil, err
+	// }
+
+	// log.Printf("hello\n")
+
+	oldSrc := `
+	github.com/sergi/go-diff v1.0.0
+	github.com/stretchr/testify v1.4.0 // indirect
+	golang.org/x/tools v0.0.0-20191130070609-6e064ea0cf2d
+	honnef.co/go/tools v0.0.1-2020.1.3
+	mvdan.cc/xurls/v2 v2.1.0
+	`
+
+	newSrc := `
+	github.com/sergi/go-diff v1.1.0
+	golang.org/x/tools v0.0.0-20191130070609-6e064ea0cf2d
+	honnef.co/go/tools v0.0.1-2020.1.3
+	mvdan.cc/xurls/v2 v2.1.0
+	`
+
+	// contentA := `
+	// `
+
+	// contentB := `
+	// func test(x, y string) {
+	// 	if text[0] == '.' || isSpeakerNote(text) {
+	// 	for ok && !lesserHeading(isHeading, text, prefix) {
+	// }
+	// `
+
+	// call diffmatchpatch(revA, revB)
+	dmp := diffmatchpatch.New()
+
+	// diffs := dmp.DiffCleanupSemanticLossless(dmp.DiffMain(oldSrc, newSrc, false))
+	diffs := dmp.DiffMain(oldSrc, newSrc, false)
+	diffs = dmp.DiffCleanupSemantic(diffs)
+	diffs = dmp.DiffCleanupEfficiency(diffs)
+
+	fmt.Printf("there are %d diffs\n", len(diffs))
+	fmt.Println(dmp.DiffPrettyText(diffs))
+
+	// Things to keep in mind while generating a split diff
+	// * The deletion pane is on left, insert pane is on right
+	// 1. We need to be able to map diff text positions to positions in old & new (for line numbers)
+	// 2. When showing deletions, we need to show a blank line in the insert pane
+	// 3. When shoing inserts, we need to show a blank line in the deletion pane
+	// 3. When showing
+	// 4. Google cs, when clicking diff, automatically diffs the clicked rev against the prev
+	// 5. Google cs blurs/blocks clicks on "diff" for the last revision
+	// How do I map a source line in the code, to a line from the diff?
+	// The reason that question comes up at all is that I need to match
+	// the left and right panels of a split diff
+
+	// var leftDiff SplitDiffHalf
+	// var rightDiff SplitDiffHalf
+
+	// the problem, doh, is that each diff doesn't compromise a line in its
+	// entirety.
+	// 1. ..... <delete> .... <delete>...\n
+	// 2. .................................
+	// 3. <delete \n>
+
+	leftDiff := &api.SplitDiffHalf{}
+	rightDiff := &api.SplitDiffHalf{}
+
+	for _, diff := range diffs {
+		// dLines := strings.Split(diff.Text, "\n")
+
+		switch diff.Type {
+		// The problem now is that inserts and deletes aren't
+		case diffmatchpatch.DiffDelete:
+			// add to leftLines
+			addDiff(leftDiff, diff.Text, diff.Type)
+			fmt.Printf("adding: `%s` as an delete\n", diff.Text)
+		case diffmatchpatch.DiffInsert:
+			// add to RightLines
+			fmt.Printf("adding: `%s` as an insert\n", diff.Text)
+			addDiff(rightDiff, diff.Text, diff.Type)
+		case diffmatchpatch.DiffEqual:
+			// catch left up to right
+			for len(leftDiff.Lines) < len(rightDiff.Lines) {
+				addBlankLine(leftDiff)
+			}
+			// catch right up to left
+			for len(rightDiff.Lines) < len(leftDiff.Lines) {
+				addBlankLine(rightDiff)
+			}
+			addDiff(leftDiff, diff.Text, diff.Type)
+			addDiff(rightDiff, diff.Text, diff.Type)
+			fmt.Printf("adding: `%s` as equal\n", diff.Text)
+		default:
+			log.Fatalf("unknown diff type encountered: %v\n", diff.Type)
+		}
+	}
+
+	fmt.Printf("finished generating diff\n")
+	fmt.Printf("leftDiff: %+v\n", leftDiff)
+	fmt.Printf("rightDiff: %+v\n", rightDiff)
+	return &api.SplitDiff{
+		LeftDiff:  leftDiff,
+		RightDiff: rightDiff,
+	}
+	// var buff1 bytes.Buffer
+	// var buff2 bytes.Buffer
+
+}
+
+func resolveLeftAndRightDiffs() {
+	// given unbalanced left and right arrays, make them the same
+	// length by inserting null lines in either the left or right arrays
+	//
+}
+
+// TODO(xvandish): Would be cool to eventually diff arbitratry files across repos.
+// Could be useful for comparing a file that initiated in a different repo

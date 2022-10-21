@@ -5,4 +5,7 @@ go_library(
     srcs = ["types.go"],
     importpath = "github.com/livegrep/livegrep/server/api",
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
+    ]
 )

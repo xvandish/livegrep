@@ -11,5 +11,6 @@ go_library(
         "@com_github_alecthomas_chroma//formatters/html:go_default_library",
         "@com_github_alecthomas_chroma//lexers:go_default_library",
         "@com_github_alecthomas_chroma//styles:go_default_library",
+        "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
     ],
 )
