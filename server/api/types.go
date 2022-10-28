@@ -140,7 +140,7 @@ type TreeNode struct {
 type DiffLine2 struct {
 	// A line can be made of up of eqalities, inserts, deletes or any combination
 	Line []*DiffPart
-	Lno  int
+	Lno  uint32
 }
 
 type DiffPart struct {
@@ -150,8 +150,14 @@ type DiffPart struct {
 
 // either a left or right side of the diff
 type SplitDiffHalf struct {
-	Lines []*DiffLine2
+	Lines    []*DiffLine2
+	LinesMap map[uint32]*DiffLine2
 
+	// when appending parts of a line together, this line
+	// is a "buffer" per-se, of previously seen parts that all belong
+	// on the same line. Once we determine that the buffer should be
+	// flushed, it is written to lines
+	LineUnderConstruction *DiffLine2
 	// contentLength, type, filename?
 }
 

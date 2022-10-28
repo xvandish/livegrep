@@ -156,8 +156,20 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit stri
 
 func renderSplitDiffHalf(sd *api.SplitDiffHalf) template.HTML {
 	var b strings.Builder
-	for _, line := range sd.Lines {
-		b.WriteString("<span>")
+	lines := make([]*api.DiffLine2, len(sd.LinesMap))
+
+	idx := 0
+	for _, line := range sd.LinesMap {
+		lines[idx] = line
+		idx += 1
+	}
+
+	sort.Slice(lines, func(i, j int) bool {
+		return lines[i].Lno < lines[j].Lno
+	})
+
+	for _, line := range lines {
+		b.WriteString("<div><pre>")
 		for _, part := range line.Line {
 			cls := ""
 			if part.Type == diffmatchpatch.DiffInsert {
@@ -167,7 +179,7 @@ func renderSplitDiffHalf(sd *api.SplitDiffHalf) template.HTML {
 			}
 			b.WriteString(fmt.Sprintf("<span class=\"%s\">%s</span>", cls, part.Text))
 		}
-		b.WriteString("</span>")
+		b.WriteString("</pre></div>")
 	}
 
 	return template.HTML(b.String())
