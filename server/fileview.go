@@ -1216,21 +1216,30 @@ func flushBuffer(sd *api.SplitDiffHalf) {
 func addDiff(sd *api.SplitDiffHalf, text string, diffType diffmatchpatch.Operation, lno uint32) {
 	diffPart := &api.DiffPart{Text: text, Type: diffType}
 
-	line, present := sd.LinesMap[lno]
+	// line, present := sd.LinesMap[lno]
+	lineIdx, present := sd.LinesMap[lno]
+	var line *api.DiffLine2
 
 	fmt.Printf("adding %+v to line=%d\n", diffPart, lno)
 
-	if !present {
-		line = &api.DiffLine2{}
-		line.Line = make([]*api.DiffPart, 0)
+	// we have an existing line, so we should append whatever text we have to it
+	if present {
+		line = sd.Lines[lineIdx]
 		line.Line = append(line.Line, diffPart)
-		line.Lno = lno + 1 // for 1 based line numbers
-		sd.LinesMap[lno] = line
 		return
 	}
 
-	// we have an existing line, so we should append whatever text we have to it
+	line = &api.DiffLine2{}
+	line.Line = make([]*api.DiffPart, 0)
 	line.Line = append(line.Line, diffPart)
+	line.Lno = lno + 1 // for 1 based line numbers
+
+	// append to .Lines
+	sd.Lines = append(sd.Lines, line)
+
+	// store the index where we appended into LinesMap
+	sd.LinesMap[lno] = uint32(len(sd.Lines) - 1)
+
 }
 
 func addBlankLine(sd *api.SplitDiffHalf) {
@@ -1240,6 +1249,16 @@ func addBlankLine(sd *api.SplitDiffHalf) {
 	}
 
 	sd.Lines = append(sd.Lines, newLine)
+}
+
+func addRealBlankLine(sd *api.SplitDiffHalf, lno uint32) {
+	newLine := &api.DiffLine2{
+		Lno:  lno + 1,
+		Line: []*api.DiffPart{&api.DiffPart{Text: "\n", Type: diffmatchpatch.DiffEqual}},
+	}
+
+	sd.Lines = append(sd.Lines, newLine)
+
 }
 
 type newlines struct {
@@ -1285,6 +1304,12 @@ func (nls newlines) atOffset(offset uint32) (lineNumber uint32) {
 	return uint32(idx)
 }
 
+// Actually, that's not the goal...
+// Think about this more later
+func balanceDiffs(sdLeft, sdRight *api.SplitDiffHalf) {
+
+}
+
 func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRev, newRev string) (splitDiff *api.SplitDiff) {
 	// cleanPath := path.Clean(relativePath)
 	// if cleanPath == "." {
@@ -1324,56 +1349,57 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 
 	// log.Printf("hello\n")
 
-	oldSrc := `
-func (r *singleStringReplacer) Replace(s string) string {
-	var buf []byte
-	i, matched := 0, false
-	for {
-		match := r.finder.next(s[i:])
-		if match == -1 {
-			break
-		}
-		matched = true
-		buf = append(buf, s[i:i+match]...)
-		buf = append(buf, r.value...)
-		i += match + len(r.finder.pattern)
-	}
-	if !matched {
-		return s
-	}
-	buf = append(buf, s[i:]...)
-	return string(buf)
-}`
-
-	newSrc := `
-func (r *singleStringReplacer) Replace(s string) string {
-	var buf Builder
-	i, matched := 0, false
-	for {
-		match := r.finder.next(s[i:])
-		if match == -1 {
-			break
-		}
-		matched = true
-		buf.Grow(match + len(r.value))
-		buf.WriteString(s[i : i+match])
-		buf.WriteString(r.value)
-		i += match + len(r.finder.pattern)
-	}
-	if !matched {
-		return s
-	}
-	buf.WriteString(s[i:])
-	return buf.String()
-}`
-
 	// oldSrc := `
-	// this is a lone of prose
-	// this is another line of prose`
+	// func (r *singleStringReplacer) Replace(s string) string {
+	// var buf []byte
+	// i, matched := 0, false
+	// for {
+	// 	match := r.finder.next(s[i:])
+	// 	if match == -1 {
+	// 		break
+	// 	}
+	// 	matched = true
+	// 	buf = append(buf, s[i:i+match]...)
+	// 	buf = append(buf, r.value...)
+	// 	i += match + len(r.finder.pattern)
+	// }
+	// if !matched {
+	// 	return s
+	// }
+	// buf = append(buf, s[i:]...)
+	// return string(buf)
+	// }`
 
 	// newSrc := `
-	// this is a lone of prose
-	// this is the next line of prose`
+	// func (r *singleStringReplacer) Replace(s string) string {
+	// var buf Builder
+	// i, matched := 0, false
+	// for {
+	// 	match := r.finder.next(s[i:])
+	// 	if match == -1 {
+	// 		break
+	// 	}
+	// 	matched = true
+	// 	buf.Grow(match + len(r.value))
+	// 	buf.WriteString(s[i : i+match])
+	// 	buf.WriteString(r.value)
+	// 	i += match + len(r.finder.pattern)
+	// }
+	// if !matched {
+	// 	return s
+	// }
+	// buf.WriteString(s[i:])
+	// return buf.String()
+	// }`
+
+	oldSrc := `
+	this is a lone of prose
+	this is another line of prose`
+
+	newSrc := `
+	this is a lone of prose
+	this is an interruption
+	this is the next line of prose`
 
 	// contentA := `
 	// `
@@ -1385,7 +1411,6 @@ func (r *singleStringReplacer) Replace(s string) string {
 	// }
 	// `
 
-	// call diffmatchpatch(revA, revB)
 	dmp := diffmatchpatch.New()
 
 	// diffs := dmp.DiffCleanupSemanticLossless(dmp.DiffMain(oldSrc, newSrc, false))
@@ -1411,72 +1436,22 @@ func (r *singleStringReplacer) Replace(s string) string {
 	// The reason that question comes up at all is that I need to match
 	// the left and right panels of a split diff
 
-	// var leftDiff SplitDiffHalf
-	// var rightDiff SplitDiffHalf
-
-	// the problem, doh, is that each diff doesn't compromise a line in its
-	// entirety.
-	// 1. ..... <delete> .... <delete>...\n
-	// 2. .................................
-	// 3. <delete \n>
-
-	leftDiff := &api.SplitDiffHalf{LinesMap: make(map[uint32]*api.DiffLine2)}
-	rightDiff := &api.SplitDiffHalf{LinesMap: make(map[uint32]*api.DiffLine2)}
-
-	// we need to track character position through old and new srcs
-	// since we're asking for non-line oriented diffs, but we want to map back to line-oriented
-	// In my case, not sure if I'm doing something wrong
-	// The original line is `var buf []byte`
-	// The edits come as..
-	// var buf (no newline)
-	// []byte (no newline)
-	// matches := 0, false ( yes newline )
-	// so the orignal line becomes
-
-	// we need to get the indexes of each newline in both srcs. And then we can check, hey, char 5 is on what line
-	// with a binary search
-
-	// theres no way around it I think, no good way at least
-	// oldSrcNewlines := getNewlines(oldSrc)
-	// newSrcNewlines := getNewlines(newSrc)
-
-	// for i, c := range oldSrc {
-	// 	fmt.Printf("pos=%d char=%#v line=%d\n", i, string(c), oldSrcNewlines.atOffset(uint32(i)))
-	// }
-
-	// fmt.Printf("new----\n")
-	// for i, c := range newSrc {
-	// 	fmt.Printf("pos=%d char=%#v line=%d\n", i, string(c), newSrcNewlines.atOffset(uint32(i)))
-	// }
-
-	// oldPos: iterates on deletes and equals
-	// newPos: iteratoes on inserts and equals
-	// var oldLno, newLno uint32
-
-	// // start on line 1
-	// oldLno += 1
-	// newLno += 1
-
-	var oldPos, newPos uint32
+	leftDiff := &api.SplitDiffHalf{LinesMap: make(map[uint32]uint32)}
+	rightDiff := &api.SplitDiffHalf{LinesMap: make(map[uint32]uint32)}
 
 	var oldSrcLno, newSrcLno uint32
 
 	for _, diff := range diffs {
+		fmt.Printf("diff_type=%s", diff.Type)
 		dLines := strings.Split(diff.Text, string('\n')) // I think we're gaurenteed that this will lave len 1
-		fmt.Printf("numLines=%d\n", len(dLines))
-		fmt.Printf("diffText=%#v\n", diff.Text)
+		// fmt.Printf("numLines=%d\n", len(dLines))
+		// fmt.Printf("diffText=%#v\n", diff.Text)
 		// If there's no newline we can't say the diff spans any lines so we
 		// subtract 1
 		// dLineLen := len(dLines) - 1
 		// dNewLine := dLineLen != 0
 
-		for idx, char := range diff.Text {
-			if char == '\n' {
-				fmt.Printf("newline at: %d\n", idx)
-			}
-		}
-
-		fmt.Printf("oldPos=%d newPos=%d\n", oldPos, newPos)
+		// fmt.Printf("oldPos=%d newPos=%d\n", oldPos, newPos)
 		// hasNewLine := numLines != 0
 
 		// TODO: Any difftype can span n lines. And, any diffType can start on a previous line
@@ -1491,11 +1466,11 @@ func (r *singleStringReplacer) Replace(s string) string {
 					// addBlankLine(leftDiff)
 					// oldPos += uint32(1)
 					oldSrcLno += 1
-					fmt.Printf("line is newline. incremented oldSrcLno to=%d\n", oldSrcLno)
+					// fmt.Printf("line is newline. incremented oldSrcLno to=%d\n", oldSrcLno)
 					continue
 				}
 
-				fmt.Printf("adding %#v as delete.\n", l)
+				// fmt.Printf("adding %#v as delete.\n", l)
 				// fmt.Printf("oldSrcPos=%d \n", oldPos)
 				// lno := oldSrcNewlines.atOffset(oldPos)
 
@@ -1505,7 +1480,7 @@ func (r *singleStringReplacer) Replace(s string) string {
 				// if this is the last element, don't add a newline
 				if idx < len(dLines)-1 {
 					oldSrcLno += 1
-					fmt.Printf("incremented oldSrcLno to=%d\n", oldSrcLno)
+					// fmt.Printf("incremented oldSrcLno to=%d\n", oldSrcLno)
 				}
 				// oldPos += uint32(len([]rune(l)) + 1)
 				// fmt.Printf("oldSrcPos_after_delete=%d \n", oldPos)
@@ -1519,36 +1494,57 @@ func (r *singleStringReplacer) Replace(s string) string {
 					// addBlankLine(leftDiff)
 					// oldPos += uint32(1)
 					newSrcLno += 1
-					fmt.Printf("line is newline. incremented newSrcLno to=%d\n", newSrcLno)
+					// fmt.Printf("line is newline. incremented newSrcLno to=%d\n", newSrcLno)
 					continue
 				}
 
-				fmt.Printf("adding %#v as insert.\n", l)
+				// fmt.Printf("adding %#v as insert.\n", l)
 				addDiff(rightDiff, l, diff.Type, newSrcLno)
 
 				if idx < len(dLines)-1 {
 					newSrcLno += 1
-					fmt.Printf("incremented newSrcLno to=%d\n", newSrcLno)
+					// fmt.Printf("incremented newSrcLno to=%d\n", newSrcLno)
 				}
 			}
 
 		case diffmatchpatch.DiffEqual:
 			// catch left up to right
-			fmt.Printf("original text is: %#v \n", diff.Text)
-			for len(leftDiff.Lines) < len(rightDiff.Lines) {
-				addBlankLine(leftDiff)
-			}
+			// fmt.Printf("original text is: %#v \n", diff.Text)
+
+			// fmt.Printf("oldSrcLno=%d newSrcLno=%d\n", oldSrcLno, newSrcLno)
+			// if oldSrcLno < newSrcLno && len(dLines) > 1 {
+			// 	// leftLine = 415
+			// 	// rightLine = 416
+			// 	linesToCatch := newSrcLno - oldSrcLno
+			// 	for linesToCatch > 0 {
+			// 		addBlankLine(leftDiff)
+			// 		linesToCatch -= 1
+			// 	}
+			// }
+
+			// if newSrcLno < oldSrcLno && len(dLines) > 1 {
+			// 	linesToCatch := oldSrcLno - newSrcLno
+			// 	for linesToCatch > 0 {
+			// 		addBlankLine(rightDiff)
+			// 		linesToCatch -= 1
+			// 	}
+			// }
+			// for len(leftDiff.Lines) < len(rightDiff.Lines) {
+			// 	addBlankLine(leftDiff)
+			// }
 			// catch right up to left
-			for len(rightDiff.Lines) < len(leftDiff.Lines) {
-				addBlankLine(rightDiff)
-			}
+			// for len(rightDiff.Lines) < len(leftDiff.Lines) {
+			// 	addBlankLine(rightDiff)
+			// }
 			for idx, l := range dLines {
-				fmt.Printf("adding %#v as equal. line_len=%d\n", l, len([]rune(l)))
+				// fmt.Printf("adding %#v as equal. line_len=%d\n", l, len([]rune(l)))
 				// fmt.Printf("adding: `%s` as equal. i=%d numLines=%d withNewline=%t\n", l, i, numLines, i != numLines)
 
-				if l == "" { // if newline char at prefix
-					addBlankLine(leftDiff)
-					addBlankLine(rightDiff)
+				if l == "" { // if newline char
+					addRealBlankLine(leftDiff, oldSrcLno)
+					addRealBlankLine(rightDiff, oldSrcLno)
+					// addBlankLine(leftDiff)
+					// addBlankLine(rightDiff)
 					oldSrcLno += 1
 					newSrcLno += 1
 					// oldPos += uint32(1)

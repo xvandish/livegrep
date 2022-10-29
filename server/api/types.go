@@ -150,8 +150,12 @@ type DiffPart struct {
 
 // either a left or right side of the diff
 type SplitDiffHalf struct {
-	Lines    []*DiffLine2
-	LinesMap map[uint32]*DiffLine2
+	Lines []*DiffLine2
+	// LinesMap map[uint32]*DiffLine2
+	LinesMap map[uint32]uint32
+
+	// We use a line map. That, however, removes our ability to insert blank lines
+	// so what we'll need to do is have the keys of LinesMap point to indices in in .Lines
 
 	// when appending parts of a line together, this line
 	// is a "buffer" per-se, of previously seen parts that all belong
