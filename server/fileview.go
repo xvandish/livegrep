@@ -1310,42 +1310,66 @@ func balanceDiffs(sdLeft, sdRight *api.SplitDiffHalf) {
 
 }
 
+// oh no! we need to do this after the fact, otherwise we're going to end up with wonky line numbers..
+// I think we should instead do this on the frontend, so that we don't need api calls to expand collapse content
+// func collapseContext(firstDiff, lastDiff bool, lines *[]string) {
+// 	// if firstDiff, remove top lines
+// 	if firstDiff && len(*lines) > 5 {
+// 		*lines = (*lines)[len(*lines)-5:]
+// 		return
+// 	}
+
+// 	// if lastDiff, remove bottom lines
+// 	if lastDiff && len(*lines) > 5 {
+// 		*lines = (*lines)[:5]
+// 		return
+// 	}
+
+// 	// otherwise, remove middle lines
+// 	if len(*lines) <= 6 {
+// 		return
+// 	}
+
+// 	// find the midpoint
+// 	// 3lines -- hidden -- 3lines
+// }
+
 func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRev, newRev string) (splitDiff *api.SplitDiff) {
-	// cleanPath := path.Clean(relativePath)
-	// if cleanPath == "." {
-	// 	cleanPath = ""
-	// }
+	cleanPath := path.Clean(relativePath)
+	if cleanPath == "." {
+		cleanPath = ""
+	}
 
-	// commitHash := oldRev
-	// out, err := gitCommitHash(oldRev, repo.Path)
-	// if err == nil {
-	// 	commitHash = out[:strings.Index(out, "\n")]
-	// }
-	// obj := commitHash + ":" + cleanPath
+	commitHash := oldRev
+	out, err := gitCommitHash(oldRev, repo.Path)
+	if err == nil {
+		commitHash = out[:strings.Index(out, "\n")]
+	}
+	obj := commitHash + ":" + cleanPath
 
-	// // for now, assume we're not running this on
+	// for now, assume we're not running this on
 
-	// // fetch the fileContents at revA
-	// oldSrc, err := gitCatBlob(obj, repo.Path)
-	// if err != nil {
-	// 	log.Printf("whats going on\n")
-	// 	log.Fatalf(err.Error())
-	// 	// return nil, err
-	// }
+	// fetch the fileContents at revA
+	oldSrc, err := gitCatBlob(obj, repo.Path)
+	if err != nil {
+		log.Printf("whats going on\n")
+		log.Fatalf(err.Error())
+		// return nil, err
+	}
 
-	// // fetch the fileContents at revB
-	// commitHash = newRev
-	// out, err = gitCommitHash(newRev, repo.Path)
-	// if err == nil {
-	// 	commitHash = out[:strings.Index(out, "\n")]
-	// }
-	// obj = commitHash + ":" + cleanPath
-	// newSrc, err := gitCatBlob(obj, repo.Path)
-	// if err != nil {
-	// 	log.Printf("whats going on 2\n")
-	// 	log.Fatalf(err.Error())
-	// 	// return nil, err
-	// }
+	// fetch the fileContents at revB
+	commitHash = newRev
+	out, err = gitCommitHash(newRev, repo.Path)
+	if err == nil {
+		commitHash = out[:strings.Index(out, "\n")]
+	}
+	obj = commitHash + ":" + cleanPath
+	newSrc, err := gitCatBlob(obj, repo.Path)
+	if err != nil {
+		log.Printf("whats going on 2\n")
+		log.Fatalf(err.Error())
+		// return nil, err
+	}
 
 	// log.Printf("hello\n")
 
@@ -1392,14 +1416,14 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 	// return buf.String()
 	// }`
 
-	oldSrc := `
-	this is a lone of prose
-	this is another line of prose`
+	// oldSrc := `
+	// a := make([]string, n)`
 
-	newSrc := `
-	this is a lone of prose
-	this is an interruption
-	this is the next line of prose`
+	// newSrc := `
+	// if n > len(s)+1 {
+	// 	n = len(s) + 1
+	// }
+	// a := make([]string, n)`
 
 	// contentA := `
 	// `
@@ -1442,7 +1466,7 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 	var oldSrcLno, newSrcLno uint32
 
 	for _, diff := range diffs {
-		fmt.Printf("diff_type=%s", diff.Type)
+		fmt.Printf("diff_type=%s\n", diff.Type)
 		dLines := strings.Split(diff.Text, string('\n')) // I think we're gaurenteed that this will lave len 1
 		// fmt.Printf("numLines=%d\n", len(dLines))
 		// fmt.Printf("diffText=%#v\n", diff.Text)
@@ -1450,9 +1474,6 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 		// subtract 1
 		// dLineLen := len(dLines) - 1
 		// dNewLine := dLineLen != 0
-
-		// fmt.Printf("oldPos=%d newPos=%d\n", oldPos, newPos)
-		// hasNewLine := numLines != 0
 
 		// TODO: Any difftype can span n lines. And, any diffType can start on a previous line
 		// So we'll probably need to split any diffTypes text, then append it to the proper place
@@ -1464,15 +1485,10 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 			for idx, l := range dLines {
 				if l == "" { // if newline, increment oldSrcLno
 					// addBlankLine(leftDiff)
-					// oldPos += uint32(1)
 					oldSrcLno += 1
 					// fmt.Printf("line is newline. incremented oldSrcLno to=%d\n", oldSrcLno)
 					continue
 				}
-
-				// fmt.Printf("adding %#v as delete.\n", l)
-				// fmt.Printf("oldSrcPos=%d \n", oldPos)
-				// lno := oldSrcNewlines.atOffset(oldPos)
 
 				// addDiff to oldSrcLno
 				addDiff(leftDiff, l, diff.Type, oldSrcLno)
@@ -1482,8 +1498,6 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 					oldSrcLno += 1
 					// fmt.Printf("incremented oldSrcLno to=%d\n", oldSrcLno)
 				}
-				// oldPos += uint32(len([]rune(l)) + 1)
-				// fmt.Printf("oldSrcPos_after_delete=%d \n", oldPos)
 			}
 		case diffmatchpatch.DiffInsert:
 			// add to RightLines
@@ -1492,7 +1506,6 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 			for idx, l := range dLines {
 				if l == "" { // if newline, increment oldSrcLno
 					// addBlankLine(leftDiff)
-					// oldPos += uint32(1)
 					newSrcLno += 1
 					// fmt.Printf("line is newline. incremented newSrcLno to=%d\n", newSrcLno)
 					continue
@@ -1511,15 +1524,22 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 			// catch left up to right
 			// fmt.Printf("original text is: %#v \n", diff.Text)
 
+			// if we have a bunch of equal text, like many lines, reduce it to, say,
+			// 5 context lines for now. The possibilities are:
+			// context before any diff hunks. We want to trim context from top
+			// context betweem hunks - trim from middle. Leave a few lines at top, a few at bottom, and collpase mid
+			// context after everything else - trim from bottom
+
 			// fmt.Printf("oldSrcLno=%d newSrcLno=%d\n", oldSrcLno, newSrcLno)
 			// if oldSrcLno < newSrcLno && len(dLines) > 1 {
-			// 	// leftLine = 415
-			// 	// rightLine = 416
-			// 	linesToCatch := newSrcLno - oldSrcLno
-			// 	for linesToCatch > 0 {
-			// 		addBlankLine(leftDiff)
-			// 		linesToCatch -= 1
-			// 	}
+			// leftLine = 415
+			// rightLine = 416
+			// linesToCatch := newSrcLno - oldSrcLno
+			// fmt.Printf("oldSrc needs to catch up by %d lines\n", linesToCatch)
+			// for linesToCatch > 0 {
+			// 	addBlankLine(leftDiff)
+			// 	linesToCatch -= 1
+			// }
 			// }
 
 			// if newSrcLno < oldSrcLno && len(dLines) > 1 {
@@ -1547,17 +1567,8 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 					// addBlankLine(rightDiff)
 					oldSrcLno += 1
 					newSrcLno += 1
-					// oldPos += uint32(1)
-					// newPos += uint32(1)
 					continue
 				}
-
-				// inc := uint32(len([]rune(l)))
-				// fmt.Printf("inc=%d\n", inc)
-
-				// fmt.Printf("oldSrcPos=%d newPos=%d\n", oldPos, newPos)
-				// oldLno := oldSrcNewlines.atOffset(oldPos)
-				// newLno := newSrcNewlines.atOffset(newPos)
 
 				addDiff(leftDiff, l, diff.Type, oldSrcLno)
 				addDiff(rightDiff, l, diff.Type, newSrcLno)
@@ -1568,7 +1579,6 @@ func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRe
 					newSrcLno += 1
 				}
 
-				// fmt.Printf("oldSrcPos_after_equal=%d newPos_after_equal=%d\n", oldPos, newPos)
 			}
 		default:
 			log.Fatalf("unknown diff type encountered: %v\n", diff.Type)

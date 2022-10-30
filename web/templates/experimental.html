@@ -56,13 +56,31 @@ body { margin: 0; min-height: 100vh; overflow: hidden; }
 .repository-navigation #side-nav ul {
   list-style: none;
   margin: 0px;
+  padding: 0px;
 }
 
 .repository-navigation #side-nav ul li {
   display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.repository-navigation #side-nav ul li.selected {
+  background-color: #d2e3fc;
+}
+
+.repository-navigation #side-nav ul li a {
+  display:flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  text-decoration: none;
+}
+
+.repository-navigation #side-nav ul li a:hover {
+  background-color: rgba(95,99,104,0.08); 
 }
 
 .repository-detail { 
@@ -222,7 +240,7 @@ box-sizing: border-box;
 
 #git-history-table tr {
   display: grid;
-  grid-template-columns: 40px 100px 100px 115px 1fr 60px;
+  grid-template-columns: 40px 100px 100px 115px 1fr 100px;
   justify-content: flex-start;
   text-align: left;
   align-items: center;
@@ -248,20 +266,23 @@ box-sizing: border-box;
 }
 
 #git-history-table tr:hover td div.actions-container a {
-  background-color: #eaeaea;
+  /* background-color: #eaeaea; */
 }
 
-#git-history-table tr.current-commit td div.actions-container a {
+#git-history-table tr.current-commit td div.actions-container a[data-toggled="true"] {
   background-color: #3a80b3;
   color: white;
 }
 #git-history-table tr td div.actions-container a {
-  border-radius: 10px;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 3px;
+  max-height: 22px;
+  min-width: 30px;
   padding: 5px;
-  padding-top: 7px;
-  padding-bottom: 6px;
   font-weight: 100;
   text-decoration: none;
+  /* text-transform: uppercase; */
 }
 
 #git-history-table tr.current-commit td div.actions-container {
@@ -270,6 +291,8 @@ box-sizing: border-box;
 
 #git-history-table tr td div.actions-container {
   opacity: 0;
+  display: flex;
+  padding-right: 5px;
 }
 
 #git-history-table tr td {
@@ -350,6 +373,10 @@ button > * {
   pointer-events: none;
 }
 
+a > * {
+  pointer-events: none;
+}
+
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -367,7 +394,7 @@ button > * {
       </div>
       <div class="browse-repository-contents">
         <div class="repository-navigation">
-          {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit }}
+          {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit .FilePath }}
         </div>
         <div class="repository-detail">
           <div class="main-view">
@@ -565,11 +592,13 @@ button > * {
             const tr = table.insertRow();
             var commit = commits[i];
 
-
+            var isViewedCommit = false;
             if (window.scriptData.commitHash == commit.Hash) {
               tr.classList.add("current-commit")
+              isViewedCommit = true;
             } else if (window.scriptData.commitHash== "HEAD" && i == 0) {
               tr.classList.add("current-commit")
+              isViewedCommit = true;
             }
 
             // TODO (on server, rev-parse so top commit is always HEAD)
@@ -617,10 +646,21 @@ button > * {
             var buttonsContainer = document.createElement("div");
             buttonsContainer.classList.add("actions-container");
 
+            var diffLink = document.createElement("a");
+            diffLink.href = "blah";
+            diffLink.innerHTML = "diff";
+            diffLink.dataset.commit = commit.Hash;
+            diffLink.className = "diff-link";
+
+            buttonsContainer.appendChild(diffLink);
+
             var viewLink = document.createElement("a");
             viewLink.href = "blah"
             viewLink.innerHTML = "view"
             viewLink.dataset.commit = commit.Hash;
+            viewLink.dataset.toggled = isViewedCommit ? "true" : "false";
+            viewLink.className = "view-link";
+
             // viewLink.addEventListener("click", viewFileAtCommit.bind(this, gitHistory.Path, commit.Hash), false);
 
             buttonsContainer.appendChild(viewLink);
@@ -640,6 +680,19 @@ button > * {
           }
 
           document.getElementsByClassName("lower-detail-content")[0].appendChild(table);
+        }
+
+        // given a click on a tree, hide or show all children
+        function toggleTree(event) {
+          // get the parentContainer
+          var parentContainer = event.target.closest("ul");
+
+          // now iterate all children, except the first and hide them 
+          // we don't hide the first since its the "gateway" to the tree
+          var children = parentContainer.children;
+          for (var i = 1; i < children.length; i++) {
+            children[i].classList.toggle("hidden");
+          }
         }
 
         // var historyPanel = document.getElementsByClassName("lower-detail-content")[0];
@@ -690,10 +743,26 @@ button > * {
 
           if (clickLocation == "commit-history") {
             // replace the current "selected" commit in the history pane
-            document.querySelector("tr.current-commit").classList.remove("current-commit");
+            var currentCommitRow = document.querySelector("tr.current-commit")
+            currentCommitRow.classList.remove("current-commit");
 
             // now select the tr that contains the "view" button that was pressed
             event.target.closest("tr").classList.add("current-commit");
+
+            // now get the previously selected "view" button and untoggle it
+            currentCommitRow.querySelector("a.view-link").dataset.toggled = "false";
+
+            // now select the clicked button
+            event.target.dataset.toggled = "true";
+          } else if (clickLocation == "side-nav") {
+            // replace the current "selected" file
+            var selectedPath = document.querySelector("#side-nav li.selected");
+            if (selectedPath) {
+              selectedPath.classList.remove("selected");
+            }
+
+            // select the file that was clicked
+            event.target.parentNode.classList.toggle("selected");
           }
 
           // if the blameLayer was open, re-open it
@@ -733,13 +802,28 @@ button > * {
             viewFileAtCommit(event, window.scriptData.filepath, event.target.dataset.commit, "commit-history");
           }
 
+          if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "diff") {
+            console.log('diffing');
+            event.preventDefault();
+
+            // we need to get the index of this diff button in th
+          }
+
           if (event.target.tagName == "A" && event.target.href && sideNav.contains(event.target)) {
             console.log('side nav click');
             console.log(event.target.href)
             event.preventDefault();
+
+            console.log(event.target.pathname);
+            if (event.target.pathname.includes(`/experimental/${window.scriptData.repo}/tree/`)) {
+              console.log("tree click");
+              toggleTree(event);
+              return;
+            }
+
             // take the href and split it into parts
             // /experimental/nytimes/eventtracker-server/HEAD/blob/fixtures/one_after_another_p2.json
-            var filePath = event.target.pathname.replace(`/experimental/${window.scriptData.repo}/${window.scriptData.commitHash}/`, "")
+            var filePath = event.target.pathname.replace(`/experimental/${window.scriptData.repo}/blob/${window.scriptData.commitHash}/`, "")
 
             // TODO(xvandish): Indicate in anchor whether this is blob or tree so we don't have to guess
             filePath = filePath.replace("blob/", "").replace("tree/", "")
@@ -760,6 +844,15 @@ button > * {
             expandLogLine(event);
           }
         })
+
+        // REMEMBER: When implementing left-right diff capability, the last commit
+        // Should not get a "diff" button on hover becase.. there's nothing to diff it to
+
+        // Potential nicety - when clicking on a commit hash in the fileviewer, we could
+        // probably display the diff right in the viewpane ... 
+          // This comes with some problems though. We'd have to close the commits/history
+          // pane, and we'd have to unselect the current blob frome the treeviewer
+
 
   </script>
   {{ end }}

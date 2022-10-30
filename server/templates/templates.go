@@ -106,12 +106,20 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 	return codeParts
 }
 
-func getTreeItemLink(node *api.TreeNode, repoName, commit string) string {
-	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, commit, node.Type, node.Path)
-	return fmt.Sprintf("<a href=\"%s\">%s</a>", link, node.Name)
+func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit string) string {
+	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, node.Type, commit, node.Path)
+	leftComp := imgLink
+	buttonExpander := "<button class=\"expander\"><div class=\"arrow\" /></button>"
+	if node.Type == "tree" {
+		leftComp = buttonExpander
+	}
+	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, link, leftComp, node.Name)
 }
 
-func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit string) template.HTML {
+var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
+
+// leaves open the path to the
+func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, filepath string) template.HTML {
 	// TODO(xvandish): skip/ignore the root dir when rendering so all file's
 	// aren't indented.
 	// rather than having this as a template,
@@ -119,7 +127,7 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit stri
 	if depth > 1 {
 		paddingLeft = (depth - 1) * 15
 	}
-	outHtml := fmt.Sprintf("<ul style=\"padding-left: %dpx\">", paddingLeft)
+	outHtml := fmt.Sprintf("<ul>")
 
 	// don't nest everything under a ul
 	if depth == 0 {
@@ -127,22 +135,35 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit stri
 	}
 
 	if depth > 0 {
-
-		link := getTreeItemLink(rootDir, repoName, commit)
-		imgLink := "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
+		link := getTreeItemLink(rootDir, paddingLeft, repoName, commit)
 		if rootDir.Type == "tree" {
-			buttonExpander := "<button class=\"expander\"><div class=\"arrow\" /></button>"
-			outHtml += "<li>" + buttonExpander + link + "</li>"
+			outHtml += fmt.Sprintf("<li>%s</li>", link)
 		} else {
-			outHtml += "<li>" + imgLink + link + "</li>"
+			isSelected := rootDir.Path == filepath
+			cls := ""
+			if isSelected {
+				cls = "selected"
+			}
+			outHtml += fmt.Sprintf("<li class=\"%s\">%s%s</li>", cls, imgLink, link)
 		}
 
 	}
 
 	if len(rootDir.Children) > 0 {
 		for _, child := range rootDir.Children {
-			outHtml += string(renderDirectoryTree(child, depth+1, repoName, commit))
-
+			// if the child has no children, just "render" it right away.
+			// TODO: cleaner way to not include ul
+			if len(child.Children) == 0 {
+				link := getTreeItemLink(child, paddingLeft+15, repoName, commit)
+				isSelected := child.Path == filepath
+				cls := ""
+				if isSelected {
+					cls = "selected"
+				}
+				outHtml += fmt.Sprintf("<li class=\"%s\">%s</li>", cls, link)
+			} else {
+				outHtml += string(renderDirectoryTree(child, depth+1, repoName, commit, filepath))
+			}
 		}
 	}
 
@@ -156,20 +177,9 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit stri
 
 func renderSplitDiffHalf(sd *api.SplitDiffHalf) template.HTML {
 	var b strings.Builder
-	// lines := make([]*api.DiffLine2, len(sd.LinesMap))
-
-	// idx := 0
-	// for _, line := range sd.LinesMap {
-	// 	lines[idx] = line
-	// 	idx += 1
-	// }
-
-	// sort.Slice(lines, func(i, j int) bool {
-	// 	return lines[i].Lno < lines[j].Lno
-	// })
 
 	for _, line := range sd.Lines {
-		b.WriteString(fmt.Sprintf("<div><pre clas=\"lno-%d\">", line.Lno))
+		b.WriteString(fmt.Sprintf("<div><span>%d</span><pre>", line.Lno))
 		for _, part := range line.Line {
 			cls := ""
 			if part.Type == diffmatchpatch.DiffInsert {
