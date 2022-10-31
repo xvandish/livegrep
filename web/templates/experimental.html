@@ -1072,6 +1072,7 @@ a > * {
         var resultsContainer;
         var caseSelect;
         var regexToggle;
+        var autocompleteMenu;
 
         var searchOptions = {
           q: "repo:{{ $repo }}",
@@ -1171,11 +1172,19 @@ a > * {
           caseSelect = document.getElementById("case-sensitivity-toggle");
           regexToggle = document.querySelector("button[id=toggle-regex]");
           errorsBox = document.getElementById("regex-error");
+          autocompleteMenu = document.getElementById("autocomplete-menu");
 
           console.log({ searchBox })
           console.log({ resultsContainer })
 
           searchBox.value = "repo:{{ $repo }}";
+          searchBox.addEventListener('focusin', function() {
+            autocompleteMenu.style.display = "initial";
+          });
+          searchBox.addEventListener('focusout', function() {
+            var menu = document.getElementById("autocomplete-menu");
+            autocompleteMenu.style.display = "none";
+          });
 
           caseSelect.addEventListener("change", function (e) {
             var newVal = e.target.value;
