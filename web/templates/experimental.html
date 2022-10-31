@@ -4,7 +4,7 @@
 
 <style>
 
-body { margin: 0; min-height: 100vh; overflow: hidden; }
+body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; }
 .repository-browser {
   display: flex;
   box-sizing: border-box;
@@ -24,6 +24,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; }
     border-bottom-style: solid;
     border-bottom-width: 1px;
     border-color: #dadcd0;
+    background-color: #f8f9fa;
 }
 
 .browse-repository-contents { 
@@ -49,8 +50,34 @@ body { margin: 0; min-height: 100vh; overflow: hidden; }
 }
 
 .repository-navigation #side-nav {
-  overflow: scroll;
-  max-height: calc(100% - 10px); /* account for horizontal scrollbar height */
+  position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow: hidden;
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+}
+
+.repository-navigation #side-nav #nav-tab-group {
+  background-color: var(--page-bg-secondary);
+  border-bottom-color: var(--border);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  background-color: #f6f7f9;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+}
+
+.repository-navigation #side-nav #root {
+  position: relative;
+  overflow: auto;
+  z-index: 1;
+  flex-grow: 1;
 }
 
 .repository-navigation #side-nav ul {
@@ -58,6 +85,14 @@ body { margin: 0; min-height: 100vh; overflow: hidden; }
   margin: 0px;
   padding: 0px;
 }
+
+.repository-navigation #side-nav ul.hidden:first-child {
+  display: initial;
+}
+
+/* .repository-navigation #side-nav ul.hidden {
+  display: initial;
+} */
 
 .repository-navigation #side-nav ul li {
   display: flex;
@@ -377,6 +412,57 @@ a > * {
   pointer-events: none;
 }
 
+#app {
+  display: flex;
+    flex: 1 1 100%;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#app-bar {
+  position: relative;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid #dadce0;
+}
+
+#app-bar header {
+  display: flex;
+    gap: 32px;
+    height: 60px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+#repository-browser-wrapper {
+  display: flex;
+    flex: 1 1 100%;
+    min-height: 0;
+}
+
+#nested-wrapper {
+  display: flex;
+    flex-grow: 1;
+    flex-direction: column;
+    overflow: auto;
+}
+
+#input-line-wrapper {
+  flex: 1 1 auto;
+  min-width: 288px;
+  display: flex;
+  -webkit-box-flex: 1;
+  justify-content: center;
+}
+
+.input-line {
+  margin: 0 12px;
+    max-width: 800px;
+    min-width: 300px;
+    width: 100%;
+}
+
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -384,56 +470,109 @@ a > * {
   </head>
   {{ with .Data }}
   <body>
-    <div class="repository-browser">
-      <div class="browse-repository-breadcrumb">
-        <nav>
-          {{$repo := .Repo.Name}}
-          {{$repo}}:
-          {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}{{ if ne .Commit "HEAD" }}<span class="ch">@{{.CommitHash}}</span>{{ end }}
-        </nav>
-      </div>
-      <div class="browse-repository-contents">
-        <div class="repository-navigation">
-          {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit .FilePath }}
-        </div>
-        <div class="repository-detail">
-          <div class="main-view">
-            <div class="middle-view">
-              <div class="file-detail">
-                <div class="file-header">
-                  <div class="file-header-wrapper">
-                    <div class="file-info">
-                      <span id="filename">{{.FileContent.Filename}}</span>
-                      <span class="commit-info">(@ <a id="short-hash-link" href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
-                    </div>
-                    <div class="file-actions">
-                      <button id="toggle-blame">Blame</button>
-                    </div>
-                  </div>
-                </div>
-                <div class="file-content">
-                  {{ template "filecontent" .FileContent }}
-                </div>
-              </div>
-              <div class="lower-detail-wrapper closed">
-                <div class="lower-detail-panel">
-                  <div class="lower-detail-header">
-                    <h4>History</h4>
-                    <button id="toggle-history" class="icon-toggle" title="toggle commit history" data-toggled="false">
-                      <img src="/assets/img/chevron-down.svg" />
-                    </button>
-                  </div>
-                  <div class="lower-detail-content">
-                  </div>
-
-                </div> 
-              </div>
+    <div id="app">
+      <div id="app-bar">
+        <header>
+          <span>Hello</span>
+          <div id="input-line-wrapper">
+          <div class="input-line">
+            <div class="inline-search-options left">
+              <label for="searchbox">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke:currentColor;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </label>
             </div>
-          </div>
-
+            <div class="inline-search-options">
+              <div class="select-with-icon-container">
+                <div class="icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                  <g id="regular-expression">
+                          <path id="upper-case" d="M7.53 7L4 17h2.063l.72-2.406h3.624l.72 2.406h2.062L9.65 7h-2.12zm1.064 1.53L9.938 13H7.25l1.344-4.47z"></path>
+                          <path id="lower-case" d="M18.55 17l-.184-1.035h-.055c-.35.44-.71.747-1.08.92-.37.167-.85.25-1.44.25-.564 0-.955-.208-1.377-.625-.42-.418-.627-1.012-.627-1.784 0-.808.283-1.403.846-1.784.568-.386 1.193-.607 2.208-.64l1.322-.04v-.335c0-.772-.396-1.158-1.187-1.158-.61 0-1.325.18-2.147.55l-.688-1.4c.877-.46 1.85-.69 2.916-.69 1.024 0 1.59.22 2.134.662.545.445.818 1.12.818 2.03V17h-1.45m-.394-3.527l-.802.027c-.604.018-1.054.127-1.35.327-.294.2-.442.504-.442.912 0 .58.336.87 1.008.87.48 0 .865-.137 1.152-.414.29-.277.436-.645.436-1.103v-.627"></path>
+                  </g>
+                </svg>
+                </div>
+              <select id="case-sensitivity-toggle" }="">
+                <option value="auto">auto</option>
+                <option value="false">match</option>
+                <option value="true">ignore</option>
+              </select>
+              </div>
+              <button type="button" class="regex-toggle" id="toggle-regex" data-selected="true" title="Toggle regex" name="regex">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                  <g id="regular-expression">
+                          <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"></path>
+                          <path id="dot" d="M10 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"></path>
+                          <path id="star" d="M14.25 7.013l-.24 2.156 2.187-.61.193 1.47-1.992.14 1.307 1.74-1.33.71-.914-1.833-.8 1.822-1.38-.698 1.296-1.74-1.98-.152.23-1.464 2.14.61-.24-2.158h1.534"></path>
+                          <path id="right-bracket" d="M21 12.045c0 .982-.152 1.896-.457 2.744A6.51 6.51 0 0 1 19.236 17h-1.453a8.017 8.017 0 0 0 1.225-2.31c.29-.855.434-1.74.434-2.66 0-.91-.14-1.797-.422-2.66a7.913 7.913 0 0 0-1.248-2.374h1.465a6.764 6.764 0 0 1 1.313 2.28c.3.86.45 1.782.45 2.764"></path>
+                  </g>
+                </svg>
+              </button>
+            </div>
+            <div class="query-input-wrapper">
+              <input type="text" id="searchbox" tabindex="1" required="required">
+            </div>
         </div>
       </div>
-    </div>
+          <span>Menu</span>
+        </header>
+      </div>
+      <div id="repository-browser-wrapper">
+        <div id="nested-wrapper">
+        <div class="repository-browser">
+          <div class="browse-repository-breadcrumb">
+            <nav>
+              {{$repo := .Repo.Name}}
+              {{$repo}}:
+              {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}{{ if ne .Commit "HEAD" }}<span class="ch">@{{.CommitHash}}</span>{{ end }}
+            </nav>
+          </div>
+          <div class="browse-repository-contents">
+            <div class="repository-navigation">
+              {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit .FilePath }}
+            </div>
+            <div class="repository-detail">
+              <div class="main-view">
+                <div class="middle-view">
+                  <div class="file-detail">
+                    <div class="file-header">
+                      <div class="file-header-wrapper">
+                        <div class="file-info">
+                          <span id="filename">{{.FileContent.Filename}}</span>
+                          <span class="commit-info">(@ <a id="short-hash-link" href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
+                        </div>
+                        <div class="file-actions">
+                          <button id="toggle-blame">Blame</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="file-content">
+                      {{ template "filecontent" .FileContent }}
+                    </div>
+                  </div>
+                  <div class="lower-detail-wrapper closed">
+                    <div class="lower-detail-panel">
+                      <div class="lower-detail-header">
+                        <h4>History</h4>
+                        <button id="toggle-history" class="icon-toggle" title="toggle commit history" data-toggled="false">
+                          <img src="/assets/img/chevron-down.svg" />
+                        </button>
+                      </div>
+                      <div class="lower-detail-content">
+                      </div>
+
+                    </div> 
+                  </div>
+                </div>
+              </div>
+
+          </div>
+        </div>
+      </div>
+
+      </div>
+      </div>
+
+  </div>
   </body>
 
   <script>
@@ -787,7 +926,7 @@ a > * {
           repo: {{ $repo }},
           commitHash: {{ .Commit }},
           filepath: {{ .FilePath }},
-          filename: {{ .FileContent.Filename }}
+          filename: {{ .FileContent.Filename }},
         };
         console.log(window.scriptData);
 

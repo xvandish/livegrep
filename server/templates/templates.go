@@ -127,11 +127,22 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, fil
 	if depth > 1 {
 		paddingLeft = (depth - 1) * 15
 	}
-	outHtml := fmt.Sprintf("<ul>")
+	cls := ""
+
+	// if this rootNode has nothing to do with the open file (filepath)
+	// if !strings.HasPrefix(filepath, rootDir.Path) {
+	// 	cls = "hidden"
+	// }
+	outHtml := fmt.Sprintf("<ul class=\"%s\"", cls)
+	if depth == 0 {
+		outHtml += "id=\"root\">"
+	} else {
+		outHtml += ">"
+	}
 
 	// don't nest everything under a ul
 	if depth == 0 {
-		outHtml = "<nav id='side-nav'>" + outHtml
+		outHtml = "<nav id='side-nav'><div id=\"nav-tab-group\"><span>Files</span></div>" + outHtml
 	}
 
 	if depth > 0 {
