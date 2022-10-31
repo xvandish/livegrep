@@ -636,32 +636,44 @@ a > * {
     var fileIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false"><path d="M0 0h18v18H0V0z" fill="none"></path><path d="M10.5 1.5H2.9v15h12V6l-4.4-4.5zm-.7 5.3V2.6l4.1 4.1H9.8z"></path></svg>"';
 
 
-    var blameShown = false;
+    var blameVisible = false;
     var commitForLastBlame = "";
     document.getElementById("toggle-blame").addEventListener("click", function(e) {
+
+      console.log(e.target.dataset)
+      console.log({ blameVisible })
+      console.log({ commitForLastBlame })
+      var blameLines = document.querySelectorAll("td.blame-col .blame-line");
+
+          // if the blame viewer is shown, hide it
           if (e.target.dataset.shown == "true") {
-            var blameLines = document.querySelectorAll("td.blame-col .blame-line");
+            console.log('show/hide')
             for (var i = 0; i < blameLines.length; i++) {
                   blameLines[i].classList.add("hidden");
             }
             e.target.dataset.shown = "false";
-            blameShown = false;
+            blameVisible = false;
           } else {
-              if (blameShown && commitForLastBlame == window.scriptData.commitHash) {
-                var blameLines = document.querySelectorAll("td.blame-col .blame-line");
+              // re-show the blame for the same file by just un-hiding the blame rows
+              if (commitForLastBlame == window.scriptData.commitHash) {
+                console.log('blame previously shown for the same file, redisplaying')
                 for (var i = 0; i < blameLines.length; i++) {
                       blameLines[i].classList.remove("hidden");
                 }
                 e.target.dataset.shown = "true";
-                blameShown = true;
+                blameVisible = true;
                 return;
               }
-              loadBlame();
-              commitForLastBlame = window.scriptData.commitHash;
-              var blameCols = document.querySelectorAll("td.blame-col");
-              e.target.dataset.shown = "true";
-              blameShown = true;
 
+              // otherwise, load the blame anew
+              // but first, delete the old blame lines
+              blameLines.forEach(e => e.remove());
+              loadBlame();
+
+              // set information for the loaded blame
+              commitForLastBlame = window.scriptData.commitHash;
+              e.target.dataset.shown = "true";
+              blameVisible = true;
           }
     });
 
@@ -962,7 +974,7 @@ a > * {
           }
 
           // if the blameLayer was open, re-open it
-          if (blameShown) {
+          if (blameVisible) {
             loadBlame();
             commitForLastBlame = commitHash;
           }
