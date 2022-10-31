@@ -945,6 +945,10 @@ a > * {
           var prevCommitHash = window.scriptData.commitHash;
           var prevFilepath = window.scriptData.filepath;
           var prevFilename = window.scriptData.filename;
+          
+          // TODO: We don't really want to do this, otherwise it makes all ops behave as is we're acting on this hash,
+          // e.g., viewing the repo at this hash.
+          // TODO ^^^
           window.scriptData.commitHash = commitHash;
           window.scriptData.filepath = path;
           window.scriptData.filename = filename;
@@ -1029,15 +1033,11 @@ a > * {
               return;
             }
 
-            // take the href and split it into parts
-            // /experimental/nytimes/eventtracker-server/HEAD/blob/fixtures/one_after_another_p2.json
-            var filePath = event.target.pathname.replace(`/experimental/${window.scriptData.repo}/blob/${window.scriptData.commitHash}/`, "")
+            // we want to load the file at the ref indicated in the clicked url
+            var commitHash = event.target.dataset.hash;
+            var filePath = event.target.dataset.path;
 
-            // TODO(xvandish): Indicate in anchor whether this is blob or tree so we don't have to guess
-            filePath = filePath.replace("blob/", "").replace("tree/", "")
-            console.log(event.target.href)
-            console.log({ filePath })
-            viewFileAtCommit(event, filePath, window.scriptData.commitHash, "side-nav");
+            viewFileAtCommit(event, filePath, commitHash, "side-nav");
           }
           
           console.log(event.target.classList)
