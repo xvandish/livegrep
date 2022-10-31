@@ -463,6 +463,19 @@ a > * {
     width: 100%;
 }
 
+#autocomplete-menu {
+    background-color: white;
+    width: 99%;
+    min-height: 100px;
+    font-family: monospace;
+    padding-top: 10px;
+    z-index: 2;
+    position: absolute;
+    padding-left: 10px;
+    padding-bottom: 10px;
+    box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
+}
+
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -497,7 +510,7 @@ a > * {
                 <option value="true">ignore</option>
               </select>
               </div>
-              <button type="button" class="regex-toggle" id="toggle-regex" data-selected="true" title="Toggle regex" name="regex">
+              <button type="button" class="regex-toggle" id="toggle-regex" data-selected="false" title="Toggle regex" name="regex">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
                   <g id="regular-expression">
                           <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"></path>
@@ -510,6 +523,25 @@ a > * {
             </div>
             <div class="query-input-wrapper">
               <input type="text" id="searchbox" tabindex="1" required="required">
+            </div>
+            <div id="autocomplete-menu">
+
+              <div class="query-hint query-hint-and-index-info" style="padding-top: 2px;">
+                <div>
+                    <span>Special terms:</span>
+                    <code>path:</code>
+                    <code>-path:</code>
+                    <code>repo:</code>
+                    <code>-repo:</code>
+                    <code>max_matches:</code>
+                </div>
+                <div id='regex-error'>
+                  <span id='errortext'></span>
+                </div>
+              </div>
+              <div id="resultarea">
+                <div id="results"></div>
+              </div>
             </div>
         </div>
       </div>
@@ -991,6 +1023,155 @@ a > * {
         // probably display the diff right in the viewpane ... 
           // This comes with some problems though. We'd have to close the commits/history
           // pane, and we'd have to unselect the current blob frome the treeviewer
+
+        // What follows is a stripped down verison of codesearch.js
+        // We don't:
+        //   track searches in history
+        //   init state from recent params
+        //   keep a recent history
+
+        var searchBox;
+        var errorsBox;
+        var resultsContainer;
+        var caseSelect;
+        var regexToggle;
+
+        var searchOptions = {
+          q: "repo:{{ $repo }}",
+          regex: false,
+          context: true, // we don't have an option for disabling context. No one uses it
+          case: "auto",
+        };
+
+        function updateQuery(inputEvnt) {
+          searchOptions.q = inputEvnt.target.value;
+          doSearch();
+        }
+
+        function toggleControlButton(button) {
+          var currValue = button.getAttribute("data-selected") === "true";
+          button.setAttribute("data-selected", !currValue);
+          searchOptions[button.getAttribute("name")] = !currValue;
+          doSearch();
+        }
+
+
+        function toggleMoreFileMatches(e) {
+          document
+            .querySelector(".path-results .extra-results")
+            .classList.toggle("hidden");
+          var textContainer = e.currentTarget.querySelector("#toggle-btn-text");
+          textContainer.innerText =
+            textContainer.innerText === "Show all" ? "Show less" : "Show all";
+          e.currentTarget.querySelector("img").classList.toggle("open");
+        }
+
+        function handleFileExtBtnClick(e) {
+          var q = searchBox.value;
+          var ext = e.target.innerText;
+          if (regexToggle.dataset.selected == "true") {
+            q = "path:\\" + ext + "$ " + q;
+          } else {
+            q = "path:" + ext + " " + q;
+          }
+          searchBox.value = q;
+          searchBox.dispatchEvent(new Event("input"));
+        }
+
+        var urlFetching;
+        function doSearch() {
+          if (searchOptions.q === "") {
+            resultsContainer.innerHTML = "";
+            errorsBox.style.display = "none";
+            return;
+          }
+
+          // var time1 = performance.now();
+          // var time2;
+
+          var urlToFetch = `/api/v2/getRenderedSearchResults/?q=${encodeURIComponent(searchOptions.q)}&regex=${searchOptions.regex}&fold_case=${searchOptions.case}` 
+          console.log({ urlToFetch });
+          urlFetching = urlToFetch;
+          fetch(urlToFetch)
+            .then(function (r) {
+              time2 = performance.now();
+              if (!r.ok) {
+                return Promise.reject(r.text());
+              } else {
+                return r.text();
+              }
+            })
+            .then(function (text) {
+              if (urlToFetch != urlFetching) {
+                // don't display if the results are for an old query. This is hacky,
+                // but works just fine. TODO: use an abortController and fancier
+                // ids to keep track of in-flight searches
+                return;
+              }
+              resultsContainer.innerHTML = text;
+              errorsBox.style.display = "none";
+
+              // TODO: Decide whether to show time information
+              // var timeTaken = ((time2 - time1) / 1000).toFixed(3);
+              // document.getElementById("searchtime").innerText = timeTaken + "s";
+              // document.getElementById("searchtimebox").style.display = "initial";
+            })
+            .catch(function (err) {
+              err.then(function (errText) {
+                // display the help area, clear previous results, and show the new error
+                resultsContainer.innerHTML = "";
+                errorsBox.querySelector("#errortext").innerText = errText;
+                errorsBox.style.display = "initial";
+              });
+            });
+        }
+
+        function init() {
+          "use strict";
+
+          searchBox = document.getElementById("searchbox");
+          resultsContainer = document.querySelector("#resultarea > #results");
+          caseSelect = document.getElementById("case-sensitivity-toggle");
+          regexToggle = document.querySelector("button[id=toggle-regex]");
+          errorsBox = document.getElementById("regex-error");
+
+          console.log({ searchBox })
+          console.log({ resultsContainer })
+
+          searchBox.value = "repo:{{ $repo }}";
+
+          caseSelect.addEventListener("change", function (e) {
+            var newVal = e.target.value;
+            searchOptions["case"] = newVal;
+            updateSearchParamState();
+          });
+          regexToggle.addEventListener("click", function () {
+            toggleControlButton(this);
+          });
+          searchBox.addEventListener("input", updateQuery);
+
+
+          document.addEventListener("click", function (e) {
+            var btn = e.target.closest("button");
+            if (btn && btn.id == "showMoreFilematchesBtn") {
+              toggleMoreFileMatches(e);
+            } else if (btn && btn.classList.contains("file-extension")) {
+              handleFileExtBtnClick(e);
+            } else if (e.target.tagName == "A" && e.target.href != "" && e.target.id == "next-page") {
+              e.preventDefault();
+              // just update the search input with the value of "q"
+              var sp = new URLSearchParams(e.target.href);
+              var newQ = sp.get("q");
+              searchOptions.q = newQ;
+              searchBox.value = newQ;
+              updateSearchParamState();
+            }
+          });
+
+
+        }
+
+        init();
 
 
   </script>
