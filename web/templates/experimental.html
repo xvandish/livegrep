@@ -4,7 +4,7 @@
 
 <style>
 
-body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; }
+body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 .repository-browser {
   display: flex;
   box-sizing: border-box;
@@ -166,6 +166,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; }
     border-color: #dadcd0;
     background-color: #d2e3fc;
     min-height: 40px;
+    padding: 5px;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper {
@@ -464,6 +465,7 @@ a > * {
 }
 
 #autocomplete-menu {
+    display: none;
     background-color: white;
     width: 99%;
     min-height: 100px;
@@ -476,6 +478,25 @@ a > * {
     box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
 }
 
+.select-with-icon-container .icon {
+  bottom: 1px !important;
+}
+
+#logo-box {
+  display: flex;
+  align-items: center;
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+#super-pipe {
+  height: 22px;
+  border-left: 1px solid #333;
+  padding-right: 6px;
+  margin-left: 5px;
+  display: inline-block;
+}
+
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -486,7 +507,11 @@ a > * {
     <div id="app">
       <div id="app-bar">
         <header>
-          <span>Hello</span>
+          <div id="logo-box">
+            <img src="/assets/img/nyt_super_t.svg" width="32px" height="32px"></img>
+            <div id="super-pipe"></div>
+            <span>Codesearch</span>
+          </div>
           <div id="input-line-wrapper">
           <div class="input-line">
             <div class="inline-search-options left">
@@ -584,7 +609,7 @@ a > * {
                   <div class="lower-detail-wrapper closed">
                     <div class="lower-detail-panel">
                       <div class="lower-detail-header">
-                        <h4>History</h4>
+                        <h4 style="font-weight:500;">History</h4>
                         <button id="toggle-history" class="icon-toggle" title="toggle commit history" data-toggled="false">
                           <img src="/assets/img/chevron-down.svg" />
                         </button>
