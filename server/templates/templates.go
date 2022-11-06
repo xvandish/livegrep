@@ -113,7 +113,7 @@ func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit strin
 	if node.Type == "tree" {
 		leftComp = buttonExpander
 	}
-	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, link, leftComp, node.Name)
+	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" data-path=\"%s\" data-hash=\"%s\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, node.Path, commit, link, leftComp, node.Name)
 }
 
 var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
@@ -140,11 +140,6 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, fil
 		outHtml += ">"
 	}
 
-	// don't nest everything under a ul
-	if depth == 0 {
-		outHtml = "<nav id='side-nav'><div id=\"nav-tab-group\"><span>Files</span></div>" + outHtml
-	}
-
 	if depth > 0 {
 		link := getTreeItemLink(rootDir, paddingLeft, repoName, commit)
 		if rootDir.Type == "tree" {
@@ -165,7 +160,11 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, fil
 			// if the child has no children, just "render" it right away.
 			// TODO: cleaner way to not include ul
 			if len(child.Children) == 0 {
-				link := getTreeItemLink(child, paddingLeft+15, repoName, commit)
+				nextPadding := paddingLeft
+				if depth > 0 {
+					nextPadding += 15
+				}
+				link := getTreeItemLink(child, nextPadding, repoName, commit)
 				isSelected := child.Path == filepath
 				cls := ""
 				if isSelected {

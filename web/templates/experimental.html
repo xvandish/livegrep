@@ -297,6 +297,11 @@ box-sizing: border-box;
   background-color: aliceblue;
 }
 
+/* a row with more important than rest, but less than current-commit */
+#git-history-table tr.secondary-row {
+  background-color: #fef7e0;
+}
+
 #git-history-table tr:hover td div.actions-container {
   opacity: 1;
 }
@@ -305,7 +310,7 @@ box-sizing: border-box;
   /* background-color: #eaeaea; */
 }
 
-#git-history-table tr.current-commit td div.actions-container a[data-toggled="true"] {
+#git-history-table tr td div.actions-container a[data-toggled="true"] {
   background-color: #3a80b3;
   color: white;
 }
@@ -322,6 +327,9 @@ box-sizing: border-box;
 }
 
 #git-history-table tr.current-commit td div.actions-container {
+  opacity: 1;
+}
+#git-history-table tr.secondary-row td div.actions-container {
   opacity: 1;
 }
 
@@ -585,7 +593,12 @@ a > * {
           </div>
           <div class="browse-repository-contents">
             <div class="repository-navigation">
+              <nav id="side-nav">
+                <div id="nav-tab-group">
+                  <span>Files</span>
+                </div>
               {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit .FilePath }}
+              </nav>
             </div>
             <div class="repository-detail">
               <div class="main-view">
@@ -995,11 +1008,108 @@ a > * {
           var row = event.target.closest("tr");
           row.querySelector(".expanded-row-content").classList.toggle("hide-row");
         }
+
+        // given a click on a "diff" button, get the commit of the "prev"
+        // commit, and diff against that. 
+        // TODO: Disallow functionality on last diff button
+        function decideWhatToDiff(event) {
+          var clickedCommitHash = event.target.dataset.commit; 
+
+
+          // not great, but eh
+          var prevRow = event.target.parentNode.parentNode.parentNode.nextElementSibling; 
+          var prevCommit = prevRow.querySelector(".diff-link").dataset.commit;
+
+          return [prevCommit, clickedCommitHash];
+        }
+
+        // async function viewFileAtCommit(event, path, commitHash, clickLocation) {
+        
+        function transformButtonsForDiff(event) {
+          var actionsContainer = event.target.parentNode;
+          console.log({ actionsContainer });
+
+          // take the clicked "diff" button, hide it, then 
+          // 1. add "left" and "right" buttons. Highlight right
+          // hide "diff" and "view" buttons
+          
+          // hide the existing buttons
+          event.target.classList.add("hidden");
+          actionsContainer.querySelector(".view-link").classList.add("hidden");
+
+          // append left/right buttons to the container
+          var leftButton = document.createElement("a");
+          var rightButton = document.createElement("a");
+          leftButton.innerHTML = "left";
+          rightButton.innerHTML = "right";
+          rightButton.dataset.toggled = "true";
+          actionsContainer.appendChild(leftButton);
+          actionsContainer.appendChild(rightButton);
+
+          
+
+          // take the prev "diff" button, hide it, then 
+          // 1. add "left" and "right" buttons. Highlight "left"
+          // hide "diff" and "view" buttons
+          var prevRow = event.target.parentNode.parentNode.parentNode.nextElementSibling; 
+          prevRow.classList.add("secondary-row");
+          var prevActionsContainer = prevRow.querySelector(".actions-container");
+
+          prevActionsContainer.querySelector(".view-link").classList.add("hidden");
+          prevActionsContainer.querySelector(".diff-link").classList.add("hidden");
+
+          leftButton = document.createElement("a");
+          rightButton = document.createElement("a");
+          leftButton.innerHTML = "left";
+          leftButton.dataset.toggled = "true";
+          rightButton.innerHTML = "right";
+          prevActionsContainer.appendChild(leftButton);
+          prevActionsContainer.appendChild(rightButton);
+
+          // for every other row in the commit history, add "left" and "right"
+          // buttons and hide the "view" button
+          // this is assuming we haven't already done this
+          var prevPrevRow = prevRow.nextElementSibling;
+          console.log({ prevPrevRow });
+          while (prevPrevRow != null) {
+            console.log("here");
+            var theseActions = prevPrevRow.querySelector(".actions-container"); 
+            theseActions.querySelector(".view-link").classList.add("hidden");
+            theseActions.querySelector(".diff-link").classList.add("hidden");
+
+            leftButton = document.createElement("a");
+            leftButton.innerHTML = "left";
+            rightButton = document.createElement("a");
+            rightButton.innerHTML = "right";
+            theseActions.appendChild(leftButton);
+            theseActions.appendChild(rightButton);
+            prevPrevRow = prevPrevRow.nextElementSibling;
+          }
+        }
+        async function loadDiff(event, path, leftCommitHash, rightCommitHash, clickLocation) {
+              transformButtonsForDiff(event);
+
+              // temp:
+
+              // turn the diff 
+  
+              // load the diff
+
+              // replace fileviewer contents with diff content
+
+              // make the header split be 50/50
+              // show respective hash on either side
+              // show "close" button on left side. Close button takes you back
+              //  to fileviewer (at what hash? eh. todo)
+              
+        }
+
         window.scriptData = {
           repo: {{ $repo }},
           commitHash: {{ .Commit }},
           filepath: {{ .FilePath }},
           filename: {{ .FileContent.Filename }},
+          currentMode: "fileviewer",
         };
         console.log(window.scriptData);
 
@@ -1017,6 +1127,10 @@ a > * {
           if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "diff") {
             console.log('diffing');
             event.preventDefault();
+
+            const [leftCommit, rightCommit] = decideWhatToDiff(event);
+            console.log({ leftCommit, rightCommit });
+            loadDiff(event, window.scriptData.filepath, leftCommit, rightCommit, "commit-history");
 
             // we need to get the index of this diff button in th
           }
