@@ -93,8 +93,14 @@ def go_externals():
     go_repository(
         name = "com_google_cloud_go_compute",
         importpath = "cloud.google.com/go/compute",
-        sum = "h1:rSUBvAyVwNJ5uQCKNJFMwPtTvJkfN38b6Pvb9zZoqJ8=",
-        version = "v0.1.0",
+        sum = "h1:aoLIYaA1fX3ywihqpBk2APQKOo20nXsp1GEZQbx5Jk4=",
+        version = "v1.10.0",
+    )
+    go_repository(
+        name = "com_google_cloud_go_compute_metadata",
+        importpath = "cloud.google.com/go/compute/metadata",
+        sum = "h1:/sxEbyrm6cw+XOUw1YxBHlatV71z4vpnmO7z2IZ0h3I=",
+        version = "v0.1.1",
     )
     go_repository(
         name = "com_github_alecthomas_chroma",
@@ -102,7 +108,6 @@ def go_externals():
         sum = "h1:7XDcGkCQopCNKjZHfYrNLraA+M7e0fMiJ/Mfikbfjek=",
         version = "v0.10.0",
     )
-
     go_repository(
         name = "com_github_davecgh_go_spew",
         importpath = "github.com/davecgh/go-spew",
