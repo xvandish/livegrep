@@ -1089,14 +1089,26 @@ a > * {
         async function loadDiff(event, path, leftCommitHash, rightCommitHash, clickLocation) {
               transformButtonsForDiff(event);
 
-              // temp:
-
-              // turn the diff 
-  
               // load the diff
+              var diffContent = await fetch(`/diff/${window.scriptData.repo}/${leftCommitHash}/${rightCommitHash}/${window.scriptData.filepath}`)
+                .then(r => r.text())
+                .then(r => r);
+                // TODO: error handling
+              
 
               // replace fileviewer contents with diff content
+              document.getElementsByClassName("file-content")[0].innerHTML = diffContent;
 
+              // Replace the header that says at what hash we're at
+              // var commitLink = document.getElementById("short-hash-link");
+              // commitLink.href = `/delve/${window.scriptData.repo}/commit/${commitHash}`;
+              // commitLink.innerHTML = commitHash.slice(0, 8)
+
+              // Replace the header that tells us what file we're viewing
+              // var filename = path.split(/[\\/]/).pop();
+              // document.getElementById("filename").innerHTML = filename;
+
+              // TODO(xvandish): replace the breadcrumbs
               // make the header split be 50/50
               // show respective hash on either side
               // show "close" button on left side. Close button takes you back
@@ -1134,6 +1146,7 @@ a > * {
 
             // we need to get the index of this diff button in th
           }
+
 
           if (event.target.tagName == "A" && event.target.href && sideNav.contains(event.target)) {
             console.log('side nav click');
