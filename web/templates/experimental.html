@@ -812,6 +812,7 @@ a > * {
           for (var i = 0; i < commits.length; i++) {
             const tr = table.insertRow();
             var commit = commits[i];
+            tr.dataset.commit = commit.Hash;
 
             var isViewedCommit = false;
             if (window.scriptData.commitHash == commit.Hash) {
@@ -1037,11 +1038,23 @@ a > * {
           event.target.classList.add("hidden");
           actionsContainer.querySelector(".view-link").classList.add("hidden");
 
+          // if the row we clicked "diff" in isn't the row that we were "view"ing
+          // then we need to remove the "current-commit" class from that row,
+          // and add it to the row thats clicked
+          var currentCommitRow = document.querySelector("tr.current-commit")
+          currentCommitRow.classList.remove("current-commit");
+          currentCommitRow.querySelector(".view-link").dataset.toggled = "false";
+
+          // now select the tr that contains the "diff" button that was pressed
+          event.target.closest("tr").classList.add("current-commit");
+
           // append left/right buttons to the container
           var leftButton = document.createElement("a");
           var rightButton = document.createElement("a");
           leftButton.innerHTML = "left";
           rightButton.innerHTML = "right";
+          leftButton.href = "#0";
+          rightButton.href = "#0";
           rightButton.dataset.toggled = "true";
           actionsContainer.appendChild(leftButton);
           actionsContainer.appendChild(rightButton);
@@ -1052,6 +1065,9 @@ a > * {
           // 1. add "left" and "right" buttons. Highlight "left"
           // hide "diff" and "view" buttons
           var prevRow = event.target.parentNode.parentNode.parentNode.nextElementSibling; 
+          if (prevRow == null) {
+                return
+          }
           prevRow.classList.add("secondary-row");
           var prevActionsContainer = prevRow.querySelector(".actions-container");
 
@@ -1060,11 +1076,16 @@ a > * {
 
           leftButton = document.createElement("a");
           rightButton = document.createElement("a");
+          leftButton.href = "#0";
+          rightButton.href = "#0";
           leftButton.innerHTML = "left";
           leftButton.dataset.toggled = "true";
           rightButton.innerHTML = "right";
           prevActionsContainer.appendChild(leftButton);
           prevActionsContainer.appendChild(rightButton);
+
+          // TODO: Needs to be done to all rows, not just all rows below the 
+          // current diff
 
           // for every other row in the commit history, add "left" and "right"
           // buttons and hide the "view" button
@@ -1079,15 +1100,16 @@ a > * {
 
             leftButton = document.createElement("a");
             leftButton.innerHTML = "left";
+            leftButton.href = "#0";
             rightButton = document.createElement("a");
             rightButton.innerHTML = "right";
+            rightButton.href = "#0";
             theseActions.appendChild(leftButton);
             theseActions.appendChild(rightButton);
             prevPrevRow = prevPrevRow.nextElementSibling;
           }
         }
         async function loadDiff(event, path, leftCommitHash, rightCommitHash, clickLocation) {
-              transformButtonsForDiff(event);
 
               // load the diff
               var diffContent = await fetch(`/diff/${window.scriptData.repo}/${leftCommitHash}/${rightCommitHash}/${window.scriptData.filepath}`)
@@ -1122,6 +1144,8 @@ a > * {
           filepath: {{ .FilePath }},
           filename: {{ .FileContent.Filename }},
           currentMode: "fileviewer",
+          diffLeftCommit: "",
+          diffRightCommit: "",
         };
         console.log(window.scriptData);
 
@@ -1140,11 +1164,57 @@ a > * {
             console.log('diffing');
             event.preventDefault();
 
+            transformButtonsForDiff(event);
             const [leftCommit, rightCommit] = decideWhatToDiff(event);
+            window.scriptData.diffLeftCommit = leftCommit;
+            window.scriptData.diffRightCommit = rightCommit;
+
             console.log({ leftCommit, rightCommit });
             loadDiff(event, window.scriptData.filepath, leftCommit, rightCommit, "commit-history");
 
             // we need to get the index of this diff button in th
+          }
+
+          if (event.target.tagName == "A" && event.target.href.endsWith("#0")) {
+            console.log("in handler");
+            var leftCommit = window.scriptData.diffLeftCommit;
+            var rightCommit = window.scriptData.diffRightCommit;
+
+            if (event.target.innerHTML == "left") {
+              leftCommit = event.target.closest("tr").dataset.commit;
+            }
+            else if (event.target.innerHTML == "right") {
+              rightCommit = event.target.closest("tr").dataset.commit;
+            }
+
+            loadDiff(event, window.scriptData.filepath, leftCommit, rightCommit, "commit-history");
+
+            
+            window.scriptData.diffLeftCommit = leftCommit;
+            window.scriptData.diffRightCommit = rightCommit;
+
+            // left is always the secondary commit
+            if (event.target.innerHTML == "left") {
+              var prevRow = document.querySelector("tr.secondary-row")
+
+              // unselect the prev row
+              prevRow.classList.remove("secondary-row");
+
+              // unselect the prev left button
+              prevRow.querySelector("a[data-toggled='true']").dataset.toggled = "false";
+              event.target.closest("tr").classList.add("secondary-row");
+            }
+            // right is always the primary commit 
+            else if (event.target.innerHTML == "right") {
+              var prevRow = document.querySelector("tr.current-commit")
+              prevRow.classList.remove("current-commit");
+              prevRow.querySelector("a[data-toggled='true']").dataset.toggled = "false";
+              event.target.closest("tr").classList.add("current-commit");
+            }
+
+            event.target.dataset.toggled = "true";
+            
+            
           }
 
 
