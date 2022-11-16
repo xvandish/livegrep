@@ -180,6 +180,21 @@ box-sizing: border-box;
 .repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions {
   padding: 0 10px;
 }
+
+.repository-detail .main-view .middle-view .file-detail .file-header .diff-header-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  align-items: center;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .diff-header-wrapper .right-commit {
+  display: flex;
+  flex: 0 0 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .repository-detail .main-view .middle-view .file-detail .file-content {
       overflow: auto;
     position: relative;
@@ -1121,21 +1136,45 @@ a > * {
               // replace fileviewer contents with diff content
               document.getElementsByClassName("file-content")[0].innerHTML = diffContent;
 
-              // Replace the header that says at what hash we're at
-              // var commitLink = document.getElementById("short-hash-link");
-              // commitLink.href = `/delve/${window.scriptData.repo}/commit/${commitHash}`;
-              // commitLink.innerHTML = commitHash.slice(0, 8)
+              // hide file-header-wrapper
+              document.getElementsByClassName("file-header-wrapper")[0].classList.add("hidden");
 
-              // Replace the header that tells us what file we're viewing
-              // var filename = path.split(/[\\/]/).pop();
-              // document.getElementById("filename").innerHTML = filename;
+              // now, insert a diffHeader element
+              var diffHeader = document.createElement("div");
+              diffHeader.className = "diff-header-wrapper";
 
-              // TODO(xvandish): replace the breadcrumbs
-              // make the header split be 50/50
-              // show respective hash on either side
-              // show "close" button on left side. Close button takes you back
-              //  to fileviewer (at what hash? eh. todo)
+              var leftDiffHeader = document.createElement("div");
+              var rightDiffHeader = document.createElement("div");
+              rightDiffHeader.className = "right-commit";
+
+              leftDiffHeader.innerHTML = "Commit: " + leftCommitHash.slice(0, 8);
+
+              var rightCommitDetails = document.createElement("div");
+              rightCommitDetails.innerHTML = "Commit: " + rightCommitHash.slice(0, 8);
+
+              var rightActions = document.createElement("div");
+              var closeBtn = document.createElement("button");
+              closeBtn.innerHTML = "Close Diff";
+              closeBtn.dataset.action = "close-diff";
+              rightActions.appendChild(closeBtn);
               
+              rightDiffHeader.appendChild(rightCommitDetails);
+              rightDiffHeader.appendChild(rightActions);
+
+              diffHeader.appendChild(leftDiffHeader);
+              diffHeader.appendChild(rightDiffHeader);
+
+              document.getElementsByClassName("file-header")[0].appendChild(diffHeader);
+        }
+
+        function switchFromDiffViewToFileView() {
+          // delete the diff-header-wrapper
+
+          // unhide the file-header-wrapper
+
+          // load the file at diffRightCommit
+
+          // update the file header to have diffRightCommit
         }
 
         window.scriptData = {
@@ -1248,6 +1287,11 @@ a > * {
             console.log("row expander clicked");
             expandLogLine(event);
           }
+
+          if (event.target.dataset.action == "close-diff") {
+            console.log("closing diff");
+          }
+
         })
 
         // REMEMBER: When implementing left-right diff capability, the last commit
