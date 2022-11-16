@@ -1167,14 +1167,15 @@ a > * {
               document.getElementsByClassName("file-header")[0].appendChild(diffHeader);
         }
 
-        function switchFromDiffViewToFileView() {
+        function switchFromDiffViewToFileView(event) {
+          // load the file at diffRightCommit
+          viewFileAtCommit(event, window.scriptData.filepath, window.scriptData.diffRightCommit, "close-diff-button");
+
           // delete the diff-header-wrapper
+          document.getElementsByClassName("diff-header-wrapper")[0].remove();
 
           // unhide the file-header-wrapper
-
-          // load the file at diffRightCommit
-
-          // update the file header to have diffRightCommit
+          document.getElementsByClassName("file-header-wrapper")[0].classList.remove("hidden");
         }
 
         window.scriptData = {
@@ -1290,6 +1291,7 @@ a > * {
 
           if (event.target.dataset.action == "close-diff") {
             console.log("closing diff");
+            switchFromDiffViewToFileView(event);
           }
 
         })
