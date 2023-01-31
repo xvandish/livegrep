@@ -426,6 +426,11 @@ button.expander .arrow {
     width: 0;
 }
 
+/* This rotates the open buttons down automatically */
+a:not(.closed) button.expander .arrow {
+  transform: rotate(90deg);
+}
+
 /* prevent actions from inside a button to be clicked, so we don't have to
 * handle those cases as carefully */
 button > * {
@@ -612,7 +617,7 @@ a > * {
                 <div id="nav-tab-group">
                   <span>Files</span>
                 </div>
-              {{ renderDirectoryTree .DirectoryTree 0 $repo .Commit .FilePath }}
+              {{ renderDirectoryTree .DirectoryTree -15 $repo .Commit .FilePath }}
               </nav>
             </div>
             <div class="repository-detail">
@@ -921,6 +926,10 @@ a > * {
 
         // given a click on a tree, hide or show all children
         function toggleTree(event) {
+
+          // this event is on a button. Toggle the "closed" class on it
+          event.target.classList.toggle("closed");
+
           // get the parentContainer
           var parentContainer = event.target.closest("ul");
 

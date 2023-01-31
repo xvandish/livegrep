@@ -113,34 +113,41 @@ func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit strin
 	if node.Type == "tree" {
 		leftComp = buttonExpander
 	}
+
+	// padding at the root is -15, explained below. However, we don't want to
+	// render with -15px padding, so we normalize to 0.
+	if paddingLeft < 0 {
+		paddingLeft = 0
+	}
 	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" data-path=\"%s\" data-hash=\"%s\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, node.Path, commit, link, leftComp, node.Name)
 }
 
 var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
 
-// leaves open the path to the
-func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, filepath string) template.HTML {
-	// TODO(xvandish): skip/ignore the root dir when rendering so all file's
-	// aren't indented.
-	// rather than having this as a template,
-	paddingLeft := 15
-	if depth > 1 {
-		paddingLeft = (depth - 1) * 15
-	}
+// -15?? good question.
+// at the root, we don't want to append left padding, so root items sit flush.
+// However, for ease of understanding, we always want to add +15 at every level.
+// Except, the first, as stated before. So, to avoid exception checking that checks if
+// we're at the first, and conditionally adds 15, we just start at -15, and always add
+// 15.
+var rootPadding = -15
+
+func renderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
 	cls := ""
 
 	// if this rootNode has nothing to do with the open file (filepath)
+	// close it, so the file tree isn't really busy
 	// if !strings.HasPrefix(filepath, rootDir.Path) {
 	// 	cls = "hidden"
 	// }
 	outHtml := fmt.Sprintf("<ul class=\"%s\"", cls)
-	if depth == 0 {
+	if paddingLeft == rootPadding {
 		outHtml += "id=\"root\">"
 	} else {
 		outHtml += ">"
-	}
 
-	if depth > 0 {
+		// now, render either the folder name, or file name
+		// if folder, it will later loop and render the children
 		link := getTreeItemLink(rootDir, paddingLeft, repoName, commit)
 		if rootDir.Type == "tree" {
 			outHtml += fmt.Sprintf("<li>%s</li>", link)
@@ -152,19 +159,21 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, fil
 			}
 			outHtml += fmt.Sprintf("<li class=\"%s\">%s%s</li>", cls, imgLink, link)
 		}
-
 	}
 
+	// now, if a folder, loop through children
 	if len(rootDir.Children) > 0 {
 		for _, child := range rootDir.Children {
+			// now, we're at test (at least for the first iteration)
+
 			// if the child has no children, just "render" it right away.
 			// TODO: cleaner way to not include ul
 			if len(child.Children) == 0 {
-				nextPadding := paddingLeft
-				if depth > 0 {
-					nextPadding += 15
-				}
-				link := getTreeItemLink(child, nextPadding, repoName, commit)
+				// nextPadding := paddingLeft + 15
+				// if left == 0 {
+				// 	nextPadding = 0
+				// }
+				link := getTreeItemLink(child, paddingLeft+15, repoName, commit)
 				isSelected := child.Path == filepath
 				cls := ""
 				if isSelected {
@@ -172,13 +181,14 @@ func renderDirectoryTree(rootDir *api.TreeNode, depth int, repoName, commit, fil
 				}
 				outHtml += fmt.Sprintf("<li class=\"%s\">%s</li>", cls, link)
 			} else {
-				outHtml += string(renderDirectoryTree(child, depth+1, repoName, commit, filepath))
+				// fmt.Printf("at child with name=%s, depth=%d going to loop through its children.\n", child.Name, depth+1)
+				outHtml += string(renderDirectoryTree(child, paddingLeft+15, repoName, commit, filepath))
 			}
 		}
 	}
 
 	outHtml += "</ul>"
-	if depth == 0 {
+	if paddingLeft == rootPadding {
 		outHtml += "</nav>"
 	}
 
