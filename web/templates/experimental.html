@@ -78,6 +78,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   overflow: auto;
   z-index: 1;
   flex-grow: 1;
+  padding-left: 10px;
 }
 
 .repository-navigation #side-nav ul {
@@ -497,6 +498,8 @@ a > * {
     background-color: white;
     width: 99%;
     min-height: 100px;
+    max-height: 90vh;
+    overflow: scroll;
     font-family: monospace;
     padding-top: 10px;
     z-index: 2;
@@ -1203,6 +1206,16 @@ a > * {
           console.log(event.target)
           console.log(event.target.pathname)
           console.log(event.target.innerHTML)
+
+          // we may have to drag our variables up, or put this on the window
+          // if menu is open && target isnt inside the input-line element && target not in #autocomplete-menu
+          console.log(searchBoxContainer.contains(event.target))
+          if (autocompleteMenuOpen && !(searchBoxContainer.contains(event.target))) {
+            console.log("menu is open, closing");
+            autocompleteMenu.style.display = "none";
+          }
+
+
           if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "view") {
             console.log('viewing')
             event.preventDefault();
@@ -1319,12 +1332,14 @@ a > * {
         //   init state from recent params
         //   keep a recent history
 
+        var searchBoxContainer;
         var searchBox;
         var errorsBox;
         var resultsContainer;
         var caseSelect;
         var regexToggle;
         var autocompleteMenu;
+        var autocompleteMenuOpen = false;
 
         var searchOptions = {
           q: "repo:{{ $repo }}",
@@ -1419,6 +1434,7 @@ a > * {
         function init() {
           "use strict";
 
+          searchBoxContainer = document.getElementsByClassName("input-line")[0];
           searchBox = document.getElementById("searchbox");
           resultsContainer = document.querySelector("#resultarea > #results");
           caseSelect = document.getElementById("case-sensitivity-toggle");
@@ -1432,11 +1448,19 @@ a > * {
           searchBox.value = "repo:{{ $repo }}";
           searchBox.addEventListener('focusin', function() {
             autocompleteMenu.style.display = "initial";
+            autocompleteMenuOpen = true;
           });
-          searchBox.addEventListener('focusout', function() {
-            var menu = document.getElementById("autocomplete-menu");
-            autocompleteMenu.style.display = "none";
-          });
+
+          // since we want the content inside the autocomplete menu to be clickable,
+          // we can't close the menu on focusout. We could keep track of the menu
+          // status with a global, and the global click handler can decide what to do
+
+          // should we use a gloabl to close the autocompleteMenu?
+          // whats in reality the best way to do this? 
+          // searchBox.addEventListener('focusout', function() {
+          //   var menu = document.getElementById("autocomplete-menu");
+          //   autocompleteMenu.style.display = "none";
+          // });
 
           caseSelect.addEventListener("change", function (e) {
             var newVal = e.target.value;
