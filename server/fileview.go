@@ -1088,6 +1088,7 @@ func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 		"-t",
 		commit,
 	)
+	fmt.Printf("cmd=%s\n", cmd.String())
 
 	out, err := cmd.CombinedOutput()
 
@@ -1101,7 +1102,7 @@ func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 	prevDepth := 0
 
 	for i, line := range lines {
-		fmt.Printf("line=%s\n", line)
+		// fmt.Printf("line=%s\n", line)
 		if i == len(lines)-1 {
 			// last entry is empty
 			continue
@@ -1155,7 +1156,7 @@ func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 
 		// oh no, what about files with a slash in them..
 		pathDepth := strings.Count(name, "/")
-		fmt.Printf("pathDepth=%d\n", pathDepth)
+		// fmt.Printf("pathDepth=%d\n", pathDepth)
 
 		// 1777b4d56ea1471f155fa21fbf8d2969dcc3ce9e     600       cmd/server/main.go
 		// 60c6f7580d7e6651739c86865e3c012a04650e4d       -       creds (prevDepth == 2)
@@ -1164,7 +1165,7 @@ func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 			prevDepth -= 1
 		}
 
-		fmt.Printf("appending %s to %s children\n", treeEntry.Name, currDir.Name)
+		// fmt.Printf("appending %s to %s children\n", treeEntry.Name, currDir.Name)
 		currDir.Children = append(currDir.Children, treeEntry)
 
 		// now that we've backuped up to the correct location, we "correct" name so that
@@ -1179,14 +1180,14 @@ func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 
 		// if this entry is a directory, set currDir to ourselves, and up prevDepth
 		if typ == "tree" {
-			fmt.Printf("nesting to dir with name=%s\n", treeEntry.Name)
+			// fmt.Printf("nesting to dir with name=%s\n", treeEntry.Name)
 			treeEntry.ParentDir = currDir
 			currDir = treeEntry
 			prevDepth += 1
 		}
 	}
 
-	fmt.Printf("%+v\n", rootDir)
+	// fmt.Printf("%+v\n", rootDir)
 	return rootDir
 }
 

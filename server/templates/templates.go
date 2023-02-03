@@ -132,7 +132,7 @@ var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16
 // 15.
 var rootPadding = -15
 
-func renderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
+func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
 	cls := ""
 
 	// if this rootNode has nothing to do with the open file (filepath)
@@ -182,7 +182,7 @@ func renderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 				outHtml += fmt.Sprintf("<li class=\"%s\">%s</li>", cls, link)
 			} else {
 				// fmt.Printf("at child with name=%s, depth=%d going to loop through its children.\n", child.Name, depth+1)
-				outHtml += string(renderDirectoryTree(child, paddingLeft+15, repoName, commit, filepath))
+				outHtml += string(RenderDirectoryTree(child, paddingLeft+15, repoName, commit, filepath))
 			}
 		}
 	}
@@ -405,7 +405,7 @@ func getFuncs() map[string]interface{} {
 		"renderCodeLine":                   renderCodeLine,
 		"convertContentBlobToArrayOfLines": convertContentBlobToArrayOfLines,
 		"getSyntaxHighlightedContent":      getSyntaxHighlightedContent,
-		"renderDirectoryTree":              renderDirectoryTree,
+		"renderDirectoryTree":              RenderDirectoryTree,
 		"renderSplitDiffHalf":              renderSplitDiffHalf,
 	}
 }

@@ -221,7 +221,7 @@ func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, 
 	parent := r.URL.Query().Get(":parent")
 	repoName := r.URL.Query().Get(":repo")
 	rev := r.URL.Query().Get(":rev")
-	path := pat.Tail("/api/v2/json/git-log/:parent/:repo/:rev/", r.URL.Path)
+	path := pat.Tail("/api/v2/json/git-ls-tree/:parent/:repo/:rev/", r.URL.Path)
 
 	if len(s.repos) == 0 {
 		http.Error(w, "File browsing and git commands not enabled", 404)
@@ -236,6 +236,30 @@ func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, 
 
 	data := buildDirectoryTree(path, repo, rev)
 	replyJSON(ctx, w, 200, data)
+}
+
+func (s *server) ServeGitLsTreeRendered(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/getRenderedFileTree/:parent/:repo/:rev/", r.URL.Path)
+
+	fmt.Printf("parent:%s repoName:%s rev:%s path:%s\n", parent, repoName, rev, path)
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[parent+"/"+repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	fmt.Printf("repo.Path=%s repo.Name=%s\n", repo.Path, repo.Name)
+	data := buildDirectoryTree(path, repo, rev)
+	rendered := templates.RenderDirectoryTree(data, -15, repo.Name, rev, path)
+	w.Write([]byte(rendered))
 }
 
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -885,6 +909,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v2/getRenderedSearchResults/:backend", srv.Handler(srv.ServeRenderedSearchResults))
 	m.Add("GET", "/api/v2/getRenderedSearchResults/", srv.Handler(srv.ServeRenderedSearchResults))
+	m.Add("GET", "/api/v2/getRenderedFileTree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeRendered))
 	// m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
 	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))

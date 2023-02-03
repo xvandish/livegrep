@@ -789,7 +789,8 @@ a > * {
               } else {
                 e.target.dataset.toggled = "false";
               }
-              if (!historyFetched || (window.scriptData.filepath != window.scriptData.prevFilepath)) {
+              // load the history if this is the first time opening the panel
+              if (!historyFetched) {
                   fetchHistory();
                   historyFetched = true;
               }
@@ -797,7 +798,7 @@ a > * {
               historyPanel.classList.toggle("closed");
         });
 
-        // TODO(xvandish):
+        // TODO(xvandish): general features to add
         // highlight searchString in files. We can use the q? parameter in the url
         // add button to auto expand all hidden context lines
         // take over browser command f for something nicer
@@ -805,6 +806,11 @@ a > * {
         // repo selector
         // hash selector
         // file search? 
+
+        // TODO(xvandish): fetchHistory should only return the last `x` commits to avoid 
+        //   overwhelming either the frontend or backend
+        // TODO(xvandish): Decide whether to do this by fetching SSR content or keeping it
+        //  as is.
         async function fetchHistory() {
           // always fetch history at head, in case someone is viewing the file at a non head link, that way 
           // they'll see future history and be able to navigate to it
@@ -850,6 +856,8 @@ a > * {
             // even if they existed at that time. Hence, we're not gauranteed that any commit
             // in the history pane matches the selected one. In that case, we select the first at the
             // end of the for loop
+            // TODO: when the commit matching isn't the first, scroll the commit history window so that it
+            // shows as the first. Somehow, visually indicate that there are more recent commits above.
             var isMatchingCommit = false;
             if (!foundMatchingCommit && window.scriptData.commitHash == commit.Hash) {
               tr.classList.add("current-commit")
@@ -966,6 +974,13 @@ a > * {
 
         // var historyPanel = document.getElementsByClassName("lower-detail-content")[0];
         // TODO(xvandish): Switch to global handler so that we use less memory
+        // TODO(xvandish): We need another query parameter for the following case:
+        //    1. user is viewing repo at hash xyz
+        //    2. user clicks on a file that does not have a commit entry for xyz
+        //    3. User opens the history panel. The first commit, `abc` is highlighted, since there is no matching commit
+        //    4. The user clicks "View" event though its already selected
+        //    5. At the point, we need to mark in the URL that we are viewing the repo at xyz and the file at `abc`.
+        //    Google uses the `drc` query parameter to indicate this.
         async function viewFileAtCommit(event, repo, path, commitHash, clickLocation) {
           // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
@@ -1050,8 +1065,9 @@ a > * {
             commitForLastBlame = commitHash;
           }
 
-          // only reload history if we switched to a different file
-          if (!historyPanel.classList.contains("closed") && prevFilepath != path) {
+          // reload the history even if its not being viewed right now
+          if (prevFilepath != path) {
+            console.log("fetching history since we switched to a new file");
             fetchHistory();
           }
 
