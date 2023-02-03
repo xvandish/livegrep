@@ -789,7 +789,7 @@ a > * {
               } else {
                 e.target.dataset.toggled = "false";
               }
-              if (!historyFetched) {
+              if (!historyFetched || (window.scriptData.filepath != window.scriptData.prevFilepath)) {
                   fetchHistory();
                   historyFetched = true;
               }
@@ -797,6 +797,14 @@ a > * {
               historyPanel.classList.toggle("closed");
         });
 
+        // TODO(xvandish):
+        // highlight searchString in files. We can use the q? parameter in the url
+        // add button to auto expand all hidden context lines
+        // take over browser command f for something nicer
+        // collapse all folders that aren't in the search path
+        // repo selector
+        // hash selector
+        // file search? 
         async function fetchHistory() {
           // always fetch history at head, in case someone is viewing the file at a non head link, that way 
           // they'll see future history and be able to navigate to it
@@ -832,18 +840,21 @@ a > * {
           }
           table.appendChild(thead)
 
+          var foundMatchingCommit = false;
           for (var i = 0; i < commits.length; i++) {
             const tr = table.insertRow();
             var commit = commits[i];
             tr.dataset.commit = commit.Hash;
 
-            var isViewedCommit = false;
-            if (window.scriptData.commitHash == commit.Hash) {
+            // when viewing the repo at a given commit, not all files have a log for that commit,
+            // even if they existed at that time. Hence, we're not gauranteed that any commit
+            // in the history pane matches the selected one. In that case, we select the first at the
+            // end of the for loop
+            var isMatchingCommit = false;
+            if (!foundMatchingCommit && window.scriptData.commitHash == commit.Hash) {
               tr.classList.add("current-commit")
-              isViewedCommit = true;
-            } else if (window.scriptData.commitHash== "HEAD" && i == 0) {
-              tr.classList.add("current-commit")
-              isViewedCommit = true;
+              isMatchingCommit = true;
+              foundMatchingCommit = true;
             }
 
             // TODO (on server, rev-parse so top commit is always HEAD)
@@ -903,7 +914,7 @@ a > * {
             viewLink.href = "blah"
             viewLink.innerHTML = "view"
             viewLink.dataset.commit = commit.Hash;
-            viewLink.dataset.toggled = isViewedCommit ? "true" : "false";
+            viewLink.dataset.toggled = isMatchingCommit ? "true" : "false";
             viewLink.className = "view-link";
 
             // viewLink.addEventListener("click", viewFileAtCommit.bind(this, gitHistory.Path, commit.Hash), false);
@@ -922,6 +933,15 @@ a > * {
               tr.appendChild(collapsibleCell);
             }
 
+          }
+
+          if (!foundMatchingCommit) {
+            // go to the first row and mark it "current-commit"
+            // select the "view" button
+            var firstRow = table.rows[1]; // not 0 since thats the thead
+            console.log({ firstRow });
+            firstRow.classList.add("current-commit");
+            firstRow.getElementsByClassName("view-link")[0].dataset.toggled = "true";
           }
 
           document.getElementsByClassName("lower-detail-content")[0].appendChild(table);
@@ -986,6 +1006,7 @@ a > * {
           var prevCommitHash = window.scriptData.commitHash;
           var prevFilepath = window.scriptData.filepath;
           var prevFilename = window.scriptData.filename;
+          var prevRepo = window.scriptData.repo;
           
           // TODO: We don't really want to do this, otherwise it makes all ops behave as is we're acting on this hash,
           // e.g., viewing the repo at this hash.
@@ -994,6 +1015,10 @@ a > * {
           window.scriptData.filepath = path;
           window.scriptData.filename = filename;
           window.scriptData.repo = repo;
+          window.scriptData.prevRepo = prevRepo;
+          window.scriptData.prevCommitHash = prevCommitHash;
+          window.scriptData.prevFilepath = prevFilepath;
+          window.scriptData.prevFilename = prevFilename;
 
           if (clickLocation == "commit-history") {
             // replace the current "selected" commit in the history pane
@@ -1199,6 +1224,10 @@ a > * {
           currentMode: "fileviewer",
           diffLeftCommit: "",
           diffRightCommit: "",
+          prevRepo: {{ $repo }},
+          prevFilepath: {{ .FilePath }},
+          prevFilename: {{ .FileContent.Filename }},
+          prevCommitHash: {{ .Commit }},
         };
         console.log(window.scriptData);
 
