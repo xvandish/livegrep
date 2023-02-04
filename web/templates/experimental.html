@@ -639,7 +639,7 @@ a > * {
                   <input type="text" placeholder="Search for repositories" id="repo-search-input" />
                   </div>
                   <div id="repos-resultarea">
-                    Results go here
+                    <div id="repos-results"></div>
                   </div>
                 </div>
               </div>
@@ -1473,6 +1473,7 @@ a > * {
         var repoSearchBox;
         var errorsBox;
         var resultsContainer;
+        var repoSearchResultsContainer;
         var caseSelect;
         var regexToggle;
         var autocompleteMenu;
@@ -1582,8 +1583,15 @@ a > * {
 
         // we do a simple search
         function doRepoSearch(inputEvnt) {
+
+              
           // take whatevers in the repo search box, append repo:
           var searchQuery = inputEvnt.target.value;
+
+          if (searchQuery.trim() === "") {
+            repoSearchResultsContainer.innerHTML = "";
+            return;
+          }
   
           // we call the v1 api to get json results
           // we only ever look at the tree_results
@@ -1599,9 +1607,30 @@ a > * {
               }
             })
             .then(function (j) {
-              var treeResults = h.tree_results;
+              var treeResults = j.tree_results;
 
-              // this works, now just render results
+              // we want to display:
+              // 1. the number of matching repos
+              // 2. A list of the matching repos, as links
+              var cnt = document.createTextNode(`${treeResults.length} repo(s) found.`);
+              var linksContainer = document.createElement("div");
+              for (var i = 0; i < treeResults.length; i++) {
+                var tree = treeResults[i];
+                var l = document.createElement("a"); 
+                l.href = `/experimental/${tree.name}/tree/`; 
+                l.innerText = tree.name;
+                l.style.display = "block";
+                linksContainer.appendChild(l);
+              }
+
+              var ct = document.createElement("div");
+              ct.appendChild(cnt);
+              ct.appendChild(linksContainer);
+
+              // not sure if I can do this
+              repoSearchResultsContainer.innerHTML = ct.outerHTML;
+
+              // clear the old results container
             })
         }
 
@@ -1611,6 +1640,7 @@ a > * {
           searchBoxContainer = document.getElementsByClassName("input-line")[0];
           searchBox = document.getElementById("searchbox");
           resultsContainer = document.querySelector("#resultarea > #results");
+          repoSearchResultsContainer = document.querySelector("#repos-resultarea > #repos-results");
           caseSelect = document.getElementById("case-sensitivity-toggle");
           regexToggle = document.querySelector("button[id=toggle-regex]");
           errorsBox = document.getElementById("regex-error");
