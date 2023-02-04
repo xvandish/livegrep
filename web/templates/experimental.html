@@ -1297,6 +1297,7 @@ a > * {
             if (!(searchBoxContainer.contains(event.target))) {
               console.log("menu is open, closing");
               autocompleteMenu.style.display = "none";
+              autocompleteMenuOpen = "false";
             } else {
               console.log("click is inside of input or menu!");
               // if the click was on a file link, we want to load that file into the viewer
@@ -1345,11 +1346,22 @@ a > * {
                 // finally, close the autocomplete menu
                 console.log("closing autocomplete menu");
                 autocompleteMenu.style.display = "none";
+                autocompleteMenuOpen = false;
               }
 
             }
 
           } 
+
+          if (repoAutocompleteMenuOpen) {
+            if (!(repoSearchBoxContainer.contains(event.target))) {
+              console.log("menu is open, closing");
+              repoAutocompleteMenu.style.display = "none";
+              repoAutocompleteMenuOpen = false;
+            } else {
+                console.log("click is inside of repo autocmplete");
+              }
+          }
 
 
           if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "view") {
@@ -1471,6 +1483,7 @@ a > * {
         var searchBoxContainer;
         var searchBox;
         var repoSearchBox;
+        var repoSearchBoxContainer;
         var errorsBox;
         var resultsContainer;
         var repoSearchResultsContainer;
@@ -1647,6 +1660,7 @@ a > * {
           autocompleteMenu = document.getElementById("autocomplete-menu");
           repoAutocompleteMenu = document.getElementById("repo-autocomplete-menu");
           repoSearchBox = document.getElementById("repo-search-input");
+          repoSearchBoxContainer = document.getElementById("repo-selector-container");
 
           console.log({ searchBox })
           console.log({ resultsContainer })
