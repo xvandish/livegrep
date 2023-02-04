@@ -509,6 +509,27 @@ a > * {
     box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
 }
 
+#repo-selector-container {
+  position: relative;
+  margin-left: 10px;
+}
+
+#repo-autocomplete-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  width: 99%;
+  padding: 10px;
+  min-height: 300px;
+  max-height: 90vh;
+  overflow: auto;
+  font-family: monospace;
+  z-index: 2;
+  box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
+}
+
 .select-with-icon-container .icon {
   bottom: 1px !important;
 }
@@ -608,10 +629,23 @@ a > * {
         <div id="nested-wrapper">
         <div class="repository-browser">
           <div class="browse-repository-breadcrumb">
-            <nav>
+            <nav style="display:flex;">
               {{$repo := .Repo.Name}}
-              {{$repo}}:
+              <div id="repo-selector-container">
+                <a href="/experimental/{{ $repo }}">{{$repo}}</a>
+                <button id="repo-search-toggle">Open</button>
+                <div id="repo-autocomplete-menu">
+                  <div>
+                  <input type="text" placeholder="Search for repositories" id="repo-search-input" />
+                  </div>
+                  <div id="repos-resultarea">
+                    Results go here
+                  </div>
+                </div>
+              </div>
+              <div id="path-breadcrumbs">
               {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}{{ if ne .Commit "HEAD" }}<span class="ch">@{{.CommitHash}}</span>{{ end }}
+              </div>
             </nav>
           </div>
           <div class="browse-repository-contents">
@@ -1436,12 +1470,15 @@ a > * {
 
         var searchBoxContainer;
         var searchBox;
+        var repoSearchBox;
         var errorsBox;
         var resultsContainer;
         var caseSelect;
         var regexToggle;
         var autocompleteMenu;
         var autocompleteMenuOpen = false;
+        var repoAutocompleteMenu;
+        var repoAutocompleteMenuOpen = false;
 
         var searchOptions = {
           q: "repo:{{ $repo }}",
@@ -1533,6 +1570,41 @@ a > * {
             });
         }
 
+        function toggleRepoSeachAutocompleteMenu() {
+          if (repoAutocompleteMenuOpen) {
+                repoAutocompleteMenu.style.display = "none";
+                repoAutocompleteMenuOpen = false;
+          } else {
+            repoAutocompleteMenu.style.display = "initial";
+            repoAutocompleteMenuOpen = true;
+            }
+        }
+
+        // we do a simple search
+        function doRepoSearch(inputEvnt) {
+          // take whatevers in the repo search box, append repo:
+          var searchQuery = inputEvnt.target.value;
+  
+          // we call the v1 api to get json results
+          // we only ever look at the tree_results
+          var query = "repo:" + searchQuery;
+          var urlToFetch = `/api/v1/search/?q=${encodeURIComponent(query)}`
+
+          fetch(urlToFetch)
+            .then(function (r) {
+              if (!r.ok) {
+                return Promise.reject(r.text());
+              } else {
+                return r.json();
+              }
+            })
+            .then(function (j) {
+              var treeResults = h.tree_results;
+
+              // this works, now just render results
+            })
+        }
+
         function init() {
           "use strict";
 
@@ -1543,6 +1615,8 @@ a > * {
           regexToggle = document.querySelector("button[id=toggle-regex]");
           errorsBox = document.getElementById("regex-error");
           autocompleteMenu = document.getElementById("autocomplete-menu");
+          repoAutocompleteMenu = document.getElementById("repo-autocomplete-menu");
+          repoSearchBox = document.getElementById("repo-search-input");
 
           console.log({ searchBox })
           console.log({ resultsContainer })
@@ -1573,6 +1647,8 @@ a > * {
             toggleControlButton(this);
           });
           searchBox.addEventListener("input", updateQuery);
+          repoSearchBox.addEventListener("input", doRepoSearch);
+
 
 
           document.addEventListener("click", function (e) {
@@ -1581,6 +1657,8 @@ a > * {
               toggleMoreFileMatches(e);
             } else if (btn && btn.classList.contains("file-extension")) {
               handleFileExtBtnClick(e);
+            } else if (btn && btn.id == "repo-search-toggle") {
+              toggleRepoSeachAutocompleteMenu();
             } else if (e.target.tagName == "A" && e.target.href != "" && e.target.id == "next-page") {
               e.preventDefault();
               // just update the search input with the value of "q"
