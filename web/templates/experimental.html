@@ -530,6 +530,59 @@ a > * {
   box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
 }
 
+#git-selector-container {
+  position: relative;
+  margin-left: 10px;
+}
+
+#git-tabs {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid black;
+}
+
+#git-tabs [data-tab] {
+  padding: 0.5em;
+  list-style: none;
+}
+
+#git-tabs [data-tab]:hover {
+  background-color: #eaeaea;
+  cursor: pointer;
+}
+
+#git-tabs [data-tab][data-selected="true"] {
+  background-color: #d2e3fc;
+  color: #185abc;
+}
+
+#git-autocomplete-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  width: 100%;
+  padding: 10px;
+  min-height: 300px;
+  max-height: 90vh;
+  overflow: auto;
+  font-family: monospace;
+  z-index: 2;
+  box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
+}
+
+#git-content a {
+  padding: 5px;
+  display: block;
+}
+
+#git-content a:hover {
+  background-color: #eaeaea;
+}
+
 .select-with-icon-container .icon {
   bottom: 1px !important;
 }
@@ -646,14 +699,37 @@ a > * {
                   </div>
                 </div>
               </div>
-              <div id="git-hash-selector-container">
+              <div id="git-selector-container">
                 <span>{{.CommitHash}}</span>
-                <button id="git-hash-search-toggle">Open Git</button>
+                <button id="git-search-toggle">Open Git</button>
                 <div id="git-autocomplete-menu">
                   <!-- Want 3 panes. 
                     On the left we want branch, tag, commit
                     On the right we want the results.
                     At the top, a search filter -->
+                    <div>
+                      <ul id="git-tabs">
+                        <li data-tab="branches" data-selected="true">Branches</li>
+                        <li data-tab="tags" data-selected="false">Tags</li>
+                        <li data-tab="commits" data-selected="false">Commits</li>
+                      </ul>
+                    </div>
+                    <div id="git-content">
+                      <div id="git-branches-container">
+                      {{ range .Branches }}
+                        <a href="/experimental/{{$repo}}/{{.Name}}">{{.Name}}</a>
+                      {{ end }}
+                      </div>
+                      <div id="git-tags-container" class="hidden">
+                      {{ range .Tags }}
+                        <a href="/experimental/{{$repo}}/{{.Name}}">{{.Name}}</a>
+                      {{ end }}
+                      </div>
+                      <!-- In the case that there are a lot of commits, we lazy load
+                      this infomration, unlike branches/tags, which are loaded on
+                      page load -->
+                      <div id="git-commits-container" class="hidden"></div>
+                    </div>
                 </div>
               </div>
               <div id="path-breadcrumbs">
@@ -1506,6 +1582,8 @@ a > * {
         var autocompleteMenuOpen = false;
         var repoAutocompleteMenu;
         var repoAutocompleteMenuOpen = false;
+        var gitAutocompleteMenu;
+        var gitAutocompleteMenuOpen = false;
 
         var searchOptions = {
           q: "repo:{{ $repo }}",
@@ -1607,6 +1685,17 @@ a > * {
             }
         }
 
+        function toggleGitAutocompleteMenu() {
+              console.log("in here git");
+          if (gitAutocompleteMenuOpen) {
+            gitAutocompleteMenu.style.display = "none";
+            gitAutocompleteMenuOpen = false;
+          } else {
+            gitAutocompleteMenu.style.display = "initial";
+            gitAutocompleteMenuOpen = true;
+          }
+        }
+
         // we do a simple search
         function doRepoSearch(inputEvnt) {
 
@@ -1674,6 +1763,7 @@ a > * {
           repoAutocompleteMenu = document.getElementById("repo-autocomplete-menu");
           repoSearchBox = document.getElementById("repo-search-input");
           repoSearchBoxContainer = document.getElementById("repo-selector-container");
+          gitAutocompleteMenu = document.getElementById("git-autocomplete-menu");
 
           console.log({ searchBox })
           console.log({ resultsContainer })
@@ -1716,6 +1806,8 @@ a > * {
               handleFileExtBtnClick(e);
             } else if (btn && btn.id == "repo-search-toggle") {
               toggleRepoSeachAutocompleteMenu();
+            } else if (btn && btn.id == "git-search-toggle") {
+              toggleGitAutocompleteMenu();
             } else if (e.target.tagName == "A" && e.target.href != "" && e.target.id == "next-page") {
               e.preventDefault();
               // just update the search input with the value of "q"

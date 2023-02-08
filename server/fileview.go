@@ -1610,9 +1610,11 @@ func resolveLeftAndRightDiffs() {
 // TODO(xvandish): Would be cool to eventually diff arbitratry files across repos.
 // Could be useful for comparing a file that initiated in a different repo
 
+var refFormat = "%(HEAD)%00%(refname:short)"
+
 func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format='%(HEAD) %(refname:short)'", "refs/heads")
+	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "refs/heads")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -1634,8 +1636,8 @@ func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 
 	branches := make([]api.GitBranch, 0)
 	for scanner.Scan() {
-		words := strings.Fields(scanner.Text())
-		branches = append(branches, api.GitBranch{Name: words[1], IsHead: strings.Compare(words[0], "*") == 0})
+		words := strings.Split(scanner.Text(), "\x00")
+		branches = append(branches, api.GitBranch{Name: words[1], IsHead: words[0] == "*"})
 	}
 
 	return branches, nil
@@ -1643,7 +1645,7 @@ func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 
 func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format='%(HEAD) %(refname:short)'", "refs/tags")
+	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "refs/tags")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -1665,8 +1667,8 @@ func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 
 	tags := make([]api.GitTag, 0)
 	for scanner.Scan() {
-		words := strings.Fields(scanner.Text())
-		tags = append(tags, api.GitTag{Name: words[1], IsHead: strings.Compare(words[0], "*") == 0})
+		words := strings.Split(scanner.Text(), "\x00")
+		tags = append(tags, api.GitTag{Name: words[1], IsHead: words[0] == "*"})
 	}
 
 	return tags, nil
