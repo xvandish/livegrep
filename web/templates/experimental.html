@@ -721,7 +721,7 @@ a > * {
                     <div id="git-content">
                       <div id="git-branches-container">
                       {{ range .Branches }}
-                      <a href="/experimental/{{$repo}}/blob/{{.Name}}/" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
+                      <a href="/experimental/{{$repo}}/{{.Name}}/" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
                       {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
@@ -821,7 +821,7 @@ a > * {
             blameVisible = false;
           } else {
               // re-show the blame for the same file by just un-hiding the blame rows
-              if (commitForLastBlame == window.scriptData.commitHash) {
+              if (commitForLastBlame == window.scriptData.fileCommitHash) {
                 console.log('blame previously shown for the same file, redisplaying')
                 for (var i = 0; i < blameLines.length; i++) {
                       blameLines[i].classList.remove("hidden");
@@ -837,7 +837,7 @@ a > * {
               loadBlame();
 
               // set information for the loaded blame
-              commitForLastBlame = window.scriptData.commitHash;
+              commitForLastBlame = window.scriptData.fileCommitHash;
               e.target.dataset.shown = "true";
               blameVisible = true;
           }
@@ -845,7 +845,7 @@ a > * {
 
     async function loadBlame () {
       console.log("in onload func");
-      var blame = await fetch(`/api/v2/json/git-blame/${window.scriptData.repo}/${window.scriptData.commitHash}/${window.scriptData.filepath}`)
+      var blame = await fetch(`/api/v2/json/git-blame/${window.scriptData.repo}/${window.scriptData.fileCommitHash}/${window.scriptData.filepath}`)
             .then((r) => r.json())
             .then((j) => j);
 
@@ -949,7 +949,6 @@ a > * {
                 .then(r => r);
           console.log({ gitHistory });
 
-          console.log(window.scriptData.commitHash);
 
           // build the table in JS for now just to try. Later we can switch back to SSR HTML.
           
@@ -989,7 +988,7 @@ a > * {
             // TODO: when the commit matching isn't the first, scroll the commit history window so that it
             // shows as the first. Somehow, visually indicate that there are more recent commits above.
             var isMatchingCommit = false;
-            if (!foundMatchingCommit && window.scriptData.commitHash == commit.Hash) {
+            if (!foundMatchingCommit && window.scriptData.fileCommitHash == commit.Hash) {
               tr.classList.add("current-commit")
               isMatchingCommit = true;
               foundMatchingCommit = true;
@@ -1120,14 +1119,14 @@ a > * {
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
           // var oldPath = window.location.pathname;
           // oldPath = oldPath.replace(`/experimental/${repo}/blob/${window.scriptData.commitHash}/${window.scriptData.filepath}`, "");
-          var newPath = `/experimental/${repo}/blob/${commitHash}/${path}`;
-          console.log({ newPath });
-          window.history.pushState({}, "", newPath);
+          
+          var sp = new URLSearchParams(window.location.search);
+          sp.set("dfc", commitHash);
+          window.history.pushState({}, "", `${window.location.pathname}?${sp}`);
+          // var newPath = `/experimental/${repo}/${window.repoCommitHash}/${path}?dfc=${commitHash}`;
+          // console.log({ newPath });
 
-          console.log({ path, commitHash })
-          console.log(this);
-
-          if (window.scriptData.filepath == path && window.scriptData.commitHash == commitHash) {
+          if (window.scriptData.filepath == path && window.scriptData.fileCommitHash == commitHash) {
             return;
           }
 
@@ -1152,7 +1151,7 @@ a > * {
 
 
           // TODO(xvandish): replace the url part once we actually load via urls..
-          var prevCommitHash = window.scriptData.commitHash;
+          var prevFileCommitHash = window.scriptData.fileCommitHash;
           var prevFilepath = window.scriptData.filepath;
           var prevFilename = window.scriptData.filename;
           var prevRepo = window.scriptData.repo;
@@ -1160,12 +1159,12 @@ a > * {
           // TODO: We don't really want to do this, otherwise it makes all ops behave as is we're acting on this hash,
           // e.g., viewing the repo at this hash.
           // TODO ^^^
-          window.scriptData.commitHash = commitHash;
+          window.scriptData.fileCommitHash = commitHash;
           window.scriptData.filepath = path;
           window.scriptData.filename = filename;
           window.scriptData.repo = repo;
           window.scriptData.prevRepo = prevRepo;
-          window.scriptData.prevCommitHash = prevCommitHash;
+          window.scriptData.prevFileCommitHash = prevFileCommitHash;
           window.scriptData.prevFilepath = prevFilepath;
           window.scriptData.prevFilename = prevFilename;
 
@@ -1368,16 +1367,18 @@ a > * {
 
         window.scriptData = {
           repo: {{ $repo }},
-          commitHash: {{ .Commit }},
+          repoCommitHash: {{ .Commit }},
           filepath: {{ .FilePath }},
           filename: {{ .FileContent.Filename }},
+          fileCommitHash: {{ .Commit }},
           currentMode: "fileviewer",
           diffLeftCommit: "",
           diffRightCommit: "",
           prevRepo: {{ $repo }},
+          prevRepoCommitHash: {{ .Commit }},
           prevFilepath: {{ .FilePath }},
           prevFilename: {{ .FileContent.Filename }},
-          prevCommitHash: {{ .Commit }},
+          prevFileCommitHash: {{ .Commit }},
           branches: {{ .Branches }},
         };
         console.log(window.scriptData);

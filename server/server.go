@@ -545,12 +545,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
 	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
 	// "ServeGitBlob" function works for both entitites
-	path := ""
-	if strings.HasPrefix(r.URL.Path, "/delve/"+parent+"/"+repo+"/tree/") {
-		path = pat.Tail("/experimental/:parent/:repo/tree/:rev/", r.URL.Path)
-	} else {
-		path = pat.Tail("/experimental/:parent/:repo/blob/:rev/", r.URL.Path)
-	}
+	path := pat.Tail("/experimental/:parent/:repo/:rev/", r.URL.Path)
 
 	parentMap, ok := s.newRepos[parent]
 
@@ -882,7 +877,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	// so the pages don't have any headers or extra things
 	m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
 	m.Add("GET", "/raw/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlobRaw))
-	m.Add("GET", "/experimental/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeExperimental))
+	m.Add("GET", "/experimental/:parent/:repo/:rev/", srv.Handler(srv.ServeExperimental))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
