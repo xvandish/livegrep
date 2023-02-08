@@ -169,3 +169,13 @@ type SplitDiff struct {
 	LeftDiff  *SplitDiffHalf
 	RightDiff *SplitDiffHalf
 }
+
+type GitBranch struct {
+	Name   string
+	IsHead bool
+}
+
+type GitTag struct {
+	Name   string
+	IsHead bool
+}

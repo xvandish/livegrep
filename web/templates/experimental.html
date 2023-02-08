@@ -637,14 +637,27 @@ a > * {
                 <div id="repo-autocomplete-menu">
                   <div>
                   <input type="text" placeholder="Search for repositories" id="repo-search-input" />
+                  {{ range .Branches }}
+                  <p>{{ if .IsHead }}<span>*</span>{{end}}{{.Name}}</p>
+                  {{ end }}
                   </div>
                   <div id="repos-resultarea">
                     <div id="repos-results"></div>
                   </div>
                 </div>
               </div>
+              <div id="git-hash-selector-container">
+                <span>{{.CommitHash}}</span>
+                <button id="git-hash-search-toggle">Open Git</button>
+                <div id="git-autocomplete-menu">
+                  <!-- Want 3 panes. 
+                    On the left we want branch, tag, commit
+                    On the right we want the results.
+                    At the top, a search filter -->
+                </div>
+              </div>
               <div id="path-breadcrumbs">
-              {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}{{ if ne .Commit "HEAD" }}<span class="ch">@{{.CommitHash}}</span>{{ end }}
+              {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
               </div>
             </nav>
           </div>

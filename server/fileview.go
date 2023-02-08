@@ -113,6 +113,8 @@ type fileViewerContext struct {
 	BlameData       *BlameResult
 	FilePath        string
 	DirectoryTree   *api.TreeNode
+	Branches        []api.GitBranch
+	Tags            []api.GitTag
 }
 
 type sourceFileContent struct {
@@ -1607,3 +1609,65 @@ func resolveLeftAndRightDiffs() {
 
 // TODO(xvandish): Would be cool to eventually diff arbitratry files across repos.
 // Could be useful for comparing a file that initiated in a different repo
+
+func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
+	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
+	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format='%(HEAD) %(refname:short)'", "refs/heads")
+
+	stdout, err := cmd.StdoutPipe()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+
+	const maxCapacity = 100 * 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
+	branches := make([]api.GitBranch, 0)
+	for scanner.Scan() {
+		words := strings.Fields(scanner.Text())
+		branches = append(branches, api.GitBranch{Name: words[1], IsHead: strings.Compare(words[0], "*") == 0})
+	}
+
+	return branches, nil
+}
+
+func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
+	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
+	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format='%(HEAD) %(refname:short)'", "refs/tags")
+
+	stdout, err := cmd.StdoutPipe()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+
+	const maxCapacity = 100 * 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
+	tags := make([]api.GitTag, 0)
+	for scanner.Scan() {
+		words := strings.Fields(scanner.Text())
+		tags = append(tags, api.GitTag{Name: words[1], IsHead: strings.Compare(words[0], "*") == 0})
+	}
+
+	return tags, nil
+}
