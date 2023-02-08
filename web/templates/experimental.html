@@ -564,7 +564,7 @@ a > * {
   top: 100%;
   left: 0;
   background-color: white;
-  width: 100%;
+  width: 200%;
   padding: 10px;
   min-height: 300px;
   max-height: 90vh;
@@ -581,6 +581,10 @@ a > * {
 
 #git-content a:hover {
   background-color: #eaeaea;
+}
+
+#git-content a[data-shown="false"] {
+  display: none;
 }
 
 .select-with-icon-container .icon {
@@ -690,9 +694,6 @@ a > * {
                 <div id="repo-autocomplete-menu">
                   <div>
                   <input type="text" placeholder="Search for repositories" id="repo-search-input" />
-                  {{ range .Branches }}
-                  <p>{{ if .IsHead }}<span>*</span>{{end}}{{.Name}}</p>
-                  {{ end }}
                   </div>
                   <div id="repos-resultarea">
                     <div id="repos-results"></div>
@@ -708,6 +709,9 @@ a > * {
                     On the right we want the results.
                     At the top, a search filter -->
                     <div>
+                      <input type="text" placeholder="Search.." id="git-search-input" />
+                    </div>
+                    <div>
                       <ul id="git-tabs">
                         <li data-tab="branches" data-selected="true">Branches</li>
                         <li data-tab="tags" data-selected="false">Tags</li>
@@ -717,18 +721,21 @@ a > * {
                     <div id="git-content">
                       <div id="git-branches-container">
                       {{ range .Branches }}
-                        <a href="/experimental/{{$repo}}/{{.Name}}">{{.Name}}</a>
+                      <a href="/experimental/{{$repo}}/blob/{{.Name}}/" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
                       {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
                       {{ range .Tags }}
                         <a href="/experimental/{{$repo}}/{{.Name}}">{{.Name}}</a>
                       {{ end }}
+                      <span>Here are my tags</span>
                       </div>
                       <!-- In the case that there are a lot of commits, we lazy load
                       this infomration, unlike branches/tags, which are loaded on
                       page load -->
-                      <div id="git-commits-container" class="hidden"></div>
+                      <div id="git-commits-container" class="hidden">
+                      <span>Here are my commits</span>
+                      </div>
                     </div>
                 </div>
               </div>
@@ -1104,6 +1111,10 @@ a > * {
         //    4. The user clicks "View" event though its already selected
         //    5. At the point, we need to mark in the URL that we are viewing the repo at xyz and the file at `abc`.
         //    Google uses the `drc` query parameter to indicate this.
+        // TODO(xvandish): In the same vein as the comment above, we need to change so that viewing a file at a commit
+        // only updates a query parameter, it does not change the commit/branch you are viewing the repo at. E/g, it should
+        // not change the hash after /blob/, it should instead append a query parameter. dfc or, data-file-commit makes sense
+        // to me.
         async function viewFileAtCommit(event, repo, path, commitHash, clickLocation) {
           // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
@@ -1367,6 +1378,7 @@ a > * {
           prevFilepath: {{ .FilePath }},
           prevFilename: {{ .FileContent.Filename }},
           prevCommitHash: {{ .Commit }},
+          branches: {{ .Branches }},
         };
         console.log(window.scriptData);
 
@@ -1553,6 +1565,11 @@ a > * {
             switchFromDiffViewToFileView(event);
           }
 
+          // if the click is on a git search tab
+          if (gitSearchTabsContainer.contains(event.target) && event.target.tagName == "LI") {
+            switchGitSearchTab(event);
+          }
+
         })
 
         // REMEMBER: When implementing left-right diff capability, the last commit
@@ -1584,6 +1601,8 @@ a > * {
         var repoAutocompleteMenuOpen = false;
         var gitAutocompleteMenu;
         var gitAutocompleteMenuOpen = false;
+        var gitSearchBox;
+        var gitSearchTabsContainer;
 
         var searchOptions = {
           q: "repo:{{ $repo }}",
@@ -1749,6 +1768,56 @@ a > * {
             })
         }
 
+        function searchBranches(inputEvnt) {
+          var branches = window.scriptData.branches;
+          var searchQuery =  inputEvnt.target.value;
+          searchQuery = searchQuery.trim();
+
+          if (searchQuery === "") {
+              // unhide everything      
+          }
+
+          // otherwise, take the query, run it over every repo in repos,
+          // for matching repos, data-shown="true", otherwise, "false"
+
+          const re = new RegExp(searchQuery);
+
+
+          var branchesContainer = document.getElementById("git-branches-container");
+
+          var childLen = branchesContainer.children.length;
+
+          for (var i = 0; i < childLen; i++) {
+            var branchLink = branchesContainer.children[i];
+            var branchName = branchLink.dataset.branchName; // repo-name
+            if (branchName.search(re) != -1) {
+              branchLink.dataset.shown = "true";
+            } else {
+              branchLink.dataset.shown = "false";
+            }
+          }
+        }
+
+
+        var openTab;
+        function switchGitSearchTab(clickEvnt) {
+          var tabToSwitchTo = clickEvnt.target.dataset.tab;
+
+          if (tabToSwitchTo == openTab.dataset.tab) return;
+
+          // switches selected state of tabs
+          openTab.dataset.selected = "false";
+          clickEvnt.target.dataset.selected = "true";
+         
+          // hide the old content
+          document.getElementById(`git-${openTab.dataset.tab}-container`).classList.toggle("hidden");
+
+          // show the new content
+          document.getElementById(`git-${tabToSwitchTo}-container`).classList.toggle("hidden");
+
+          openTab = clickEvnt.target;
+        }
+
         function init() {
           "use strict";
 
@@ -1764,6 +1833,8 @@ a > * {
           repoSearchBox = document.getElementById("repo-search-input");
           repoSearchBoxContainer = document.getElementById("repo-selector-container");
           gitAutocompleteMenu = document.getElementById("git-autocomplete-menu");
+          gitSearchBox = document.getElementById("git-search-input");
+          gitSearchTabsContainer = document.getElementById("git-tabs");
 
           console.log({ searchBox })
           console.log({ resultsContainer })
@@ -1773,6 +1844,9 @@ a > * {
             autocompleteMenu.style.display = "initial";
             autocompleteMenuOpen = true;
           });
+
+          // get the open git search tab
+          openTab = document.querySelector("#git-tabs > li[data-selected='true']");
 
           // since we want the content inside the autocomplete menu to be clickable,
           // we can't close the menu on focusout. We could keep track of the menu
@@ -1795,6 +1869,8 @@ a > * {
           });
           searchBox.addEventListener("input", updateQuery);
           repoSearchBox.addEventListener("input", doRepoSearch);
+          gitSearchBox.addEventListener("input", searchBranches);
+
 
 
 

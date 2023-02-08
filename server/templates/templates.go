@@ -132,11 +132,22 @@ var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16
 // 15.
 var rootPadding = -15
 
+// TODO: repo favorites!!! In the repo searcher, allow somone to pin
+//  a repo as favorite so they can easily switch
+
+// TODO: (lower priority) show the active branches at the top of the git
+// selector
+
 func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
 	cls := ""
 
 	// if this rootNode has nothing to do with the open file (filepath)
 	// close it, so the file tree isn't really busy
+
+	// TODO: this could eventually be passed down in the recursive calls
+	// so we aren't doing needless string comparisons
+	fileInPath := strings.HasPrefix(filepath, rootDir.Path)
+
 	// if !strings.HasPrefix(filepath, rootDir.Path) {
 	// 	cls = "hidden"
 	// }
@@ -156,6 +167,9 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 			cls := ""
 			if isSelected {
 				cls = "selected"
+			}
+			if !fileInPath {
+				cls += " hidden"
 			}
 			outHtml += fmt.Sprintf("<li class=\"%s\">%s%s</li>", cls, imgLink, link)
 		}
@@ -178,6 +192,9 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 				cls := ""
 				if isSelected {
 					cls = "selected"
+				}
+				if !fileInPath {
+					cls = " hidden"
 				}
 				outHtml += fmt.Sprintf("<li class=\"%s\">%s</li>", cls, link)
 			} else {
