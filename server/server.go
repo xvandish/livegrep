@@ -535,6 +535,8 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	// io.WriteString(w, fmt.Sprintf("<html><body><div style=\"display:flex; gap:10px\">%s%s</div></body></html>", left, right))
 }
 
+// TODO: allow this page to be rendered when no branch is passed. In that case, we should
+// figure out HEAD, then pass that to buildFileData
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -547,6 +549,8 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 
 	q := r.URL.Query()
 	dataFileCommit := q.Get("dfc")
+
+	log.Printf(ctx, "repoRev=%s path=%s\n", repoRev, path)
 
 	parentMap, ok := s.newRepos[parent]
 
@@ -570,6 +574,8 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	data, err := buildFileData(path, repoConfig, commitToLoadFileAt)
+	log.Printf(ctx, "data: %+v err=%v", data, err)
+	// fileContent not filled in, but filepath exists
 	if err != nil {
 		// if this errors out, most likely the file does not exist,
 		// TODO: dicide if this is clean enough, or whether buildFileData
@@ -579,19 +585,13 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 			RepoRev: repoRev,
 			Commit:  commitToLoadFileAt,
 			FileContent: &sourceFileContent{
-				Filename: filepath.Base(path),
+				FileName: filepath.Base(path),
 				Invalid:  true,
 			},
 		}
-	} else {
-		// load the blame data
-		blameData, err := gitBlameBlob(path, repoConfig, commitToLoadFileAt)
-		if err != nil {
-			log.Printf(ctx, "there was an error loading blame data")
-		}
-		data.FileContent.BlameData = blameData
-
 	}
+
+	// if readmeContent is available, we put it into
 
 	// these options do not depend on the file existing.
 	// they do however depend on the `repoRev` being valid.

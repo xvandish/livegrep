@@ -112,18 +112,24 @@ type fileViewerContext struct {
 	Headlink        string
 	LogLink         string
 	BlameData       *BlameResult
-	FilePath        string
-	DirectoryTree   *api.TreeNode
-	Branches        []api.GitBranch
-	Tags            []api.GitTag
+
+	// the following two are sourced from either FileContent or
+	// DirContent.ReadmeContent. If both are nil, then Path is path
+	// but FileName is empty
+	FilePath string
+	FileName string
+
+	DirectoryTree *api.TreeNode
+	Branches      []api.GitBranch
+	Tags          []api.GitTag
 }
 
 type sourceFileContent struct {
 	Content   string
 	LineCount int
 	Language  string
-	Filename  string
-	Filepath  string
+	FileName  string
+	FilePath  string
 	BlameData *BlameResult
 	Invalid   bool
 }
@@ -915,13 +921,14 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	}
 
 	if objectType == "tree" {
+		fmt.Printf("objectType is tree\n")
 		treeEntries, err := gitListDir(obj, repo.Path)
 		if err != nil {
 			return nil, err
 		}
 
 		dirEntries := make([]directoryListEntry, len(treeEntries))
-		var readmePath, readmeLang string
+		var readmePath, readmeLang, readmeName string
 		for i, treeEntry := range treeEntries {
 			dirEntries[i] = buildDirectoryListEntry(treeEntry, cleanPath, repo)
 			// Git supports case sensitive files, so README.md & readme.md in the same tree is possible
@@ -934,19 +941,21 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			if len(parts) != 3 {
 				continue
 			}
+			readmeName = parts[0]
 			readmePath = obj + parts[0]
 			readmeLang = parts[2]
 		}
 
 		var readmeContent *sourceFileContent
 		if readmePath != "" {
+			fmt.Printf("readmePath != empty\n")
 			if content, err := gitCatBlob(readmePath, repo.Path); err == nil {
 				readmeContent = &sourceFileContent{
 					Content:   content,
 					LineCount: strings.Count(content, "\n"),
 					Language:  extToLangMap["."+readmeLang],
-					Filename:  filepath.Base(readmePath),
-					Filepath:  readmePath,
+					FileName:  readmeName,
+					FilePath:  relativePath,
 				}
 			}
 		}
@@ -957,6 +966,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			ReadmeContent: readmeContent,
 		}
 	} else if objectType == "blob" {
+		fmt.Printf("objectType is blob\n")
 		content, err := gitCatBlob(obj, repo.Path)
 		if err != nil {
 			return nil, err
@@ -971,8 +981,8 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			// LineCount: strings.Count(string(content), "\n"),
 			LineCount: 0,
 			Language:  language,
-			Filename:  filename,
-			Filepath:  relativePath,
+			FileName:  filename,
+			FilePath:  relativePath,
 		}
 	}
 
@@ -1002,6 +1012,9 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		}
 	}
 
+	fmt.Printf("FileContetn: %+v\n", fileContent)
+
+	normalizedName, normalizedPath := getFileNameAndPathFromContent(fileContent, dirContent)
 	return &fileViewerContext{
 		PathSegments:    segments,
 		Repo:            repo,
@@ -1013,8 +1026,21 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		ExternalDomain:  externalDomain,
 		Permalink:       permalink,
 		Headlink:        headlink,
-		FilePath:        relativePath,
+		FilePath:        normalizedPath,
+		FileName:        normalizedName,
 	}, nil
+}
+
+/*
+ * Gets the name from either FileContent or DirectoryContent.ReadmeContent, depending
+ * on which is not nil
+ */
+func getFileNameAndPathFromContent(fc *sourceFileContent, dc *directoryContent) (string, string) {
+	if fc != nil {
+		return fc.FileName, fc.FilePath
+	}
+
+	return dc.ReadmeContent.FileName, dc.ReadmeContent.FilePath
 }
 
 // TODO: add capability to diff files

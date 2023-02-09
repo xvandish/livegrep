@@ -71,6 +71,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   background-color: #f6f7f9;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(0,0,0,0.12);
+  padding: 10px;
 }
 
 .repository-navigation #side-nav #root {
@@ -225,6 +226,15 @@ box-sizing: border-box;
   padding-right: 5px;
   border-left: 1px solid #dadcd0;
   color: #888;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno:hover {
+  cursor: pointer;
+  color: #000;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.highlighted {
+  background: rgba(255, 234, 170, 0.75);
 }
 
 .repository-detail .main-view .middle-view .lower-detail-wrapper {
@@ -422,7 +432,6 @@ button.expander .arrow.expanded {
   transform: rotate(90deg);
 }
 
-
 /* prevent actions from inside a button to be clicked, so we don't have to
 * handle those cases as carefully */
 button > * {
@@ -502,7 +511,6 @@ a > * {
 
 #repo-selector-container {
   position: relative;
-  margin-left: 10px;
 }
 
 #repo-autocomplete-menu {
@@ -597,6 +605,32 @@ a > * {
   display: inline-block;
 }
 
+#middle-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+#middle-nav > #crumbs-and-selectors {
+  display: flex;
+}
+
+/* yes, this is hearsay. Sorry. */
+a.link-button {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 1px solid rgba(0, 126, 229, 0.25); 
+}
+
+a.link-button:hover {
+  cursor: pointer;
+  text-decoration: none;
+  background-color: #eaeaea;
+}
+
+
 </style>
 
     {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
@@ -677,10 +711,11 @@ a > * {
         <div id="nested-wrapper">
         <div class="repository-browser">
           <div class="browse-repository-breadcrumb">
-            <nav style="display:flex;">
+            <nav id="middle-nav">
               {{$repo := .Repo.Name}}
+              <div id="crumbs-and-selectors">
               <div id="repo-selector-container">
-                <a href="/experimental/{{ $repo }}">{{$repo}}</a>
+                <a href="/experimental/{{ $repo }}/+/{{ .RepoRev }}:">{{$repo}}</a>
                 <button id="repo-search-toggle">Open</button>
                 <div id="repo-autocomplete-menu">
                   <div>
@@ -713,7 +748,7 @@ a > * {
                       <div id="git-branches-container">
                       {{ range .Branches }}
                       <!-- the following urls will be updated when the current file being viewed changes -->
-                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FileContent.Filepath}}" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
+                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
                       {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
@@ -734,6 +769,11 @@ a > * {
               <div id="path-breadcrumbs">
               {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
               </div>
+            </div>
+            <div id="middle-nav-actions">
+              <!-- TODO: this takes a hefty bit of JS to get the anchors and such right-->
+              <a id="github-link" class="link-button" href="#">View in GitHub</a>
+            </div>
             </nav>
           </div>
           <div class="browse-repository-contents">
@@ -752,7 +792,7 @@ a > * {
                     <div class="file-header">
                       <div class="file-header-wrapper">
                         <div class="file-info">
-                          <span id="filename">{{.FileContent.Filename}}</span>
+                          <span id="filename">{{.FileName}}</span>
                           <span class="commit-info">(@ <a id="short-hash-link" href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
                         </div>
                         <div class="file-actions">
@@ -761,8 +801,10 @@ a > * {
                       </div>
                     </div>
                     <div class="file-content">
-                      {{ if not .FileContent.Invalid }}
+                      {{ if .FileContent }}
                         {{ template "filecontent" .FileContent }}
+                      {{ else if .DirContent }}
+                        {{ template "filecontent" .DirContent.ReadmeContent }}
                       {{ else }}
                       <div id="file-does-not-exist-warning-container">
                         <p>The file does not exist at this point in history.</p>
@@ -1084,7 +1126,6 @@ a > * {
 
         // given a click on a tree, hide or show all children
         function toggleTree(event) {
-
           // this event is on a button. Toggle the "closed" class on it
           event.target.classList.toggle("expanded");
 
@@ -1095,13 +1136,11 @@ a > * {
 
           // get the parentContainer of the folder button/description
           var parentContainer = event.target.closest("div");
-
           // now get that parent
           var rootContainer = parentContainer.parentNode;
-
           // now, get the children container
           var childrenContainer = rootContainer.querySelector(".children");
-
+          // and, finally, toggle the childrens expanded status
           childrenContainer.classList.toggle("expanded");
         }
 
@@ -1208,7 +1247,7 @@ a > * {
             event.target.dataset.toggled = "true";
           } else if (clickLocation == "side-nav") {
             // replace the current "selected" file
-            var selectedPath = document.querySelector("#side-nav li.selected");
+            var selectedPath = document.querySelector("#side-nav div.selected");
             if (selectedPath) {
               selectedPath.classList.remove("selected");
             }
@@ -1395,7 +1434,7 @@ a > * {
           repoCommit: {{ .Commit }},
           repoCommitHash: {{ .CommitHash }},
           filepath: {{ .FilePath }},
-          filename: {{ .FileContent.Filename }},
+          filename: {{ .FileName }},
           fileCommitHash: {{ .CommitHash }},
           currentMode: "fileviewer",
           diffLeftCommit: "",
@@ -1404,7 +1443,7 @@ a > * {
           prevRepoCommit: {{ .Commit }},
           prevRepoCommitHash: {{ .CommitHash }},
           prevFilepath: {{ .FilePath }},
-          prevFilename: {{ .FileContent.Filename }},
+          prevFilename: {{ .FileName }},
           prevFileCommitHash: {{ .CommitHash }},
           branches: {{ .Branches }},
         };
@@ -1631,6 +1670,8 @@ a > * {
         var gitAutocompleteMenuOpen = false;
         var gitSearchBox;
         var gitSearchTabsContainer;
+        var lineNumberContainer;
+        var root;
 
         var searchOptions = {
           q: "repo:{{ $repo }}",
@@ -1745,8 +1786,6 @@ a > * {
 
         // we do a simple search
         function doRepoSearch(inputEvnt) {
-
-              
           // take whatevers in the repo search box, append repo:
           var searchQuery = inputEvnt.target.value;
 
@@ -1779,7 +1818,7 @@ a > * {
               for (var i = 0; i < treeResults.length; i++) {
                 var tree = treeResults[i];
                 var l = document.createElement("a"); 
-                l.href = `/experimental/${tree.name}/tree/`; 
+                l.href = `/experimental/${tree.name}/+/`; 
                 l.innerText = tree.name;
                 l.style.display = "block";
                 linksContainer.appendChild(l);
@@ -1846,6 +1885,159 @@ a > * {
           openTab = clickEvnt.target;
         }
 
+        // ----------- Start of line number and hash handling ------------ //
+        function setHash(hash) {
+          if (history.replaceState) {
+            history.replaceState(null, null, hash);
+          } else {
+            location.hash = hash;
+          }
+        }
+
+        function expandRangeToElement(element) {
+          var range = parseHashForLineRange(document.location.hash);
+          if (range) {
+            var elementLine = parseInt(element.getAttribute("id").replace("L", ""), 10);
+            if (elementLine < range.start) {
+              range.end = range.start;
+              range.start = elementLine;
+            } else {
+              range.end = elementLine;
+            }
+            setHash("#L" + range.start + "-" + "L" + range.end);
+          }
+        }
+
+        function parseHashForLineRange(hashString) {
+          var parseMatch = hashString.match(/#L(\d+)(?:-L?(\d+))?/);
+
+          if (parseMatch && parseMatch.length === 3) {
+            // We have a match on the regex expression
+            var startLine = parseInt(parseMatch[1], 10);
+            var endLine = parseInt(parseMatch[2], 10);
+            if (isNaN(endLine) || endLine < startLine) {
+              endLine = startLine;
+            }
+            return {
+              start: startLine,
+              end: endLine,
+            };
+          }
+
+          return null;
+        }
+
+        function getOffset(element) {
+          if (!element.getClientRects().length) {
+            return { top: 0, left: 0 };
+          }
+
+          var rect = element.getBoundingClientRect();
+          var win = element.ownerDocument.defaultView;
+          return {
+            top: rect.top + win.pageYOffset,
+            left: rect.left + win.pageXOffset,
+          };
+        }
+
+        function scrollToRange(range, elementContainer) {
+          // - If we have a single line, scroll the viewport so that the element is
+          // at 1/3 of the viewport.
+          // - If we have a range, try and center the range in the viewport
+          // - If the range is to high to fit in the viewport, fallback to the single
+          //   element scenario for the first line
+          var viewport = window;
+          var viewportHeight = viewport.innerHeight;
+
+          var scrollOffset = Math.floor(viewportHeight / 3.0);
+
+          var firstLineElement = root.querySelector("#L" + range.start);
+          if (!firstLineElement) {
+            // We were given a scroll offset to a line number that doesn't exist in the page, bail
+            return;
+          }
+          if (range.start != range.end) {
+            // We have a range, try and center the entire range. If it's to high
+            // for the viewport, fallback to revealing the first element.
+            var lastLineElement = elementContainer.querySelector("#L" + range.end);
+            var rangeHeight =
+              getOffset(lastLineElement).top +
+              lastLineElement.clientHeight -
+              getOffset(firstLineElement).top;
+            if (rangeHeight <= viewportHeight) {
+              // Range fits in viewport, center it
+              scrollOffset = 0.5 * (viewportHeight - rangeHeight);
+            } else {
+              scrollOffset = firstLineElement.clientHeight / 2; // Stick to (almost) the top of the viewport
+            }
+          }
+
+          // viewport.scrollTop(firstLineElement.offset().top - scrollOffset);
+          viewport.scrollTo({ top: getOffset(firstLineElement).top - scrollOffset });
+        }
+
+        function addHighlightClassesForRange(range, root) {
+          for (var lineNumber = range.start; lineNumber <= range.end; lineNumber++) {
+            root.querySelector("#LC" + lineNumber).classList.add("highlighted");
+          }
+        }
+
+        function handleHashChange(shouldScrollElementIntoView) {
+          // clear the current highlighted lines
+          lineNumberContainer.querySelectorAll(".highlighted").forEach(function (elem) {
+            elem.classList.remove("highlighted");
+          });
+
+          // highligh the current range from the hash, if any
+          var range = parseHashForLineRange(document.location.hash);
+          if (range) {
+            addHighlightClassesForRange(range, lineNumberContainer);
+            if (shouldScrollElementIntoView) {
+              console.log({range } )
+              console.log({ root })
+              scrollToRange(range, root);
+            }
+          }
+
+          // update the external-browse link
+          // TODO
+        }
+
+        function initLineNumbers(lineNumberContainer) {
+          // Initial range detection for when the page is loaded
+          if (lineNumberContainer) {
+            handleHashChange(true);
+            // Allow shift clicking links to expand the highlight range
+            // rather than adding an event handler to all links, we just
+            // add a handler to the container, then check if the target
+            // is a link
+            lineNumberContainer.addEventListener("click", function (event) {
+              if (!event.target.classList.contains("lno")) {
+                return;
+              }
+              event.preventDefault();
+              if (event.shiftKey) {
+                expandRangeToElement(event.target);
+              } else {
+                setHash("#" + event.target.getAttribute("id"));
+              }
+              handleHashChange(false);
+            });
+            window.addEventListener("hashchange", function (event) {
+              event.preventDefault();
+              handleHashChange(true);
+            });
+          } else {
+            // TODO
+            // document
+            //   .getElementById("external-link")
+            //   .setAttribute("href", getExternalLink(null));
+          }
+
+        }
+
+        // ----------------------- End of Line numbers handling -------------- // 
+
         function init() {
           "use strict";
 
@@ -1865,9 +2057,13 @@ a > * {
           gitAutocompleteMenu = document.getElementById("git-autocomplete-menu");
           gitSearchBox = document.getElementById("git-search-input");
           gitSearchTabsContainer = document.getElementById("git-tabs");
+          lineNumberContainer = document.querySelector(".file-content");
+          root = document.querySelector(".file-content"); // TODO: this is identical to lineNumberContainer
 
           console.log({ searchBox })
           console.log({ resultsContainer })
+
+          initLineNumbers(lineNumberContainer);
 
           searchBox.value = "repo:{{ $repo }}";
           searchBox.addEventListener('focusin', function() {

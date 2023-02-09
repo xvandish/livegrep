@@ -1,7 +1,6 @@
 {{ with .Data.FileContent }}
   {{ $lang := .Language }}
-  {{ $blameData := .BlameData }}
-  {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang .Filename }}
+  {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang .FileName }}
   <table>
     <tbody class="chroma">
     {{ range $i, $e := $highlightedContent.Content }}
