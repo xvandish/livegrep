@@ -1946,8 +1946,11 @@ a.link-button:hover {
           // - If we have a range, try and center the range in the viewport
           // - If the range is to high to fit in the viewport, fallback to the single
           //   element scenario for the first line
-          var viewport = window;
-          var viewportHeight = viewport.innerHeight;
+
+          // TODO: almost perfect, sometimes leaves the line just a few lines out
+          // of range
+          var viewport = elementContainer;
+          var viewportHeight = viewport.clientHeight;
 
           var scrollOffset = Math.floor(viewportHeight / 3.0);
 
