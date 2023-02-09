@@ -106,10 +106,14 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 	return codeParts
 }
 
-func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit string) string {
+func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit string, fileInPath bool) string {
 	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, node.Type, commit, node.Path)
 	leftComp := imgLink
-	buttonExpander := "<button class=\"expander\"><div class=\"arrow\" /></button>"
+	btnCls := "arrow"
+	if fileInPath {
+		btnCls += " expanded"
+	}
+	buttonExpander := fmt.Sprintf("<button class=\"expander\"><div class=\"%s\" /></button>", btnCls)
 	if node.Type == "tree" {
 		leftComp = buttonExpander
 	}
@@ -138,6 +142,7 @@ var rootPadding = -15
 // TODO: (lower priority) show the active branches at the top of the git
 // selector
 
+// not fun to read
 func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
 	cls := ""
 
@@ -146,12 +151,15 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 
 	// TODO: this could eventually be passed down in the recursive calls
 	// so we aren't doing needless string comparisons
+	// TODO: fix this for similarly named files in paths
+	//  e.g names that start with filename but aren't exact
 	fileInPath := strings.HasPrefix(filepath, rootDir.Path)
 
-	// if !strings.HasPrefix(filepath, rootDir.Path) {
-	// 	cls = "hidden"
-	// }
-	outHtml := fmt.Sprintf("<ul class=\"%s\"", cls)
+	// TODO: refactor file tree so that we can set a property on the parent element
+	// and that will automatically take care of the child elements being hidden or
+	// not
+
+	outHtml := fmt.Sprintf("<div class=\"%s\"", cls)
 	if paddingLeft == rootPadding {
 		outHtml += "id=\"root\">"
 	} else {
@@ -159,24 +167,27 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 
 		// now, render either the folder name, or file name
 		// if folder, it will later loop and render the children
-		link := getTreeItemLink(rootDir, paddingLeft, repoName, commit)
+		link := getTreeItemLink(rootDir, paddingLeft, repoName, commit, fileInPath)
 		if rootDir.Type == "tree" {
-			outHtml += fmt.Sprintf("<li>%s</li>", link)
+			outHtml += fmt.Sprintf("<div>%s</div>", link)
 		} else {
 			isSelected := rootDir.Path == filepath
 			cls := ""
 			if isSelected {
 				cls = "selected"
 			}
-			if !fileInPath {
-				cls += " hidden"
-			}
-			outHtml += fmt.Sprintf("<li class=\"%s\">%s%s</li>", cls, imgLink, link)
+			outHtml += fmt.Sprintf("<div class=\"%s\">%s%s</div>", cls, imgLink, link)
 		}
 	}
 
 	// now, if a folder, loop through children
 	if len(rootDir.Children) > 0 {
+		// but first, add a containg div for all the children
+		outerCls := "children"
+		if fileInPath || paddingLeft == rootPadding {
+			outerCls += " expanded"
+		}
+		outHtml += fmt.Sprintf("<div class=\"%s\">", outerCls)
 		for _, child := range rootDir.Children {
 			// now, we're at test (at least for the first iteration)
 
@@ -187,24 +198,22 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 				// if left == 0 {
 				// 	nextPadding = 0
 				// }
-				link := getTreeItemLink(child, paddingLeft+15, repoName, commit)
+				link := getTreeItemLink(child, paddingLeft+15, repoName, commit, fileInPath)
 				isSelected := child.Path == filepath
 				cls := ""
 				if isSelected {
 					cls = "selected"
 				}
-				if !fileInPath {
-					cls = " hidden"
-				}
-				outHtml += fmt.Sprintf("<li class=\"%s\">%s</li>", cls, link)
+				outHtml += fmt.Sprintf("<div class=\"%s\">%s</div>", cls, link)
 			} else {
 				// fmt.Printf("at child with name=%s, depth=%d going to loop through its children.\n", child.Name, depth+1)
 				outHtml += string(RenderDirectoryTree(child, paddingLeft+15, repoName, commit, filepath))
 			}
 		}
+		outHtml += "</div>"
 	}
 
-	outHtml += "</ul>"
+	outHtml += "</div>"
 	if paddingLeft == rootPadding {
 		outHtml += "</nav>"
 	}
@@ -323,7 +332,6 @@ func styleAttr(styles map[chroma.TokenType]string, tt chroma.TokenType) string {
 	}
 	return fmt.Sprintf(` class="%s"`, cls)
 }
-
 func writeCSS(w io.Writer, style *chroma.Style) error {
 	css := styleToCSS(style)
 

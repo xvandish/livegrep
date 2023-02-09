@@ -87,25 +87,16 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   padding: 0px;
 }
 
-.repository-navigation #side-nav ul.hidden:first-child {
-  display: initial;
+/* hide all children unless expanded */
+.repository-navigation #side-nav div.children:not(.expanded) {
+  display: none;
 }
 
-/* .repository-navigation #side-nav ul.hidden {
-  display: initial;
-} */
-
-.repository-navigation #side-nav ul li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.repository-navigation #side-nav ul li.selected {
+.repository-navigation #side-nav div.selected {
   background-color: #d2e3fc;
 }
 
-.repository-navigation #side-nav ul li a {
+.repository-navigation #side-nav div a {
   display:flex;
   align-items: center;
   gap: 6px;
@@ -115,7 +106,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   text-decoration: none;
 }
 
-.repository-navigation #side-nav ul li a:hover {
+.repository-navigation #side-nav div a:hover {
   background-color: rgba(95,99,104,0.08); 
 }
 
@@ -427,10 +418,10 @@ button.expander .arrow {
     width: 0;
 }
 
-/* This rotates the open buttons down automatically */
-a:not(.closed) button.expander .arrow {
+button.expander .arrow.expanded {
   transform: rotate(90deg);
 }
+
 
 /* prevent actions from inside a button to be clicked, so we don't have to
 * handle those cases as carefully */
@@ -1095,17 +1086,23 @@ a > * {
         function toggleTree(event) {
 
           // this event is on a button. Toggle the "closed" class on it
-          event.target.classList.toggle("closed");
+          event.target.classList.toggle("expanded");
 
-          // get the parentContainer
-          var parentContainer = event.target.closest("ul");
+          // <div> 
+          //   <div>click in here</div> 
+          //   <div class="children"></div>
+          // </div>
 
-          // now iterate all children, except the first and hide them 
-          // we don't hide the first since its the "gateway" to the tree
-          var children = parentContainer.children;
-          for (var i = 1; i < children.length; i++) {
-            children[i].classList.toggle("hidden");
-          }
+          // get the parentContainer of the folder button/description
+          var parentContainer = event.target.closest("div");
+
+          // now get that parent
+          var rootContainer = parentContainer.parentNode;
+
+          // now, get the children container
+          var childrenContainer = rootContainer.querySelector(".children");
+
+          childrenContainer.classList.toggle("expanded");
         }
 
         function getRepoRevAndFilepathFromUrl() {
