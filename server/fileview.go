@@ -123,6 +123,7 @@ type sourceFileContent struct {
 	LineCount int
 	Language  string
 	Filename  string
+	Filepath  string
 	BlameData *BlameResult
 	Invalid   bool
 }
@@ -944,6 +945,8 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 					Content:   content,
 					LineCount: strings.Count(content, "\n"),
 					Language:  extToLangMap["."+readmeLang],
+					Filename:  filepath.Base(readmePath),
+					Filepath:  readmePath,
 				}
 			}
 		}
@@ -969,6 +972,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			LineCount: 0,
 			Language:  language,
 			Filename:  filename,
+			Filepath:  relativePath,
 		}
 	}
 

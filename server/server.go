@@ -538,9 +538,6 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
-	// repoRev := r.URL.Query().Get(":rev")
-	// m.Add("GET", "/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
-	fmt.Printf("r.URL.Path=%s\n", r.URL.Path)
 
 	repoRevAndPath := pat.Tail("/experimental/:parent/:repo/+/", r.URL.Path)
 	fmt.Printf("repoRevAndPath: %s\n", repoRevAndPath)
@@ -603,31 +600,14 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	branches, err := listAllBranches(repoConfig)
 	tags, err := listAllTags(repoConfig)
 
-	fmt.Printf("after build functions\n")
-
 	data.DirectoryTree = tree
 	data.Branches = branches
 	data.Tags = tags
 	data.RepoRev = repoRev
-	fmt.Printf("after some setting\n")
-	// We build this carefully increase /blob/ is in the path to the file that
-	// we're actually viewing
-	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, repoRev, path)
-	fmt.Printf("after logLink\n")
-	// if we were going to permalink, make it what we want
-	// TODO(xvandish): do this in fileview.go
-	if data.Permalink != "" {
-		data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
-	} else if data.Headlink != "" {
-		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
-	}
-	fmt.Printf("after Permalink\n")
 
 	// script_data := &struct {
 	// 	URL
 	// }{repoConfig, path, rev, data.CommitHash}
-
-	fmt.Printf("right before renderPage\n")
 
 	if data.FileContent == nil {
 		fmt.Printf("filecontent is nil\n")

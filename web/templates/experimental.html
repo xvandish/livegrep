@@ -721,7 +721,8 @@ a > * {
                     <div id="git-content">
                       <div id="git-branches-container">
                       {{ range .Branches }}
-                      <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
+                      <!-- the following urls will be updated when the current file being viewed changes -->
+                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FileContent.Filepath}}" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
                       {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
