@@ -226,6 +226,8 @@ box-sizing: border-box;
   padding-right: 5px;
   border-left: 1px solid #dadcd0;
   color: #888;
+  border-right: 1px solid #dadcd0;
+  user-select: none;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno:hover {
@@ -233,8 +235,14 @@ box-sizing: border-box;
   color: #000;
 }
 
-.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.highlighted {
+/* highlight the code line */
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.highlighted td:nth-child(3) {
   background: rgba(255, 234, 170, 0.75);
+}
+
+/* highlight the line number in a slightly lighter color */
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.highlighted td:nth-child(2) {
+  background: rgba(255, 234, 170, 0.5);
 }
 
 .repository-detail .main-view .middle-view .lower-detail-wrapper {
@@ -1981,7 +1989,7 @@ a.link-button:hover {
 
         function addHighlightClassesForRange(range, root) {
           for (var lineNumber = range.start; lineNumber <= range.end; lineNumber++) {
-            root.querySelector("#LC" + lineNumber).classList.add("highlighted");
+            root.querySelector("#LC" + lineNumber).parentNode.classList.add("highlighted");
           }
         }
 
