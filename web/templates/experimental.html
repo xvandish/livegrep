@@ -564,7 +564,7 @@ a > * {
   top: 100%;
   left: 0;
   background-color: white;
-  width: 200%;
+  width: 500px;
   padding: 10px;
   min-height: 300px;
   max-height: 90vh;
@@ -701,7 +701,7 @@ a > * {
                 </div>
               </div>
               <div id="git-selector-container">
-                <span>{{.CommitHash}}</span>
+                <span>{{.RepoRev}}</span>
                 <button id="git-search-toggle">Open Git</button>
                 <div id="git-autocomplete-menu">
                   <!-- Want 3 panes. 
@@ -721,7 +721,7 @@ a > * {
                     <div id="git-content">
                       <div id="git-branches-container">
                       {{ range .Branches }}
-                      <a href="/experimental/{{$repo}}/{{.Name}}/" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
+                      <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
                       {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
@@ -769,7 +769,13 @@ a > * {
                       </div>
                     </div>
                     <div class="file-content">
-                      {{ template "filecontent" .FileContent }}
+                      {{ if not .FileContent.Invalid }}
+                        {{ template "filecontent" .FileContent }}
+                      {{ else }}
+                      <div id="file-does-not-exist-warning-container">
+                        <p>The file does not exist at this point in history.</p>
+                      </div>
+                      {{ end }}
                     </div>
                   </div>
                   <div class="lower-detail-wrapper closed">
@@ -921,7 +927,7 @@ a > * {
               }
               // load the history if this is the first time opening the panel
               if (!historyFetched) {
-                  fetchHistory();
+                  loadHistory();
                   historyFetched = true;
               }
               
@@ -941,7 +947,7 @@ a > * {
         //   overwhelming either the frontend or backend
         // TODO(xvandish): Decide whether to do this by fetching SSR content or keeping it
         //  as is.
-        async function fetchHistory() {
+        async function loadHistory() {
           // always fetch history at head, in case someone is viewing the file at a non head link, that way 
           // they'll see future history and be able to navigate to it
           var gitHistory = await fetch(`/api/v2/json/git-log/${window.scriptData.repo}/HEAD/${window.scriptData.filepath}`)
@@ -1101,6 +1107,10 @@ a > * {
           }
         }
 
+        function getRepoRevAndFilepathFromUrl() {
+          return window.location.pathname.split("/+/");
+        }
+
         // var historyPanel = document.getElementsByClassName("lower-detail-content")[0];
         // TODO(xvandish): Switch to global handler so that we use less memory
         // TODO(xvandish): We need another query parameter for the following case:
@@ -1114,7 +1124,12 @@ a > * {
         // only updates a query parameter, it does not change the commit/branch you are viewing the repo at. E/g, it should
         // not change the hash after /blob/, it should instead append a query parameter. dfc or, data-file-commit makes sense
         // to me.
+
+        // this looks gnarly, but captures urls of the form
+        // /eventtracker/org/repo/+/repoRev:filePath
+        var urlPathRegex = /\/experimental\/(.*\/\+\/)(.*):(.*)/;
         async function viewFileAtCommit(event, repo, path, commitHash, clickLocation) {
+              console.log("in view file");
           // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
           // var oldPath = window.location.pathname;
@@ -1122,9 +1137,21 @@ a > * {
           
           var sp = new URLSearchParams(window.location.search);
           sp.set("dfc", commitHash);
-          window.history.pushState({}, "", `${window.location.pathname}?${sp}`);
-          // var newPath = `/experimental/${repo}/${window.repoCommitHash}/${path}?dfc=${commitHash}`;
-          // console.log({ newPath });
+
+          // only set dfc when clickLocation == history?
+          // that way, navigation in other parts of the side
+          // respects the repoCommitHash
+          if (clickLocation != "commit-history") {
+            sp.delete("dfc");
+          }
+
+          // replace the file pathname with the new one
+          var newPathExp = window.location.pathname.replace(urlPathRegex, `/experimental/$1$2:${path}`);
+          console.log({ newPathExp });
+          console.log(window.location.pathname)
+          window.history.pushState({}, "", `${newPathExp}?${sp.toString()}`);
+          console.log(window.location.pathname)
+
 
           if (window.scriptData.filepath == path && window.scriptData.fileCommitHash == commitHash) {
             return;
@@ -1201,7 +1228,7 @@ a > * {
           // reload the history even if its not being viewed right now
           if (prevFilepath != path) {
             console.log("fetching history since we switched to a new file");
-            fetchHistory();
+            loadHistory();
           }
 
           // if the commitHistory was open, re-load it's contents
@@ -1367,18 +1394,20 @@ a > * {
 
         window.scriptData = {
           repo: {{ $repo }},
-          repoCommitHash: {{ .Commit }},
+          repoCommit: {{ .Commit }},
+          repoCommitHash: {{ .CommitHash }},
           filepath: {{ .FilePath }},
           filename: {{ .FileContent.Filename }},
-          fileCommitHash: {{ .Commit }},
+          fileCommitHash: {{ .CommitHash }},
           currentMode: "fileviewer",
           diffLeftCommit: "",
           diffRightCommit: "",
           prevRepo: {{ $repo }},
-          prevRepoCommitHash: {{ .Commit }},
+          prevRepoCommit: {{ .Commit }},
+          prevRepoCommitHash: {{ .CommitHash }},
           prevFilepath: {{ .FilePath }},
           prevFilename: {{ .FileContent.Filename }},
-          prevFileCommitHash: {{ .Commit }},
+          prevFileCommitHash: {{ .CommitHash }},
           branches: {{ .Branches }},
         };
         console.log(window.scriptData);
@@ -1821,6 +1850,8 @@ a > * {
 
         function init() {
           "use strict";
+
+          console.log(window.scriptData);
 
           searchBoxContainer = document.getElementsByClassName("input-line")[0];
           searchBox = document.getElementById("searchbox");

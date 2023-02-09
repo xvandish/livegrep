@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -537,15 +538,18 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
-	rev := r.URL.Query().Get(":rev")
+	// repoRev := r.URL.Query().Get(":rev")
 	// m.Add("GET", "/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
 	fmt.Printf("r.URL.Path=%s\n", r.URL.Path)
 
-	// TODO(xvandish): this is temporary. Soon we can split out blob and directory code all the way
-	// down, which will lend more utility then right now. Right now the differentiation between blob/tree
-	// is superficial only. The buildFileData func works for both blobs and trees, meaning that this
-	// "ServeGitBlob" function works for both entitites
-	path := pat.Tail("/experimental/:parent/:repo/:rev/", r.URL.Path)
+	repoRevAndPath := pat.Tail("/experimental/:parent/:repo/+/", r.URL.Path)
+	fmt.Printf("repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+	repoRev := sp[0]
+	path := sp[1]
+
+	q := r.URL.Query()
+	dataFileCommit := q.Get("dfc")
 
 	parentMap, ok := s.newRepos[parent]
 
@@ -560,23 +564,56 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
 		return
 	}
-	data, err := buildFileData(path, repoConfig, rev)
-	blameData, err := gitBlameBlob(path, repoConfig, rev)
-	tree := buildDirectoryTree(path, repoConfig, rev)
+
+	// if dfc is declared, view that file at that commit, not
+	// the repo commit
+	commitToLoadFileAt := repoRev
+	if dataFileCommit != "" {
+		commitToLoadFileAt = dataFileCommit
+	}
+
+	data, err := buildFileData(path, repoConfig, commitToLoadFileAt)
+	if err != nil {
+		// if this errors out, most likely the file does not exist,
+		// TODO: dicide if this is clean enough, or whether buildFileData
+		// should always return a "default" fileviewercontext
+		data = &fileViewerContext{
+			Repo:    repoConfig,
+			RepoRev: repoRev,
+			Commit:  commitToLoadFileAt,
+			FileContent: &sourceFileContent{
+				Filename: filepath.Base(path),
+				Invalid:  true,
+			},
+		}
+	} else {
+		// load the blame data
+		blameData, err := gitBlameBlob(path, repoConfig, commitToLoadFileAt)
+		if err != nil {
+			log.Printf(ctx, "there was an error loading blame data")
+		}
+		data.FileContent.BlameData = blameData
+
+	}
+
+	// these options do not depend on the file existing.
+	// they do however depend on the `repoRev` being valid.
+	// that will be something to tackle in the future <- TODO(xvandish)
+	tree := buildDirectoryTree(path, repoConfig, repoRev)
 	branches, err := listAllBranches(repoConfig)
 	tags, err := listAllTags(repoConfig)
 
-	data.FileContent.BlameData = blameData
+	fmt.Printf("after build functions\n")
+
 	data.DirectoryTree = tree
 	data.Branches = branches
 	data.Tags = tags
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
-		return
-	}
+	data.RepoRev = repoRev
+	fmt.Printf("after some setting\n")
 	// We build this carefully increase /blob/ is in the path to the file that
 	// we're actually viewing
-	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
+	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, repoRev, path)
+	fmt.Printf("after logLink\n")
 	// if we were going to permalink, make it what we want
 	// TODO(xvandish): do this in fileview.go
 	if data.Permalink != "" {
@@ -584,19 +621,22 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	} else if data.Headlink != "" {
 		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
 	}
+	fmt.Printf("after Permalink\n")
 
-	script_data := &struct {
-		RepoInfo   config.RepoConfig `json:"repo_info"`
-		FilePath   string            `json:"file_path"`
-		Commit     string            `json:"commit"`
-		CommitHash string            `json:"commit_hash"`
-	}{repoConfig, path, rev, data.CommitHash}
+	// script_data := &struct {
+	// 	URL
+	// }{repoConfig, path, rev, data.CommitHash}
+
+	fmt.Printf("right before renderPage\n")
+
+	if data.FileContent == nil {
+		fmt.Printf("filecontent is nil\n")
+	}
 
 	s.renderPage(ctx, w, r, "experimental.html", &page{
 		Title:         "experimental",
 		IncludeHeader: false,
 		ScriptName:    "fileview",
-		ScriptData:    script_data,
 		Data:          data,
 	})
 }
@@ -877,7 +917,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	// so the pages don't have any headers or extra things
 	m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
 	m.Add("GET", "/raw/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlobRaw))
-	m.Add("GET", "/experimental/:parent/:repo/:rev/", srv.Handler(srv.ServeExperimental))
+	m.Add("GET", "/experimental/:parent/:repo/+/", srv.Handler(srv.ServeExperimental))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))

@@ -101,6 +101,7 @@ type directoryListEntry struct {
 type fileViewerContext struct {
 	PathSegments    []breadCrumbEntry
 	Repo            config.RepoConfig
+	RepoRev         string // the commit/rev the repo is being viewed at (branch, commit, tag, etc)
 	Commit          string
 	CommitHash      string
 	ShortCommitHash string
@@ -123,6 +124,7 @@ type sourceFileContent struct {
 	Language  string
 	Filename  string
 	BlameData *BlameResult
+	Invalid   bool
 }
 
 type directoryContent struct {
@@ -882,7 +884,10 @@ func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 	return &blameRes, nil
 }
 
+var fileDoesNotExistError = errors.New("This file does not exist at this point in history")
+
 func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
+	fmt.Printf("buildFileData - commit=%s\n", commit)
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)
 	if err == nil {
@@ -899,9 +904,15 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	var dirContent *directoryContent
 
 	objectType, err := gitObjectType(obj, repo.Path)
+
+	// if there is an error here, most likely this file does not exist at obj
+	// we still want the fileviewer to load, and we want to display a message like
+	// "The file does not exist at the commit"
 	if err != nil {
+		log.Printf("error getting object type: %v\n", err)
 		return nil, err
 	}
+
 	if objectType == "tree" {
 		treeEntries, err := gitListDir(obj, repo.Path)
 		if err != nil {
@@ -991,7 +1002,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		PathSegments:    segments,
 		Repo:            repo,
 		Commit:          commit,
-		CommitHash:      commitHash[:16],
+		CommitHash:      commitHash,
 		ShortCommitHash: commitHash[:8],
 		DirContent:      dirContent,
 		FileContent:     fileContent,
