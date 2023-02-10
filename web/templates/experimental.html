@@ -730,6 +730,7 @@ a.link-button:hover {
                   <input type="text" placeholder="Search for repositories" id="repo-search-input" />
                   </div>
                   <div id="repos-resultarea">
+                    <div id="favorite-repos"></div>
                     <div id="repos-results"></div>
                   </div>
                 </div>
@@ -2049,6 +2050,68 @@ a.link-button:hover {
 
         // ----------------------- End of Line numbers handling -------------- // 
 
+        // ----------------------- Start of handling for favorite repos -------//
+
+        // TODO: we're going to have to build a `-repo:favorite1|favorite2|` string so that
+        // repos aren't duplicated in search results
+        function loadRepoFavoritesFromLocalStorage() {
+          var favorites = window.localStorage.getItem("repo-favorites");
+          try {
+            favorites = JSON.parse(favorites);
+          } catch (err) {
+            console.log("wtf");
+            console.error("failed to parse repo-favorites value. Starting fresh. Err:" + err)
+            window.localStorage.setItem("repo-favorites", JSON.stringify({})) // store blank favorites
+            return; // no more work to do
+          }
+          if (!favorites) {
+            favorites = {};
+          }
+
+          var repos = Object.keys(favorites);
+          if (repos.length == 0) return; // nothing to do
+
+          // add the remaining favorites to the repo-selector, assuming the user hasn't done a search yet
+          // TODO:
+          var favoritesContainer = document.getElementById("favorite-repos");
+
+          for (var i = 0; i < repos.length; i++) {
+            var repoName = repos[i];
+            var link = document.createElement("a");
+            link.innerText = repoName;
+            favoritesContainer.appendChild(link);
+          }
+          
+        }
+
+        // add or remove a repo from favorites. We can determine whether a repo
+        // was or was not in favorites by the html state of clickEvnt. If someone
+        // attempts to break it, thats on them.
+        function toggleRepoFavorite(clickEvnt) {
+          var repoName = clickEvnt.target.dataset.repoName; // we include the repoName as a data attribute on the star button
+          var favorites = window.localStorage.getItem("repo-favorites");
+          try {
+            favorites = JSON.parse(favorites);
+          } catch (err) {
+            console.error("failed to parse repo-favorites value. Starting fresh. Err:" + err);
+            favorites = {};
+          }
+
+          if (clickEvnt.target.dataset.favorite == "true") {
+            favorites[repoName] = 1;
+            clickEvnt.classList.add("starred");
+          } else {
+            delete favorites[repoName];
+            clickEvnt.classList.remove("starred");
+          }
+
+          // store our updated favorites
+          window.locatStorage.setItem("repo-favorites", JSON.stringify(favorites));
+        }
+
+
+        // ----------------------- End of handling for favorite repos ---------//
+
         function init() {
           "use strict";
 
@@ -2075,6 +2138,7 @@ a.link-button:hover {
           console.log({ resultsContainer })
 
           initLineNumbers(lineNumberContainer);
+          loadRepoFavoritesFromLocalStorage();
 
           searchBox.value = "repo:{{ $repo }}";
           searchBox.addEventListener('focusin', function() {
