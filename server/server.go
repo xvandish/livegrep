@@ -544,8 +544,22 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	repoRevAndPath := pat.Tail("/experimental/:parent/:repo/+/", r.URL.Path)
 	fmt.Printf("repoRevAndPath: %s\n", repoRevAndPath)
 	sp := strings.Split(repoRevAndPath, ":")
-	repoRev := sp[0]
-	path := sp[1]
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var repoRev, path string
+	if len(sp) == 2 {
+		repoRev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2")
+		if len(sp) == 1 {
+			repoRev = sp[0]
+		} else {
+			repoRev = "HEAD"
+		}
+		path = ""
+	}
 
 	q := r.URL.Query()
 	dataFileCommit := q.Get("dfc")
@@ -564,6 +578,17 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	if !ok {
 		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
 		return
+	}
+
+	// if the repoRev == "HEAD", resolve it
+	if repoRev == "HEAD" {
+		parsed, err := gitRevParseAbbrev(repoRev, repoConfig.Path)
+		log.Printf(ctx, "parsedRev=%s parsedRev.len=%d\n", parsed, len(parsed))
+		if err != nil {
+			log.Printf(ctx, "failed to rev-parse HEAD. %s", err.Error())
+		} else {
+			repoRev = parsed
+		}
 	}
 
 	// if dfc is declared, view that file at that commit, not

@@ -171,7 +171,9 @@ func gitCommitHash(ref string, repoPath string) (string, error) {
 }
 
 func gitObjectType(obj string, repoPath string) (string, error) {
-	out, err := exec.Command("git", "-C", repoPath, "cat-file", "-t", obj).Output()
+	cmd := exec.Command("git", "-C", repoPath, "cat-file", "-t", obj)
+	fmt.Printf("cmd=%s\n", cmd.String())
+	out, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
@@ -184,6 +186,15 @@ func gitCatBlob(obj string, repoPath string) (string, error) {
 		return "", err
 	}
 	return string(out), nil
+}
+
+// used to get the "real" name of "HEAD"
+func gitRevParseAbbrev(rev string, repoPath string) (string, error) {
+	out, err := exec.Command("git", "-C", repoPath, "rev-parse", "--abbrev-ref", rev).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 type gitTreeEntry struct {
