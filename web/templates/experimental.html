@@ -588,11 +588,19 @@ a > * {
 }
 
 #repo-autocomplete-menu #repos-resultarea .rlc:hover {
-  background-color: #eaeaea;
+  background-color: #fafafa;
 }
 
 #repo-autocomplete-menu #repos-resultarea .rlc button {
   background-color: inherit;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button.starred img {
+  filter: invert(0);
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button:hover {
+  background-color: #eaeaea;
 }
 
 #repo-autocomplete-menu #repos-resultarea .rlc button img {
@@ -2166,6 +2174,7 @@ a.link-button:hover {
             c.appendChild(link);
 
             var ic = document.createElement("button");
+            ic.classList.add("starred");
             var i = document.createElement("img");
             i.src = "/assets/img/star.svg";
             ic.appendChild(i);
