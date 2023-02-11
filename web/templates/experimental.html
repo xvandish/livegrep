@@ -518,7 +518,51 @@ a > * {
 }
 
 #repo-selector-container {
+}
+
+.meta-selector-container {
   position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  padding-left: 4px;
+}
+
+/* we want a more link-like color */
+.meta-selector-container:hover {
+  background-color: #d0eaf9;
+}
+
+.meta-selector-container:hover button {
+  background-color: #eaeaea;
+}
+
+.meta-selector-container a {
+  padding: 4px;
+}
+
+.meta-selector-container a:hover {
+  text-decoration: none;
+}
+
+.meta-selector-container button {
+    display: flex;
+    place-content: center;
+    align-items: center;
+    padding: 4px;
+    box-sizing: border-box;
+    max-height: 100%;
+    border-radius: 0 4px 4px 0;
+    height: 100%;
+    line-height: 16px;
+    width: 16px;
+    padding: 4px;
+    border: none;
+    background-color: inherit;
+}
+
+.meta-selector-container button:hover {
+  background-color: #518ec4;
 }
 
 #repo-autocomplete-menu {
@@ -527,7 +571,7 @@ a > * {
   top: 100%;
   left: 0;
   background-color: white;
-  width: 99%;
+  width: 200px;
   padding: 10px;
   min-height: 300px;
   max-height: 90vh;
@@ -537,8 +581,26 @@ a > * {
   box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
 }
 
+#repo-autocomplete-menu #repos-resultarea .rlc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc:hover {
+  background-color: #eaeaea;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button {
+  background-color: inherit;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button img {
+  width: 15px;
+  height: 15px;
+}
+
 #git-selector-container {
-  position: relative;
   margin-left: 10px;
 }
 
@@ -652,7 +714,7 @@ a.link-button:hover {
           <div id="logo-box">
             <img src="/assets/img/nyt_super_t.svg" width="32px" height="32px"></img>
             <div id="super-pipe"></div>
-            <span>Codesearch</span>
+            <a href="/search">Codesearch</a>
           </div>
           <div id="input-line-wrapper">
           <div class="input-line">
@@ -722,9 +784,11 @@ a.link-button:hover {
             <nav id="middle-nav">
               {{$repo := .Repo.Name}}
               <div id="crumbs-and-selectors">
-              <div id="repo-selector-container">
-                <a href="/experimental/{{ $repo }}/+/{{ .RepoRev }}:">{{$repo}}</a>
-                <button id="repo-search-toggle">Open</button>
+              <div id="repo-selector-container" class="meta-selector-container">
+                <a href="/experimental/{{ $repo }}/+/">{{$repo}}</a>
+                <button id="repo-search-toggle">
+                  <img src="/assets/img/chevron-down.svg" />
+                </button>
                 <div id="repo-autocomplete-menu">
                   <div>
                   <input type="text" placeholder="Search for repositories" id="repo-search-input" />
@@ -735,9 +799,11 @@ a.link-button:hover {
                   </div>
                 </div>
               </div>
-              <div id="git-selector-container">
-                <span>{{.RepoRev}}</span>
-                <button id="git-search-toggle">Open Git</button>
+              <div id="git-selector-container" class="meta-selector-container">
+                <a href="/experimental/{{ $repo }}/+/{{ .RepoRev }}:">{{.RepoRev}}</a>
+                <button id="git-search-toggle">
+                  <img src="/assets/img/chevron-down.svg" />
+                </button>
                 <div id="git-autocomplete-menu">
                   <!-- Want 3 panes. 
                     On the left we want branch, tag, commit
@@ -1826,11 +1892,22 @@ a.link-button:hover {
               var linksContainer = document.createElement("div");
               for (var i = 0; i < treeResults.length; i++) {
                 var tree = treeResults[i];
+                var c = document.createElement("div");
+                c.classList.add("rlc");
                 var l = document.createElement("a"); 
                 l.href = `/experimental/${tree.name}/+/`; 
                 l.innerText = tree.name;
-                l.style.display = "block";
-                linksContainer.appendChild(l);
+                c.appendChild(l);
+
+                // now append a star 
+                var im = document.createElement("img");
+                im.src = "/assets/img/star.svg";
+
+                var ic = document.createElement("button");
+                ic.appendChild(im);
+                c.appendChild(ic);
+                console.log("appending child");
+                linksContainer.appendChild(c);
               }
 
               var ct = document.createElement("div");
@@ -1838,7 +1915,10 @@ a.link-button:hover {
               ct.appendChild(linksContainer);
 
               // not sure if I can do this
-              repoSearchResultsContainer.innerHTML = ct.outerHTML;
+              console.log({ linksContainer });
+              repoSearchResultsContainer.innerHTML = '';
+              repoSearchResultsContainer.appendChild(cnt);
+              repoSearchResultsContainer.appendChild(linksContainer);
 
               // clear the old results container
             })
@@ -2077,9 +2157,21 @@ a.link-button:hover {
 
           for (var i = 0; i < repos.length; i++) {
             var repoName = repos[i];
+            var c = document.createElement("div");
+            c.classList.add("rlc");
+            
             var link = document.createElement("a");
             link.innerText = repoName;
-            favoritesContainer.appendChild(link);
+            link.href = "/experimental/"+repoName+"/+/";
+            c.appendChild(link);
+
+            var ic = document.createElement("button");
+            var i = document.createElement("img");
+            i.src = "/assets/img/star.svg";
+            ic.appendChild(i);
+            c.appendChild(ic);
+
+            favoritesContainer.appendChild(c);
           }
           
         }
