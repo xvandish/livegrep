@@ -552,8 +552,9 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		path = sp[1]
 	} else {
 		// we're in a broken case.
-		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2")
-		if len(sp) == 1 {
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
 			repoRev = sp[0]
 		} else {
 			repoRev = "HEAD"
