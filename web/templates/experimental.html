@@ -1576,7 +1576,6 @@ a.link-button:hover {
                 var filepath = match[4];
 
               
-                event.preventDefault();
                 // different scenarios
                 // 1. if the click is on a file, DIFFERENT than the one we're on now
                 // 2. If the click is on the file we're on now, TDB
@@ -1585,14 +1584,21 @@ a.link-button:hover {
                 
                 // just update the hash in the url to jump to the right line number
                 // TODO: problem. filepath, if it has a hash
+                if (repo !== window.scriptData.repo) {
+                  console.log("different repo! reloading..");
+                  reuturn;
+                }
+
+                event.preventDefault();
                 if (filepath === window.scriptData.filepath) {
                   console.log("same file, updating hash")
                   window.location.hash = event.target.hash;
-                } else {
+                } else if (repo === window.scriptData.repo) {
                   // TODO: implement/allow clicks on directories
                   console.log(`calling viewFileAtCommit repo:${repo} filepath:${filepath} hash:${hash}`)
                   viewFileAtCommit(event, repo, filepath, hash, "search-results");
                 }
+                
 
                 // finally, close the autocomplete menu
                 console.log("closing autocomplete menu");
