@@ -1255,6 +1255,31 @@ a.link-button:hover {
           return window.location.pathname.split("/+/");
         }
 
+        // TODO: create a central function that can create urls, this is getting bad
+
+        function replacePathBreadcrumbs(newPath) {
+          var newPathElements = [];
+
+          var pathSplit = newPath.split("/");
+          for (var i = 0; i < pathSplit.length; i++) {
+            var pathPart = pathSplit[i];
+            var parentPath = pathSplit.slice(0, i).join("/");
+            var fullPath = parentPath;
+            if (parentPath.length > 0) {
+              fullPath += "/" + pathPart;
+            } else {
+              fullPath += pathPart;
+            }
+            var link = document.createElement("a");
+            link.href = window.location.pathname.replace(urlPathRegex, `/experimental/$1$2:${fullPath}`);
+            link.innerText = pathPart;
+            newPathElements.push(link);
+          }
+
+          console.log({ newPathElements });
+          document.getElementById("path-breadcrumbs").replaceChildren(...newPathElements);
+        }
+
         // var historyPanel = document.getElementsByClassName("lower-detail-content")[0];
         // TODO(xvandish): Switch to global handler so that we use less memory
         // TODO(xvandish): We need another query parameter for the following case:
@@ -1319,6 +1344,7 @@ a.link-button:hover {
           document.getElementById("filename").innerHTML = filename;
 
           // TODO(xvandish): replace the breadcrumbs
+          replacePathBreadcrumbs(path);
 
 
           // TODO(xvandish): replace the url part once we actually load via urls..
@@ -2193,6 +2219,7 @@ a.link-button:hover {
               handleHashChange(false);
             });
             window.addEventListener("hashchange", function (event) {
+              console.log("hashchange here");
               event.preventDefault();
               handleHashChange(true);
             });
@@ -2361,6 +2388,14 @@ a.link-button:hover {
           gitSearchBox.addEventListener("input", searchBranches);
 
 
+          console.log("hello");
+          window.addEventListener('locationchange', function () {
+              console.log('location changed!');
+          });
+        window.addEventListener("popstate", function (e) {
+          console.log("poppedstate");
+          initStateFromQueryParams();
+        });
 
 
           document.addEventListener("click", function (e) {
