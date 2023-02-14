@@ -514,7 +514,7 @@ a > * {
     position: absolute;
     padding-left: 10px;
     padding-bottom: 10px;
-    box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px;
 }
 
 #repo-selector-container {
@@ -571,14 +571,17 @@ a > * {
   top: 100%;
   left: 0;
   background-color: white;
-  width: 200px;
+  width: 360px;
   padding: 10px;
   min-height: 300px;
   max-height: 90vh;
   overflow: auto;
   font-family: monospace;
   z-index: 2;
-  box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  border-radius: 5px;
+  margin-top: 6px;
+  border: 1px solid #999;
 }
 
 #repo-autocomplete-menu #repos-resultarea .rlc {
@@ -645,11 +648,15 @@ a > * {
   width: 500px;
   padding: 10px;
   min-height: 300px;
-  max-height: 90vh;
+  max-height: 80vh;
   overflow: auto;
   font-family: monospace;
   z-index: 2;
-  box-shadow: rgb(149 157 165 / 20%) 0px 8px 24px;
+  /* #22 in css-box-shadow */
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  border-radius: 5px;
+  margin-top: 6px;
+  border: 1px solid black;
 }
 
 #git-content a {
@@ -1622,7 +1629,6 @@ a.link-button:hover {
                 autocompleteMenu.style.display = "none";
                 autocompleteMenuOpen = false;
               }
-
             }
 
           } 
@@ -1632,9 +1638,24 @@ a.link-button:hover {
               console.log("menu is open, closing");
               repoAutocompleteMenu.style.display = "none";
               repoAutocompleteMenuOpen = false;
+            } else if (event.target.hasAttribute("data-repo-name")){
+              console.log(event.target);
+              console.log(event.target.dataset.repoName);
+              console.log("button pressed. Asumming favorite repo click");
+              toggleRepoFavorite(event);
             } else {
                 console.log("click is inside of repo autocmplete");
               }
+          }
+
+          if (gitAutocompleteMenuOpen) {
+            if(!(gitSearchBoxContainer.contains(event.target))) {
+              console.log("git meno open, closing");
+              gitAutocompleteMenu.style.display = "none";
+              gitAutocompleteMenuOpen = false;
+            } else {
+              console.log("click is inside of git autocomplete");
+            }
           }
 
 
@@ -1775,6 +1796,7 @@ a.link-button:hover {
         var gitAutocompleteMenu;
         var gitAutocompleteMenuOpen = false;
         var gitSearchBox;
+        var gitSearchBoxContainer;
         var gitSearchTabsContainer;
         var lineNumberContainer;
         var root;
@@ -1958,6 +1980,7 @@ a.link-button:hover {
 
                 var ic = document.createElement("button");
                 ic.appendChild(im);
+                ic.dataset.repoName = tree.name;
                 c.appendChild(ic);
                 console.log("appending child");
                 linksContainer.appendChild(c);
@@ -2210,9 +2233,11 @@ a.link-button:hover {
           // add the remaining favorites to the repo-selector, assuming the user hasn't done a search yet
           // TODO:
           var favoritesContainer = document.getElementById("favorite-repos");
-
+  
+          console.log({ repos });
           for (var i = 0; i < repos.length; i++) {
             var repoName = repos[i];
+            console.log({ repoName });
             var c = document.createElement("div");
             c.classList.add("rlc");
             
@@ -2223,9 +2248,10 @@ a.link-button:hover {
 
             var ic = document.createElement("button");
             ic.classList.add("starred");
-            var i = document.createElement("div");
-            i.innerHTML = favoritesStarSvg;
-            ic.appendChild(i);
+            ic.dataset.repoName = repoName;
+            var icc = document.createElement("div");
+            icc.innerHTML = favoritesStarSvg;
+            ic.appendChild(icc);
             c.appendChild(ic);
 
             favoritesContainer.appendChild(c);
@@ -2238,24 +2264,20 @@ a.link-button:hover {
         // attempts to break it, thats on them.
         function toggleRepoFavorite(clickEvnt) {
           var repoName = clickEvnt.target.dataset.repoName; // we include the repoName as a data attribute on the star button
-          var favorites = window.localStorage.getItem("repo-favorites");
-          try {
-            favorites = JSON.parse(favorites);
-          } catch (err) {
-            console.error("failed to parse repo-favorites value. Starting fresh. Err:" + err);
-            favorites = {};
-          }
+          var favorites = getFavoritesFromLocalStorage();
 
-          if (clickEvnt.target.dataset.favorite == "true") {
+          if (!(clickEvnt.target.classList.contains("starred"))) {
             favorites[repoName] = 1;
-            clickEvnt.classList.add("starred");
+            clickEvnt.target.classList.add("starred");
+
+            // TODO: move the element (maybe the next time they close the list?)
           } else {
             delete favorites[repoName];
-            clickEvnt.classList.remove("starred");
+            clickEvnt.target.classList.remove("starred");
           }
 
           // store our updated favorites
-          window.locatStorage.setItem("repo-favorites", JSON.stringify(favorites));
+          window.localStorage.setItem("repo-favorites", JSON.stringify(favorites));
         }
 
         function getFavoritesFromLocalStorage() {
@@ -2264,6 +2286,10 @@ a.link-button:hover {
             favorites = JSON.parse(favorites);
           } catch (err) {
             console.error("failed to parse repo-favorites value. Starting fresh. Err:" + err);
+            favorites = {};
+          }
+
+          if (!favorites) {
             favorites = {};
           }
 
@@ -2292,6 +2318,7 @@ a.link-button:hover {
           gitAutocompleteMenu = document.getElementById("git-autocomplete-menu");
           gitSearchBox = document.getElementById("git-search-input");
           gitSearchTabsContainer = document.getElementById("git-tabs");
+          gitSearchBoxContainer = document.getElementById("git-selector-container");
           lineNumberContainer = document.querySelector(".file-content");
           root = document.querySelector(".file-content"); // TODO: this is identical to lineNumberContainer
 
