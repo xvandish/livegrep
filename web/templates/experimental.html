@@ -595,17 +595,18 @@ a > * {
   background-color: inherit;
 }
 
-#repo-autocomplete-menu #repos-resultarea .rlc button.starred img {
-  filter: invert(0);
+#repo-autocomplete-menu #repos-resultarea .rlc button.starred svg {
+  fill: #779fe9;
 }
 
 #repo-autocomplete-menu #repos-resultarea .rlc button:hover {
   background-color: #eaeaea;
 }
 
-#repo-autocomplete-menu #repos-resultarea .rlc button img {
+#repo-autocomplete-menu #repos-resultarea .rlc button svg {
   width: 15px;
   height: 15px;
+  stroke: #184d83;
 }
 
 #git-selector-container {
@@ -1859,7 +1860,11 @@ a.link-button:hover {
           } else {
             repoAutocompleteMenu.style.display = "initial";
             repoAutocompleteMenuOpen = true;
-            }
+            // for now, launch a new search every time to keep results up to date
+            // later on we can add a "haveDoneInitialSearch" repo to keep track
+            // of initialization
+            doRepoSearch();  
+          }
         }
 
         function toggleGitAutocompleteMenu() {
@@ -1875,12 +1880,17 @@ a.link-button:hover {
 
         // we do a simple search
         function doRepoSearch(inputEvnt) {
+          var searchQuery = ""; // initialize to empty search so we can manually call
+          
+          if (inputEvnt) {
+            searchQuery = inputEvnt.target.value;
+          }
           // take whatevers in the repo search box, append repo:
-          var searchQuery = inputEvnt.target.value;
 
           if (searchQuery.trim() === "") {
-            repoSearchResultsContainer.innerHTML = "";
-            return;
+            // search for/show all repos by doing a complete search
+            // ideally this would be updated so favorites aren't returned again
+            searchQuery = ".*";
           }
   
           // we call the v1 api to get json results
@@ -1902,10 +1912,23 @@ a.link-button:hover {
               // we want to display:
               // 1. the number of matching repos
               // 2. A list of the matching repos, as links
-              var cnt = document.createTextNode(`${treeResults.length} repo(s) found.`);
+              var numResults = treeResults.length;
               var linksContainer = document.createElement("div");
+              
+              // TODO: cache this
+              var favorites = getFavoritesFromLocalStorage();
+                console.log({ favorites });
+
               for (var i = 0; i < treeResults.length; i++) {
                 var tree = treeResults[i];
+
+                console.log(favorites[tree.name]);
+                // don't add this repo if its in favorites. It's already available
+                if (favorites[tree.name]) {
+                    numResults--;
+                    continue;
+                }
+
                 var c = document.createElement("div");
                 c.classList.add("rlc");
                 var l = document.createElement("a"); 
@@ -1914,8 +1937,8 @@ a.link-button:hover {
                 c.appendChild(l);
 
                 // now append a star 
-                var im = document.createElement("img");
-                im.src = "/assets/img/star.svg";
+                var im = document.createElement("div");
+                im.innerHTML = favoritesStarSvg;
 
                 var ic = document.createElement("button");
                 ic.appendChild(im);
@@ -1924,6 +1947,7 @@ a.link-button:hover {
                 linksContainer.appendChild(c);
               }
 
+              var cnt = document.createTextNode(`${numResults} repo(s) found.`);
               var ct = document.createElement("div");
               ct.appendChild(cnt);
               ct.appendChild(linksContainer);
@@ -2146,6 +2170,8 @@ a.link-button:hover {
 
         // ----------------------- Start of handling for favorite repos -------//
 
+        var favoritesStarSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>';
+
         // TODO: we're going to have to build a `-repo:favorite1|favorite2|` string so that
         // repos aren't duplicated in search results
         function loadRepoFavoritesFromLocalStorage() {
@@ -2181,8 +2207,8 @@ a.link-button:hover {
 
             var ic = document.createElement("button");
             ic.classList.add("starred");
-            var i = document.createElement("img");
-            i.src = "/assets/img/star.svg";
+            var i = document.createElement("div");
+            i.innerHTML = favoritesStarSvg;
             ic.appendChild(i);
             c.appendChild(ic);
 
@@ -2214,6 +2240,18 @@ a.link-button:hover {
 
           // store our updated favorites
           window.locatStorage.setItem("repo-favorites", JSON.stringify(favorites));
+        }
+
+        function getFavoritesFromLocalStorage() {
+          var favorites = window.localStorage.getItem("repo-favorites");
+          try {
+            favorites = JSON.parse(favorites);
+          } catch (err) {
+            console.error("failed to parse repo-favorites value. Starting fresh. Err:" + err);
+            favorites = {};
+          }
+
+          return favorites;
         }
 
 
