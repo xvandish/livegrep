@@ -654,7 +654,6 @@ a > * {
 
 #git-content a {
   padding: 5px;
-  display: block;
 }
 
 #git-content a:hover {
@@ -709,6 +708,17 @@ a.link-button:hover {
   background-color: #eaeaea;
 }
 
+.flex-link {
+  display: flex;
+  justify-content: space-between;
+}
+
+.flex-link span:first-of-type {
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 </style>
 
@@ -832,12 +842,18 @@ a.link-button:hover {
                       <div id="git-branches-container">
                       {{ range .Branches }}
                       <!-- the following urls will be updated when the current file being viewed changes -->
-                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}" data-shown="true">{{.Name}}</a>
+                      <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}" data-shown="true" class="flex-link">
+                        <span>{{.Name}}</span>
+                        <span>{{.LastActivityDate}}</span>
+                      </a>
                       {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
                       {{ range .Tags }}
-                        <a href="/experimental/{{$repo}}/{{.Name}}">{{.Name}}</a>
+                      <a href="/experimental/{{$repo}}/{{.Name}}" class="flex-link">
+                        <span>{{.Name}}</span>
+                        <span>{{.LastActivityDate}}</span>
+                      </a>
                       {{ end }}
                       <span>Here are my tags</span>
                       </div>

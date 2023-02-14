@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1662,11 +1663,21 @@ func resolveLeftAndRightDiffs() {
 // TODO(xvandish): Would be cool to eventually diff arbitratry files across repos.
 // Could be useful for comparing a file that initiated in a different repo
 
-var refFormat = "%(HEAD)%00%(refname:short)"
+var refFormat = "%(HEAD)%00%(authordate:human)%00%(refname:short)"
+var sortFormat = "authordate"
+
+//panic if s is not a slice
+func ReverseSlice(s interface{}) {
+	size := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, size-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
+}
 
 func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "refs/heads")
+	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -1687,17 +1698,39 @@ func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	scanner.Buffer(buf, maxCapacity)
 
 	branches := make([]api.GitBranch, 0)
+	headIdx := -1
+	idx := 0
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), "\x00")
-		branches = append(branches, api.GitBranch{Name: words[1], IsHead: words[0] == "*"})
+		isHead := words[0] == "*"
+		branches = append(branches, api.GitBranch{Name: words[2], IsHead: isHead, LastActivityDate: words[1]})
+		if isHead {
+			headIdx = idx
+		}
+		idx += 1
 	}
+
+	// now, somehow, move teh headIdx from where it is to the end of the list
+	if headIdx != len(branches)-1 {
+		// need to modify branches here
+		tmp := branches[headIdx]
+		branches = append(branches[:headIdx], branches[headIdx+1:]...)
+		branches = append(branches, tmp)
+	}
+
+	// git sorts for date by us, but in descending order
+	// we want ascending, and for now rather than parsing the date ourselves,
+	// we're just going to reverse the slice
+	ReverseSlice(branches)
+
+	// now, finally, add the HEAD/default branch to the top
 
 	return branches, nil
 }
 
 func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "refs/tags")
+	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -1720,8 +1753,10 @@ func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	tags := make([]api.GitTag, 0)
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), "\x00")
-		tags = append(tags, api.GitTag{Name: words[1], IsHead: words[0] == "*"})
+		tags = append(tags, api.GitTag{Name: words[2], IsHead: words[0] == "*", LastActivityDate: words[1]})
 	}
+
+	ReverseSlice(tags)
 
 	return tags, nil
 }
