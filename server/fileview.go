@@ -1762,6 +1762,7 @@ func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	return tags, nil
 }
 
+// TODO: rename these to make it clear these belong to the hunks
 type GitDiffLineType int
 
 const (
@@ -1769,6 +1770,8 @@ const (
 	AddLine
 	DeleteLine
 	HunkLine
+	NoTrailingNewlineLine // used to indicate that the previous line has no trailing newline
+	UnknownLine
 )
 
 type GitDiffLine struct {
@@ -1983,13 +1986,80 @@ func parseGitDiffHunkHeader(headerLine []byte) (*GitDiffHunkHeader, error) {
 	}, nil
 }
 
+// const DiffPrefixAdd = '+' as const
+// const DiffPrefixDelete = '-' as const
+// const DiffPrefixContext = ' ' as const
+// const DiffPrefixNoNewline = '\\' as const
+
+// type DiffLinePrefix =
+//   | typeof DiffPrefixAdd
+//   | typeof DiffPrefixDelete
+//   | typeof DiffPrefixContext
+//   | typeof DiffPrefixNoNewline
+// const DiffLinePrefixChars: Set<DiffLinePrefix> = new Set([
+//   DiffPrefixAdd,
+//   DiffPrefixDelete,
+//   DiffPrefixContext,
+//   DiffPrefixNoNewline,
+// ])
+
+// linePrefixes is the set of all characters a valid line in a diff
+// hunk can start with. '\' can appear in diffs when no newline is
+// present at the end of a file.
+// See: 'http://www.gnu.org/software/diffutils/manual/diffutils.html#Incomplete-Lines'
+var linePrefixes = []byte{' ', '-', '+', '\\'}
+
+// linePrefix returns true if 'c' is in 'linePrefixes'.
+func isValidDiffLinePrefix(c byte) bool {
+	for _, p := range linePrefixes {
+		if p == c {
+			return true
+		}
+	}
+	return false
+}
+
+// type DiffLinePrefix []byte
+
+var (
+	DiffPrefixAdd       = []byte("+")
+	DiffPrefixDelete    = []byte("-")
+	DiffPrefixContext   = []byte(" ")
+	DiffPrefixNoNewline = []byte("\\")
+	DiffPrefixUnknown   = []byte("NANA")
+)
+
+func getDiffLineType(line []byte) GitDiffLineType {
+	if bytes.HasPrefix(line, DiffPrefixAdd) {
+		return AddLine
+	}
+	if bytes.HasPrefix(line, DiffPrefixDelete) {
+		return DeleteLine
+	}
+	if bytes.HasPrefix(line, DiffPrefixContext) {
+		return ContextLine
+	}
+	if bytes.HasPrefix(line, DiffPrefixNoNewline) {
+		return NoTrailingNewlineLine
+	}
+
+	return UnknownLine
+}
+
 func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
 	input.Scan()
 	headerLine := input.Bytes()
+
+	// if nothing left to process, exit
+	if len(headerLine) == 0 {
+		return nil
+	}
+
 	header, err := parseGitDiffHunkHeader(headerLine)
 
 	if err != nil {
 		fmt.Printf("err=%v\n", err)
+		return nil
 	}
 
 	fmt.Printf("gitDiffHunkHeader: %+v\n", header)
@@ -2008,7 +2078,60 @@ func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
 		Lines:  lines,
 		Header: *header,
 	}
-	// now,
+
+	// now, parse the
+	for input.Scan() {
+		line := input.Bytes()
+
+		lineType := getDiffLineType(line)
+		if lineType == UnknownLine {
+			fmt.Printf("line=%s has invalid prefix:%s\n", string(line), string(line[0]))
+			break
+		}
+
+		// A marker indicating that the last line in the original or the new file
+		// is missing a trailing newline. In other words, the presence of this marker
+		// means that the new and/or original file lacks a trailing newline.
+		//
+		// When we find it we have to look up the previous line and set the
+		// noTrailingNewLine flag
+		if lineType == NoTrailingNewlineLine {
+			if len(line) < 12 {
+				fmt.Printf("Expected no-newline-marker to be 12bytes long")
+				break
+			}
+			// tell the previous line that there is no trailing newline
+			lines[len(lines)-1].NoTrailingNewline = true
+			continue
+		}
+
+		var diffLine *GitDiffLine
+		if lineType == AddLine {
+			diffLine = &GitDiffLine{
+				Text: string(line),
+				Type: AddLine,
+			}
+		} else if lineType == DeleteLine {
+			diffLine = &GitDiffLine{
+				Text: string(line),
+				Type: DeleteLine,
+			}
+		} else if lineType == ContextLine {
+			diffLine = &GitDiffLine{
+				Text: string(line),
+				Type: ContextLine,
+			}
+		}
+
+		// append this new line to the hunk
+		hunk.Lines = append(hunk.Lines, *diffLine)
+
+	}
+
+	if len(hunk.Lines) == 1 {
+		log.Printf("error. malformed hunk\n")
+	}
+
 	return hunk
 }
 
@@ -2041,22 +2164,28 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 		return nil
 	}
 
-	diff.IsBinary = header.IsBinary
+	// todo: Everytime we call input.Scan(), append to a buffer
+	// so we have the entirety of the diff text in a single buffer
+	// we can attatch to the diff. If we're never going to use it, no
+	// point going to the trouble though
+	diff.IsBinary = header.IsBinary // always false but eh
 
 	// then, parse all hunks until none left
 	hunks := make([]*GitDiffHunk, 0)
 	for {
 		hunk := parseGitDiffHunk(input)
+		if hunk == nil {
+			break
+		}
 		fmt.Printf("hunk=%+v\n", hunk)
 		hunks = append(hunks, hunk)
-		break
 	}
 
 	diff.Hunks = hunks
 
 	fmt.Printf("diff: %+v\n", diff)
 
-	return nil
+	return diff
 }
 
 // this version of the function is going to just parse the output of git diff and attempt
