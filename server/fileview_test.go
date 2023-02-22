@@ -68,5 +68,29 @@ func TestParseUnifiedGitDiff(t *testing.T) {
 	buf := make([]byte, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 
-	parseGitUnifiedDiff(scanner)
+	diff := parseGitUnifiedDiff(scanner)
+	if diff == nil {
+		t.Errorf("diff is nil. should not be. diff=%+v\n", diff)
+	}
+
+	if diff.IsBinary {
+		t.Errorf("diff marked as binary but should not be. Diff=%+v\n", diff)
+	}
+	if len(diff.Hunks) != 1 {
+		t.Errorf("Expected 1 hunk but got %d\n", len(diff.Hunks))
+	}
+
+	onlyHunk := diff.Hunks[0]
+	if len(onlyHunk.Lines) != 8 {
+		t.Errorf("Expected 8 hunk lines but got: %d. hunk=%+v\n", len(onlyHunk.Lines), onlyHunk)
+	}
+
+	// we could test the content of each hunk line by line but... eh.
+
+	// test that the first line of the hunk is a hunk line
+	if onlyHunk.Lines[0].Type != HunkLine {
+		t.Errorf("the first line should always be a hunk line. hunk=%+v\n", onlyHunk)
+	}
+
+	// there should be one deleted line and one added line
 }

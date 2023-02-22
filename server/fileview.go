@@ -2152,6 +2152,7 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 	diff := &GitDiff{}
 
 	// parse the header
+	// TODO: return the text content of the header
 	header, err := parseGitDiffHeader(input)
 
 	fmt.Printf("header: %v err:%v\n", header, err)
