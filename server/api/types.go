@@ -171,11 +171,13 @@ type SplitDiff struct {
 }
 
 type GitBranch struct {
-	Name   string
-	IsHead bool
+	Name             string
+	IsHead           bool
+	LastActivityDate string
 }
 
 type GitTag struct {
-	Name   string
-	IsHead bool
+	Name             string
+	IsHead           bool
+	LastActivityDate string
 }

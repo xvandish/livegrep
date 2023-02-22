@@ -836,7 +836,7 @@ a.link-button:hover {
                     On the right we want the results.
                     At the top, a search filter -->
                     <div>
-                      <input type="text" placeholder="Search.." id="git-search-input" />
+                      <input type="text" placeholder="TODO" id="git-search-input" />
                     </div>
                     <div>
                       <ul id="git-tabs">
@@ -862,13 +862,15 @@ a.link-button:hover {
                         <span>{{.LastActivityDate}}</span>
                       </a>
                       {{ end }}
-                      <span>Here are my tags</span>
+                      {{ if not .Tags }}
+                        <span>This repo does not have any tags</span>
+                      {{ end }}
                       </div>
                       <!-- In the case that there are a lot of commits, we lazy load
                       this infomration, unlike branches/tags, which are loaded on
                       page load -->
                       <div id="git-commits-container" class="hidden">
-                      <span>Here are my commits</span>
+                      <span>Not Yet Implemented</span>
                       </div>
                     </div>
                 </div>

@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -1759,4 +1760,352 @@ func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	ReverseSlice(tags)
 
 	return tags, nil
+}
+
+type GitDiffLineType int
+
+const (
+	ContextLine GitDiffLineType = iota + 1
+	AddLine
+	DeleteLine
+	HunkLine
+)
+
+type GitDiffLine struct {
+	Text string
+	Type GitDiffLineType
+	// Line number in the original diff patch (before expanding it), or null if
+	// it was added as part of a diff expansion action.
+	OriginalLineNumber int
+	OldLineNumber      int
+	NewLineNumber      int
+	NoTrailingNewline  bool
+}
+
+func (gl GitDiffLine) isIncudableLine() bool {
+	return gl.Type == AddLine || gl.Type == DeleteLine
+}
+
+/** The content of the line, i.e., without the line type marker. */
+func (gl GitDiffLine) content() string {
+	return gl.Text[1:]
+}
+
+type GitDiffHunkHeader struct {
+	OldStartLine int // The line in the old (or original) file where this diff hunk starts.
+	OldLineCount int // The number of lines in the old (or original) file that this diff hunk covers
+	NewStartLine int // The line in the new file where this diff hunk starts.
+	NewLineCount int // The number of lines in the new file that this diff hunk covers.
+}
+
+func (h GitDiffHunkHeader) toString() string {
+	return fmt.Sprintf("@@ -%d,%d +%d,%d @@", h.OldStartLine, h.OldLineCount, h.NewStartLine, h.NewLineCount)
+}
+
+type DiffHunkExpansionType int
+
+const (
+	/** The hunk header cannot be expanded at all. */
+	None DiffHunkExpansionType = iota + 1
+
+	/**
+	* The hunk header can be expanded up exclusively. Only the first hunk can be
+	* expanded up exclusively.
+	 */
+	Up
+
+	/**
+	* The hunk header can be expanded down exclusively. Only the last hunk (if
+	* it's the dummy hunk with only one line) can be expanded down exclusively.
+	 */
+	Down
+
+	/** The hunk header can be expanded both up and down. */
+	Both
+
+	/**
+	* The hunk header represents a short gap that, when expanded, will
+	* result in merging this hunk and the hunk above.
+	 */
+	Short
+)
+
+type GitDiffHunk struct {
+	// The details from the diff hunk header about the line start and patch length
+	Header GitDiffHunkHeader
+	// The contents - context and changes - of the diff section.
+	Lines []GitDiffLine
+	// The diff hunk's start position in the overall file diff.
+	UnifiedDiffStart int
+	// The diff hunk's end position in the overall file diff.
+	UnifiedDiffEnd int
+	ExpansionType  DiffHunkExpansionType
+}
+
+type GitDiffHeader struct {
+	IsBinary bool
+}
+
+// Diff is also a GitDiff, but I don't want to modify it right now
+// Same as IRawDiff in GithubDesktop
+type GitDiff struct {
+	/**
+	 * The plain text contents of the diff header. This contains
+	 * everything from the start of the diff up until the first
+	 * hunk header starts. Note that this does not include a trailing
+	 * newline.
+	 */
+	Header string
+	/**
+	 * The plain text contents of the diff. This contains everything
+	 * after the diff header until the last character in the diff.
+	 *
+	 * Note that this does not include a trailing newline nor does
+	 * it include diff 'no newline at end of file' comments. For
+	 * no-newline information, consult the DiffLine noTrailingNewLine
+	 * property.
+	 */
+	Contents string
+
+	/**
+	 * Each hunk in the diff with information about start, and end
+	 * positions, lines and line statuses.
+	 */
+	Hunks []*GitDiffHunk
+
+	/**
+	* Whether or not the unified diff indicates that the contents
+	* could not be diffed due to one of the versions being binary.
+	 */
+	IsBinary bool
+
+	/** The largest line number in the diff */
+	MaxLineNumber int
+
+	/** Whether or not the diff has invisible bidi characters */
+	HasHiddenBidiChars bool
+}
+
+/**
+* Parse the diff header, meaning everything from the
+* start of the diff output to the end of the line beginning
+* with +++
+*
+* Example diff header:
+*
+*   diff --git a/app/src/lib/diff-parser.ts b/app/src/lib/diff-parser.ts
+*   index e1d4871..3bd3ee0 100644
+*   --- a/app/src/lib/diff-parser.ts
+*   +++ b/app/src/lib/diff-parser.ts
+*
+* Returns an object with information extracted from the diff
+* header (currently whether it's a binary patch) or null if
+* the end of the diff was reached before the +++ line could be
+* found (which is a valid state).
+ */
+func parseGitDiffHeader(input *bufio.Scanner) (*GitDiffHeader, error) {
+	// TODO: not sure this really needs to do anything...
+	for input.Scan() {
+		line := input.Bytes()
+		if bytes.HasPrefix(line, []byte("Binary files ")) && bytes.HasSuffix(line, []byte("differ")) {
+			return &GitDiffHeader{IsBinary: true}, nil
+		}
+
+		if bytes.HasPrefix(line, []byte("+++")) {
+			return &GitDiffHeader{IsBinary: false}, nil
+		}
+	}
+
+	if err := input.Err(); err != nil {
+		return nil, err
+	}
+
+	// if we never found the +++, it's not an error
+	// (diff of empty file)
+	return nil, nil
+}
+
+// https://en.wikipedia.org/wiki/Diff_utility
+//
+// @@ -l,s +l,s @@ optional section heading
+//
+// The hunk range information contains two hunk ranges. The range for the hunk of the original
+// file is preceded by a minus symbol, and the range for the new file is preceded by a plus
+// symbol. Each hunk range is of the format l,s where l is the starting line number and s is
+// the number of lines the change hunk applies to for each respective file.
+//
+// In many versions of GNU diff, each range can omit the comma and trailing value s,
+// in which case s defaults to 1
+var diffHeaderRe = regexp.MustCompile("^@@ -(\\d+),?(\\d*) \\+(\\d+),?(\\d*) @@")
+
+func numberFromGroup(input []byte, df int) int {
+	var s int64
+	// TODO: not right. Returning -27 instead of 7
+	s, n := binary.Varint(input)
+	if n != len(input) {
+		return df
+	}
+	return int(s)
+}
+
+/**
+ * Parses a hunk header or throws an error if the given line isn't
+ * a well-formed hunk header.
+ *
+ * We currently only extract the line number information and
+ * ignore any hunk headings.
+ *
+ * Example hunk header (text within ``):
+ *
+ * `@@ -84,10 +82,8 @@ export function parseRawDiff(lines: ReadonlyArray<string>): Diff {`
+ *
+ * Where everything after the last @@ is what's known as the hunk, or section, heading
+ */
+func parseGitDiffHunkHeader(headerLine []byte) (*GitDiffHunkHeader, error) {
+	h := diffHeaderRe.FindSubmatch(headerLine)
+
+	if h == nil {
+		return nil, errors.New(fmt.Sprintf("Invalid patch string: %s\n", string(headerLine)))
+	}
+
+	fmt.Printf("h[1]=%s h[2]=%s h[3]=%s h[4]=%s \n", string(h[1]), string(h[2]), string(h[3]), string(h[4]))
+	// If endLines are missing default to 1, see diffHeaderRe docs
+	oldStartLine := numberFromGroup(h[1], 0)
+	oldLineCount := numberFromGroup(h[2], 1)
+	newStartLine := numberFromGroup(h[3], 0)
+	newLineCount := numberFromGroup(h[4], 1)
+
+	return &GitDiffHunkHeader{
+		OldStartLine: oldStartLine,
+		OldLineCount: oldLineCount,
+		NewStartLine: newStartLine,
+		NewLineCount: newLineCount,
+	}, nil
+}
+
+func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
+	input.Scan()
+	headerLine := input.Bytes()
+	header, err := parseGitDiffHunkHeader(headerLine)
+
+	if err != nil {
+		fmt.Printf("err=%v\n", err)
+	}
+
+	fmt.Printf("gitDiffHunkHeader: %+v\n", header)
+
+	lines := make([]GitDiffLine, 0)
+	lines = append(lines, GitDiffLine{
+		Text:               string(headerLine),
+		Type:               HunkLine,
+		OriginalLineNumber: 1,
+		OldLineNumber:      0,
+		NewLineNumber:      0,
+		NoTrailingNewline:  false,
+	})
+
+	hunk := &GitDiffHunk{
+		Lines:  lines,
+		Header: *header,
+	}
+	// now,
+	return hunk
+}
+
+/**
+* Parse a well-formed unified diff into hunks and lines.
+*
+* @param text A unified diff produced by git diff, git log --patch
+*             or any other git plumbing command that produces unified
+*             diffs.
+ */
+// we're already doing this.. maybe I should just keep doing it my way
+// we can improve my way, but I really don't like the way that others are doing it
+// this function should work for 1..n diffs, that way we can use it for diffs of a single
+// file or for an entire commit
+func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
+	fmt.Printf("hello from parseGitUnifiedDiff\n")
+
+	diff := &GitDiff{}
+
+	// parse the header
+	header, err := parseGitDiffHeader(input)
+
+	fmt.Printf("header: %v err:%v\n", header, err)
+	if err != nil {
+		return nil
+	}
+
+	if header.IsBinary {
+		fmt.Printf("binary not handled rn\n")
+		return nil
+	}
+
+	diff.IsBinary = header.IsBinary
+
+	// then, parse all hunks until none left
+	hunks := make([]*GitDiffHunk, 0)
+	for {
+		hunk := parseGitDiffHunk(input)
+		fmt.Printf("hunk=%+v\n", hunk)
+		hunks = append(hunks, hunk)
+		break
+	}
+
+	diff.Hunks = hunks
+
+	fmt.Printf("diff: %+v\n", diff)
+
+	return nil
+}
+
+// this version of the function is going to just parse the output of git diff and attempt
+// to put it in a data structure that makes sense as a split half
+// it MAY:
+//	1. use the patience algorithm instead of myers
+// it PROBABLY WONT:
+//  1. Attempt to add context that can be collapsed
+func generateSplitDiffForFileV2(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*api.SplitDiff, error) {
+
+	// TODO: we can rebuild this function so that we do a diff against
+	// first parent when necessary, instead of having newRev be calculated
+	// by someone before us
+	args := []string{
+		"-C",
+		repo.Path,
+		"diff",
+		oldRev,
+		newRev,
+	}
+
+	if hideWhitespace {
+		args = append(args, "-w")
+	}
+
+	args = append(args, "-z", "--no-color", "--", relativePath)
+
+	// git -C somePath diff oldHash newHash -z --no-color -- pathToFile
+	cmd := exec.Command("git", args...)
+
+	stdout, err := cmd.StdoutPipe()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(stdout)
+
+	const maxCapacity = 100 * 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+	// scanner.Split(ScanGitShowEntry) // read null byte delimited
+
+	parseGitUnifiedDiff(scanner)
+
+	return nil, nil
 }

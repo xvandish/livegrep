@@ -535,6 +535,13 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	// io.WriteString(w, fmt.Sprintf("<html><body><div style=\"display:flex; gap:10px\">%s%s</div></body></html>", left, right))
 }
 
+// the fileviewer requests the repos it can use from the server, rather than the
+// cs backend because the fileviewer is still not set up to update its list of repos
+// when the index changes, so if we try to open a repo that the cs backend thinks is
+// valid, but the server does not we'll error out.
+// So instead, we stick with the safe method of asking the server whats up
+// TODO: Finish that PR up that dynamically updates the webserver with the cs repos
+
 // TODO: allow this page to be rendered when no branch is passed. In that case, we should
 // figure out HEAD, then pass that to buildFileData
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -960,6 +967,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
 	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
 	m.Add("GET", "/api/v2/json/git-ls-tree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeJson))
+	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))
 
 	var h http.Handler = m
 
@@ -1024,3 +1032,26 @@ func getRepoPathFromURL(repoRegex *regexp.Regexp, url, pathPrefix string) (repo 
 
 	return matches[1], matches[2], nil
 }
+
+// working thoughts ---
+// context: client -> webserver (Go) -> codesearch (c++)
+//  fileviewer is implemented entirely in webserver/Go
+//  search is implemented entirely in codesearch, webserver is just the wrapper that renders results
+//
+// when we want to highlight the matches of a query within a file, we'd like
+// to not redo the search. However, a search may have timed out, e.g all matches
+// within a file may not have completed. We could of course cache or not based on that basis (timed_out or not).
+//
+// The brute force method, when a query is present in a fileviewer request
+// with the `?q={}` param, is for the webserver to do the search by using the golang regexp package to do a search
+// The good news is that golang/regepx uses the same RE2 syntax. The bad news is that results may be slightly different than the codesearch backend ones, as the fold_case and is_regex params have the ability to tune the search query.
+//
+// The most consistent way would be to simply repeat the query to codesearch again, but filter for the exact path, and with an extremely high number of max_matches, in case the search is for something simple like `t`. Additionally, we should design an api that only returns match bounds for matches, so that we don't bloat the payload with information we're not going to use. That does not need to happen at first.
+
+// if we just rely on codesearch, we should also make it so the local Find box also reaches out to codesearch, rather than using a local js regex find, to avoid confusing/conflicting results between the two regex implementations.
+
+// a difficulty in actually highlighting matches for a query in a file is syntax highlighting messing everything up.
+// a document is rendered as a table of lineNums and lines
+// each line is split into `n` spans, not into a simple <pre>lineText</pre>
+// when we have a range of text we want to highlight, that text may be split into `n` spans!! That means that we cannot just easily add/remove <mark></mark> tags around the text content at specific positions.
+// The good news is the spans do not modify the text. So, possibly, we could have a presentation layer under the fileviewer, and when a range is highlighted we can use a css blend filter to have the highlight color blend with the syntax highlighted content.
