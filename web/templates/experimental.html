@@ -1093,7 +1093,7 @@ a.link-button:hover {
         async function loadHistory() {
           // always fetch history at head, in case someone is viewing the file at a non head link, that way 
           // they'll see future history and be able to navigate to it
-          var gitHistory = await fetch(`/api/v2/json/git-log/${window.scriptData.repo}/HEAD/${window.scriptData.filepath}`)
+              var gitHistory = await fetch(`/api/v2/json/git-log/${window.scriptData.repo}/${window.scriptData.repoCommit}/${window.scriptData.filepath}`)
                 .then(r => r.json())
                 .then(r => r);
           console.log({ gitHistory });
