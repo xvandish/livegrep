@@ -3,7 +3,6 @@ package fileviewer
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -1943,13 +1942,15 @@ func parseGitDiffHeader(input *bufio.Scanner) (*GitDiffHeader, error) {
 var diffHeaderRe = regexp.MustCompile("^@@ -(\\d+),?(\\d*) \\+(\\d+),?(\\d*) @@")
 
 func numberFromGroup(input []byte, df int) int {
-	var s int64
 	// TODO: not right. Returning -27 instead of 7
-	s, n := binary.Varint(input)
-	if n != len(input) {
-		return df
+	// while byte -> string -> int may seem inneficient, it takes
+	// <100ns normally
+	defer timeTrack(time.Now(), "numberFromGroup")
+	intVal, err := strconv.Atoi(string(input))
+	if err != nil {
+		intVal = df
 	}
-	return int(s)
+	return intVal
 }
 
 /**
@@ -1978,6 +1979,8 @@ func parseGitDiffHunkHeader(headerLine []byte) (*GitDiffHunkHeader, error) {
 	oldLineCount := numberFromGroup(h[2], 1)
 	newStartLine := numberFromGroup(h[3], 0)
 	newLineCount := numberFromGroup(h[4], 1)
+
+	fmt.Printf("oldStartLine=%d oldLineCount=%d newStartLine=%d newLineCount=%d\n", oldStartLine, oldLineCount, newStartLine, newLineCount)
 
 	return &GitDiffHunkHeader{
 		OldStartLine: oldStartLine,
@@ -2047,9 +2050,39 @@ func getDiffLineType(line []byte) GitDiffLineType {
 	return UnknownLine
 }
 
-func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
-	input.Scan()
-	headerLine := input.Bytes()
+// TODO: this only works to parse a single hunk.
+// why? because the loop that scans hunk lines will bail out when it
+// encounters a @@ line that signifies the start of the next hunk
+// so we return, call parseGitDiffHunk again - but! we call input.scan()
+// right away, which forwards us past the hunk header, which means that we
+// fail out immediately.
+
+// options - check if the current line is a header. If not, advance and re-check
+// parseGitDiffHunk can return whether to advance or not on the next
+
+type HunkScanner struct {
+	input          *bufio.Scanner
+	nextHunkHeader []byte
+}
+
+func parseGitDiffHunk(hs *HunkScanner) *GitDiffHunk {
+	fmt.Printf("in parseGitDiffHunk\n")
+	var headerLine []byte
+
+	// if we encountered a hunk header the last time we were processing,
+	// use it, then empty it out
+	if hs.nextHunkHeader != nil {
+		fmt.Printf("hs.nextHunkHeader != nil. hs.nextHunkHeader=%s\n", string(hs.nextHunkHeader))
+		headerLine = hs.nextHunkHeader
+		hs.nextHunkHeader = nil
+		fmt.Printf("headerLineInner=%s\n", string(headerLine))
+	} else {
+		fmt.Printf("scanning\n")
+		hs.input.Scan()
+		headerLine = hs.input.Bytes()
+	}
+
+	fmt.Printf("headerLine=%s\n", string(headerLine))
 
 	// if nothing left to process, exit
 	if len(headerLine) == 0 {
@@ -2058,12 +2091,12 @@ func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
 
 	header, err := parseGitDiffHunkHeader(headerLine)
 
+	fmt.Printf("header=%s\n", header.toString())
+
 	if err != nil {
 		fmt.Printf("err=%v\n", err)
 		return nil
 	}
-
-	fmt.Printf("gitDiffHunkHeader: %+v\n", header)
 
 	lines := make([]GitDiffLine, 0)
 	lines = append(lines, GitDiffLine{
@@ -2075,18 +2108,28 @@ func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
 		NoTrailingNewline:  false,
 	})
 
+	fmt.Printf("gitDiffHunkLine: %s\n", lines[0].Text)
+
 	hunk := &GitDiffHunk{
 		Lines:  lines,
 		Header: *header,
 	}
 
+	rollingDiffBeforeCounter := header.OldStartLine
+	rollingDiffAfterCounter := header.NewStartLine
+
 	// now, parse the
-	for input.Scan() {
-		line := input.Bytes()
+	for hs.input.Scan() {
+		line := hs.input.Bytes()
 
 		lineType := getDiffLineType(line)
 		if lineType == UnknownLine {
-			fmt.Printf("line=%s has invalid prefix:%s\n", string(line), string(line[0]))
+			if diffHeaderRe.Match(line) {
+				fmt.Printf("found the next hunk header, storing it. header=%s\n", string(line))
+				hs.nextHunkHeader = line
+			} else {
+				fmt.Printf("line=%s has invalid prefix:%s\n", string(line), string(line[0]))
+			}
 			break
 		}
 
@@ -2106,22 +2149,32 @@ func parseGitDiffHunk(input *bufio.Scanner) *GitDiffHunk {
 			continue
 		}
 
+		// TODO: add the freaking line numbers
+		// DOH!!
 		var diffLine *GitDiffLine
 		if lineType == AddLine {
 			diffLine = &GitDiffLine{
-				Text: string(line),
-				Type: AddLine,
+				Text:          string(line),
+				Type:          AddLine,
+				NewLineNumber: rollingDiffAfterCounter,
 			}
+			rollingDiffAfterCounter += 1
 		} else if lineType == DeleteLine {
 			diffLine = &GitDiffLine{
-				Text: string(line),
-				Type: DeleteLine,
+				Text:          string(line),
+				Type:          DeleteLine,
+				OldLineNumber: rollingDiffBeforeCounter,
 			}
+			rollingDiffBeforeCounter += 1
 		} else if lineType == ContextLine {
 			diffLine = &GitDiffLine{
-				Text: string(line),
-				Type: ContextLine,
+				Text:          string(line),
+				Type:          ContextLine,
+				OldLineNumber: rollingDiffBeforeCounter,
+				NewLineNumber: rollingDiffAfterCounter,
 			}
+			rollingDiffBeforeCounter += 1
+			rollingDiffAfterCounter += 1
 		}
 
 		// append this new line to the hunk
@@ -2173,19 +2226,29 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 	diff.IsBinary = header.IsBinary // always false but eh
 
 	// then, parse all hunks until none left
+	hunkScanner := &HunkScanner{
+		input: input,
+	}
 	hunks := make([]*GitDiffHunk, 0)
 	for {
-		hunk := parseGitDiffHunk(input)
+		hunk := parseGitDiffHunk(hunkScanner)
 		if hunk == nil {
 			break
 		}
-		fmt.Printf("hunk=%+v\n", hunk)
+		// fmt.Printf("hunk=%+v\n", hunk)
 		hunks = append(hunks, hunk)
 	}
 
 	diff.Hunks = hunks
 
-	fmt.Printf("diff: %+v\n", diff)
+	// fmt.Printf("diff: %+v\n", diff)
+
+	// for debugging, loop through every hunk and line and print line numbers
+	for _, hunk := range diff.Hunks {
+		for _, line := range hunk.Lines {
+			fmt.Printf("newLineNumber=%d oldLineNumber=%d originalLineNumber=%d\n", line.NewLineNumber, line.OriginalLineNumber, line.OriginalLineNumber)
+		}
+	}
 
 	return diff
 }
@@ -2240,6 +2303,9 @@ func GetDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRe
 
 	return diff, nil
 }
+
+// the following is all presentation code - used to generate the rows for a split
+// diff. IDiffRow isDiffRow is hacky way around Go's lack on union types
 
 type IDiffRow interface {
 	isDiffRow()
@@ -2494,6 +2560,7 @@ func getModifiedDiffRows(addedOrDeletedLines []GitDiffLine) []IDiffRow {
 		addedLine := addedLines[modifiedRowIdx]
 		deletedLine := deletedLines[modifiedRowIdx]
 
+		fmt.Printf("deletedLineNum=%d newLineNume=%d\n", deletedLine.OriginalLineNumber, addedLine.NewLineNumber)
 		rows = append(rows, IDiffRowModified{
 			Type: ModifiedLine,
 			BeforeData: IDiffRowData{
