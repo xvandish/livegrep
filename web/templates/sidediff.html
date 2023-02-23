@@ -47,24 +47,67 @@
         background-color: #fff2f2;
       }
 
+      table td.num-deletion {
+        color: white;
+        background-color: #da3633
+      }
+
+      table td.code-deletion {
+        background-color: rgba(248,81,73,0.15);
+      }
+
+      table td.num-addition {
+        background-color: rgba(63,185,80,0.3);
+        color: white;
+      }
+
+      table td.code-addition {
+        background-color: rgba(46,160,67,0.15);
+      } 
+
     </style>
   </head>
 
   <body>
 
     {{ with .Data }}
-    <div class="diff-wrapper">
-      {{ with .LeftDiff }}
-      <div class="left">
-        {{ renderSplitDiffHalf . }}
-      </div>
-      {{ end }}
-      {{ with .RightDiff }}
-      <div class="right">
-        {{ renderSplitDiffHalf . }}
-      </div>
-      {{ end }}
-    </div>
+      <table>
+          <tbody>
+          {{ range .DiffRows }} 
+            {{ $rowType := . | getDiffRowType }}
+            {{ $cls := $rowType | getClassFromRowType }}
+            <tr class="{{$cls}}">
+              {{ if (eq $rowType "hunk") }}
+              <td>...</td><td colspan="3">{{ .Content }}</td>
+              {{ else if (eq $rowType "modified") }}
+                <td class="num-deletion">{{ .BeforeData.LineNumber }}</td>
+                <td class="code-deletion">{{ .BeforeData.Content }}</td>
+                <td class="num-addition">{{ .AfterData.LineNumber }}</td>
+                <td class="code-addition">{{ .AfterData.Content }}</td>
+              {{ else if (eq $rowType "deleted") }}
+                <td class="num-deletion">{{ .Data.LineNumber }}</td>
+                <td class="code-deletion">{{ .Data.Content }}</td>
+                <td class="empty"></td>
+                <td class="empty"></td>
+              {{ else if (eq $rowType "added") }}
+                <td class="empty"></td>
+                <td class="empty"></td>
+                <td class="num-addition">{{ .Data.LineNumber }}</td>
+                <td class="code-addition">{{ .Data.Content }}</td>
+              {{ else if (eq $rowType "context") }}
+              <td>{{.BeforeLineNumber}}</td>
+              <td>{{.Content}}</td>
+              <td>{{.AfterLineNumber}}</td>
+              <td>{{.Content}}</td>
+              {{ else }}
+              <td colspan="4">
+                wtf
+              </td>
+              {{ end }}
+            </tr>
+          {{ end }}
+          </tbody>
+      </table>
     {{ end }}
 
   </body>

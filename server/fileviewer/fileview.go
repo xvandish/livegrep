@@ -1772,6 +1772,7 @@ const (
 	HunkLine
 	NoTrailingNewlineLine // used to indicate that the previous line has no trailing newline
 	UnknownLine
+	ModifiedLine
 )
 
 type GitDiffLine struct {
@@ -2195,7 +2196,7 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 //	1. use the patience algorithm instead of myers
 // it PROBABLY WONT:
 //  1. Attempt to add context that can be collapsed
-func getDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*GitDiff, error) {
+func GetDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*GitDiff, error) {
 
 	// TODO: we can rebuild this function so that we do a diff against
 	// first parent when necessary, instead of having newRev be calculated
@@ -2238,4 +2239,309 @@ func getDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRe
 	diff := parseGitUnifiedDiff(scanner)
 
 	return diff, nil
+}
+
+type IDiffRow interface {
+	isDiffRow()
+}
+
+// argh, lets get this working and then see if its worth it
+type IDiffRowData struct {
+	/**
+	 * The actual contents of the diff line.
+	 */
+	Content string
+
+	/**
+	 * The line number on the source file.
+	 */
+	LineNumber int
+
+	/**
+	 * The line number on the original diff (without expansion).
+	 * This is used for discarding lines and for partial committing lines.
+	 */
+	DiffLineNumber int
+
+	/**
+	 * Flag to display that this diff line lacks a new line.
+	 * This is used to display when a newline is
+	 * added or removed to the last line of a file.
+	 */
+	NoNewLineIndicator bool
+
+	/**
+	 * Whether the diff line has been selected for partial committing.
+	 */
+	// IsSelected: boolean
+
+	/**
+	 * Array of tokens to do syntax highlighting on the diff line.
+	 */
+	// readonly tokens: ReadonlyArray<ILineTokens>
+}
+
+type IDiffRowAdded struct {
+	Type GitDiffLineType
+	Data IDiffRowData
+	/**
+	 * The start line of the hunk where this line belongs in the diff.
+	 *
+	 * In this context, a hunk is not exactly equivalent to a diff hunk, but
+	 * instead marks a group of consecutive added/deleted lines (see hoveredHunk
+	 * comment in the `<SideBySide />` component).
+	 */
+	HunkStartLine int
+	Row           IDiffRow
+}
+
+func (IDiffRowAdded) isDiffRow() {}
+
+type IDiffRowDeleted struct {
+	Type GitDiffLineType
+	Data IDiffRowData
+
+	/**
+	 * The start line of the hunk where this line belongs in the diff.
+	 *
+	 * In this context, a hunk is not exactly equivalent to a diff hunk, but
+	 * instead marks a group of consecutive added/deleted lines (see hoveredHunk
+	 * comment in the `<SideBySide />` component).
+	 */
+	HunkStartLine int
+	Row           IDiffRow
+}
+
+func (IDiffRowDeleted) isDiffRow() {}
+
+type IDiffRowModified struct {
+	Type       GitDiffLineType
+	BeforeData IDiffRowData
+	AfterData  IDiffRowData
+
+	/**
+	 * The start line of the hunk where this line belongs in the diff.
+	 *
+	 * In this context, a hunk is not exactly equivalent to a diff hunk, but
+	 * instead marks a group of consecutive added/deleted lines (see hoveredHunk
+	 * comment in the `<SideBySide />` component).
+	 */
+	HunkStartLine int
+	Row           IDiffRow
+}
+
+func (IDiffRowModified) isDiffRow() {}
+
+type IDiffRowContext struct {
+	Type GitDiffLineType
+	Data IDiffRowData
+	/**
+	 * The actual contents of the contextual line.
+	 */
+	Content string
+
+	/**
+	 * The line number of this row in the previous state source file.
+	 */
+	BeforeLineNumber int
+
+	/**
+	 * The line number of this row in the next state source file.
+	 */
+	AfterLineNumber int
+
+	/**
+	 * Tokens to use to syntax highlight the contents of the before version of the line.
+	 */
+	// readonly beforeTokens: ReadonlyArray<ILineTokens>
+
+	/**
+	 * Tokens to use to syntax highlight the contents of the after version of the line.
+	 */
+	// readonly afterTokens: ReadonlyArray<ILineTokens>
+	Row IDiffRow
+}
+
+func (IDiffRowContext) isDiffRow() {}
+
+/**
+ * IDiffRowContext represents a row that contains the header
+ * of a diff hunk.
+ */
+type IDiffRowHunk struct {
+	Type GitDiffLineType
+	/**
+	 * The actual contents of the line.
+	 */
+	Content string
+
+	/** How the hunk can be expanded. */
+	ExpansionType DiffHunkExpansionType
+
+	/** Index of the hunk in the diff. */
+	HunkIndex int
+
+	Row IDiffRow
+}
+
+func (IDiffRowHunk) isDiffRow() {}
+
+// type DiffRow = IDiffRowAdded | IDiffRowHunk
+
+func (gd *GitDiff) GetDiffRowsSplit() []IDiffRow {
+	// iterate through each hunk
+	rows := make([]IDiffRow, 0)
+
+	for i, hunk := range gd.Hunks {
+		rows = append(rows, getDiffRowsFromHunk(hunk, i)...)
+	}
+
+	return rows
+}
+
+// TODO: I'd like to find a way to get ALL context rows for a file and ship
+// them to the browser. I really, really dislike expanding up/down slowly like
+// GitHub allows.
+func getDiffRowsFromHunk(hunk *GitDiffHunk, hunkIndex int) []IDiffRow {
+	rows := make([]IDiffRow, 0)
+	/**
+	 * Array containing multiple consecutive added/deleted lines. This
+	 * is used to be able to merge them into modified rows.
+	 */
+	// let modifiedLines = new Array<ModifiedLine>()
+	modifiedLines := make([]GitDiffLine, 0)
+
+	for _, line := range hunk.Lines {
+		//     const diffLineNumber = hunk.unifiedDiffStart + num
+		if line.Type == AddLine || line.Type == DeleteLine {
+			modifiedLines = append(modifiedLines, line)
+			continue
+		}
+
+		// If the current line is not added/deleted and we have any added/deleted
+		// line stored, we need to process them.
+		if len(modifiedLines) > 0 {
+			rows = append(rows, getModifiedDiffRows(modifiedLines)...)
+			modifiedLines = nil // clear out the slice
+		}
+
+		if line.Type == HunkLine {
+			rows = append(rows, IDiffRowHunk{
+				Type:    HunkLine,
+				Content: line.Text,
+				// TODO: ExpansionType:
+				HunkIndex: hunkIndex,
+			})
+			continue
+		}
+
+		if line.Type == ContextLine {
+			rows = append(rows, IDiffRowContext{
+				Type:             ContextLine,
+				Content:          line.content(),
+				BeforeLineNumber: line.OldLineNumber,
+				AfterLineNumber:  line.NewLineNumber,
+			})
+			continue
+		}
+
+		// TODO: assert here if we ever have a different type of row, which
+		// should be impossible
+
+		// if (modifiedLines.length > 0) {
+		// for (const row of getModifiedRows(modifiedLines, showSideBySideDiff)) {
+		// 	rows.push(row)
+		// }
+		// modifiedLines = []
+		// }
+
+	}
+
+	return rows
+}
+
+// so, what we're really getting here are the rows that will eventually be rendered
+// AND, in the case that two rows are "balanced" for rendering, that is, there is context either before/after them, and there is a matching delete for an insert, they are grouped together
+
+// credit for the IDiffRow idea - https://eli.thegreenplace.net/2018/go-and-algebraic-data-types/
+// and the go library here -https://cs.opensource.google/go/go/+/master:src/cmd/compile/internal/ir/stmt.go;l=41;bpv=0;bpt=0
+func getModifiedDiffRows(addedOrDeletedLines []GitDiffLine) []IDiffRow {
+	rows := make([]IDiffRow, 0)
+	if len(addedOrDeletedLines) == 0 {
+		return rows
+	}
+
+	// TODO: hunkStartline
+	addedLines := make([]GitDiffLine, 0)
+	deletedLines := make([]GitDiffLine, 0)
+
+	// split out into added or deleted lines
+	// TODO: this is needless re-processing, can probably modify getDiffRows to send in
+	// split arrays
+	for _, line := range addedOrDeletedLines {
+		if line.Type == AddLine {
+			addedLines = append(addedLines, line)
+		} else if line.Type == DeleteLine {
+			deletedLines = append(deletedLines, line)
+		}
+	}
+
+	// eventually, get intraline diff if necessary
+
+	modifiedRowIdx := 0
+
+	for modifiedRowIdx < len(addedLines) && modifiedRowIdx < len(deletedLines) {
+		addedLine := addedLines[modifiedRowIdx]
+		deletedLine := deletedLines[modifiedRowIdx]
+
+		rows = append(rows, IDiffRowModified{
+			Type: ModifiedLine,
+			BeforeData: IDiffRowData{
+				Content:            deletedLine.content(),
+				DiffLineNumber:     deletedLine.OriginalLineNumber,
+				NoNewLineIndicator: deletedLine.NoTrailingNewline,
+				LineNumber:         deletedLine.OldLineNumber,
+			},
+			AfterData: IDiffRowData{
+				Content:            addedLine.content(),
+				DiffLineNumber:     addedLine.OriginalLineNumber,
+				NoNewLineIndicator: addedLine.NoTrailingNewline,
+				LineNumber:         addedLine.NewLineNumber,
+			},
+			// TODO: HunkStartLine
+		})
+		modifiedRowIdx++
+	}
+
+	// process remaining delete lines
+	for i := modifiedRowIdx; i < len(deletedLines); i++ {
+		dl := deletedLines[i]
+		rows = append(rows, IDiffRowDeleted{
+			Type: DeleteLine,
+			Data: IDiffRowData{
+				Content:            dl.content(),
+				DiffLineNumber:     dl.OriginalLineNumber,
+				NoNewLineIndicator: dl.NoTrailingNewline,
+				LineNumber:         dl.OldLineNumber,
+			},
+			// TODO: HunkStartLine
+		})
+	}
+
+	// process remaining insert lines
+	for i := modifiedRowIdx; i < len(addedLines); i++ {
+		al := addedLines[i]
+		rows = append(rows, IDiffRowAdded{
+			Type: AddLine,
+			Data: IDiffRowData{
+				Content:            al.content(),
+				DiffLineNumber:     al.OriginalLineNumber,
+				NoNewLineIndicator: al.NoTrailingNewline,
+				LineNumber:         al.NewLineNumber,
+			},
+			// TODO: HunkStartLine
+		})
+	}
+
+	return rows
 }

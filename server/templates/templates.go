@@ -21,6 +21,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/livegrep/livegrep/server/api"
+	"github.com/livegrep/livegrep/server/fileviewer"
 )
 
 func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
@@ -432,6 +433,8 @@ func getFuncs() map[string]interface{} {
 		"getSyntaxHighlightedContent":      getSyntaxHighlightedContent,
 		"renderDirectoryTree":              RenderDirectoryTree,
 		"renderSplitDiffHalf":              renderSplitDiffHalf,
+		"getDiffRowType":                   getDiffRowType,
+		"getClassFromRowType":              getClassFromRowType,
 	}
 }
 
@@ -474,4 +477,34 @@ func LoadAssetHashes(assetHashFile string, assetHashMap map[string]string) error
 	}
 
 	return nil
+}
+
+func getDiffRowType(row fileviewer.IDiffRow) string {
+	switch row.(type) {
+	case fileviewer.IDiffRowAdded:
+		return "added"
+	case fileviewer.IDiffRowDeleted:
+		return "deleted"
+	case fileviewer.IDiffRowContext:
+		return "context"
+	case fileviewer.IDiffRowModified:
+		return "modified"
+	case fileviewer.IDiffRowHunk:
+		return "hunk"
+	default:
+		fmt.Printf("encountered weird row. row T=%T val=%v\n type=%v", row)
+		return "blah"
+	}
+
+	return "blah"
+}
+
+func getClassFromRowType(rowType string) string {
+	switch rowType {
+	case "hunk":
+		return "hunk-row"
+	default:
+		return "row"
+	}
+	return ""
 }

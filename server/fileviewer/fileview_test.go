@@ -3,6 +3,7 @@ package fileviewer
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -93,4 +94,10 @@ func TestParseUnifiedGitDiff(t *testing.T) {
 	}
 
 	// there should be one deleted line and one added line
+
+	// just for seeing what happens
+	rows := diff.GetDiffRowsSplit()
+
+	fmt.Printf("testing testing testing\n")
+	fmt.Printf("rows=%+v\n", rows)
 }

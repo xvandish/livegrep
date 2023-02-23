@@ -526,11 +526,23 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data := fileviewer.GenerateSplitDiffForFile(path, repoConfig, revA, revB)
+	// data := fileviewer.GenerateSplitDiffForFile(path, repoConfig, revA, revB)
+	data, err := fileviewer.GetDiffBetweenTwoCommits(path, repoConfig, revA, revB, false)
+	rows := data.GetDiffRowsSplit()
+	if err != nil {
+		log.Printf(ctx, "sidediff err=%v\n", err)
+		io.WriteString(w, err.Error())
+		return
+	}
+
 	s.renderPage(ctx, w, r, "sidediff.html", &page{
 		Title:         "Diff",
 		IncludeHeader: false,
-		Data:          data,
+		Data: struct {
+			DiffRows []fileviewer.IDiffRow
+		}{
+			DiffRows: rows,
+		},
 	})
 
 	// io.WriteString(w, fmt.Sprintf("<html><body><div style=\"display:flex; gap:10px\">%s%s</div></body></html>", left, right))
