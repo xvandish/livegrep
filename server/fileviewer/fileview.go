@@ -1,4 +1,4 @@
-package server
+package fileviewer
 
 import (
 	"bufio"
@@ -100,7 +100,7 @@ type directoryListEntry struct {
 	SymlinkTarget string
 }
 
-type fileViewerContext struct {
+type FileViewerContext struct {
 	PathSegments    []breadCrumbEntry
 	Repo            config.RepoConfig
 	RepoRev         string // the commit/rev the repo is being viewed at (branch, commit, tag, etc)
@@ -108,7 +108,7 @@ type fileViewerContext struct {
 	CommitHash      string
 	ShortCommitHash string
 	DirContent      *directoryContent
-	FileContent     *sourceFileContent
+	FileContent     *SourceFileContent
 	ExternalDomain  string
 	Permalink       string
 	Headlink        string
@@ -126,7 +126,7 @@ type fileViewerContext struct {
 	Tags          []api.GitTag
 }
 
-type sourceFileContent struct {
+type SourceFileContent struct {
 	Content   string
 	LineCount int
 	Language  string
@@ -138,7 +138,7 @@ type sourceFileContent struct {
 
 type directoryContent struct {
 	Entries       []directoryListEntry
-	ReadmeContent *sourceFileContent
+	ReadmeContent *SourceFileContent
 }
 
 type DirListingSort []directoryListEntry
@@ -191,7 +191,7 @@ func gitCatBlob(obj string, repoPath string) (string, error) {
 }
 
 // used to get the "real" name of "HEAD"
-func gitRevParseAbbrev(rev string, repoPath string) (string, error) {
+func GitRevParseAbbrev(rev string, repoPath string) (string, error) {
 	out, err := exec.Command("git", "-C", repoPath, "rev-parse", "--abbrev-ref", rev).Output()
 	if err != nil {
 		return "", err
@@ -346,7 +346,7 @@ func getPathSegments(pathSplits []string, repo config.RepoConfig) []breadCrumbEn
 }
 
 // We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
-func buildSimpleGitLogData(relativePath string, firstParent string, repo config.RepoConfig) (*SimpleGitLog, error) {
+func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.RepoConfig) (*SimpleGitLog, error) {
 	cleanPath := path.Clean(relativePath)
 	start := time.Now()
 	out, err := exec.Command("git", "-C", repo.Path, "log", "-n", "1000", "-z", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath).Output()
@@ -483,7 +483,7 @@ func ScanGitShowEntry(data []byte, atEOF bool) (advance int, token []byte, err e
 }
 
 // Given a specific commitHash, get detailed info (--numstat or --shortstat)
-func gitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
+func GitShowCommit(repo config.RepoConfig, commit string) (*GitShow, error) {
 	defer timeTrack(time.Now(), "gitShowCommit")
 
 	// git show 74846d35b24b6efd61bb88a0a750b6bb257e6e78 --patch-with-stat -z > out.txt
@@ -849,7 +849,7 @@ func processNextChunk(scanner *bufio.Scanner, commitHashToChunkMap map[string]*B
 	return true, nil
 }
 
-func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*BlameResult, error) {
+func GitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*BlameResult, error) {
 	defer timeTrack(time.Now(), "gitBlameBlob")
 
 	// technically commiId isn't required, but we always blame with a commit
@@ -906,7 +906,7 @@ func gitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 
 var fileDoesNotExistError = errors.New("This file does not exist at this point in history")
 
-func buildFileData(relativePath string, repo config.RepoConfig, commit string) (*fileViewerContext, error) {
+func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (*FileViewerContext, error) {
 	fmt.Printf("buildFileData - commit=%s\n", commit)
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)
@@ -920,7 +920,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	obj := commitHash + ":" + cleanPath
 	pathSplits := strings.Split(cleanPath, "/")
 
-	var fileContent *sourceFileContent
+	var fileContent *SourceFileContent
 	var dirContent *directoryContent
 
 	objectType, err := gitObjectType(obj, repo.Path)
@@ -959,11 +959,11 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			readmeLang = parts[2]
 		}
 
-		var readmeContent *sourceFileContent
+		var readmeContent *SourceFileContent
 		if readmePath != "" {
 			fmt.Printf("readmePath != empty\n")
 			if content, err := gitCatBlob(readmePath, repo.Path); err == nil {
-				readmeContent = &sourceFileContent{
+				readmeContent = &SourceFileContent{
 					Content:   content,
 					LineCount: strings.Count(content, "\n"),
 					Language:  extToLangMap["."+readmeLang],
@@ -989,7 +989,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		if language == "" {
 			language = extToLangMap[filepath.Ext(cleanPath)]
 		}
-		fileContent = &sourceFileContent{
+		fileContent = &SourceFileContent{
 			Content: content,
 			// LineCount: strings.Count(string(content), "\n"),
 			LineCount: 0,
@@ -1028,7 +1028,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	fmt.Printf("FileContetn: %+v\n", fileContent)
 
 	normalizedName, normalizedPath := getFileNameAndPathFromContent(fileContent, dirContent)
-	return &fileViewerContext{
+	return &FileViewerContext{
 		PathSegments:    segments,
 		Repo:            repo,
 		Commit:          commit,
@@ -1048,7 +1048,7 @@ func buildFileData(relativePath string, repo config.RepoConfig, commit string) (
  * Gets the name from either FileContent or DirectoryContent.ReadmeContent, depending
  * on which is not nil
  */
-func getFileNameAndPathFromContent(fc *sourceFileContent, dc *directoryContent) (string, string) {
+func getFileNameAndPathFromContent(fc *SourceFileContent, dc *directoryContent) (string, string) {
 	if fc != nil {
 		return fc.FileName, fc.FilePath
 	}
@@ -1132,7 +1132,7 @@ TreeNode {
 
 // At a given commit, build the directory tree
 // The frontend will have to be responsible for traversing it and finding/opening the current
-func buildDirectoryTree(relativePath string, repo config.RepoConfig, commit string) *api.TreeNode {
+func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit string) *api.TreeNode {
 	// cleanPath := path.Clean(relativePath)
 	// to start out, we always compute the tree for the root.
 	defer timeTrack(time.Now(), "buildDirectoryTree")
@@ -1391,7 +1391,7 @@ func balanceDiffs(sdLeft, sdRight *api.SplitDiffHalf) {
 // 	// 3lines -- hidden -- 3lines
 // }
 
-func generateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRev, newRev string) (splitDiff *api.SplitDiff) {
+func GenerateSplitDiffForFile(relativePath string, repo config.RepoConfig, oldRev, newRev string) (splitDiff *api.SplitDiff) {
 	cleanPath := path.Clean(relativePath)
 	if cleanPath == "." {
 		cleanPath = ""
@@ -1676,7 +1676,7 @@ func ReverseSlice(s interface{}) {
 	}
 }
 
-func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
+func ListAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
 	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
 
@@ -1729,7 +1729,7 @@ func listAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	return branches, nil
 }
 
-func listAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
+func ListAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
 	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
 
@@ -2195,7 +2195,7 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 //	1. use the patience algorithm instead of myers
 // it PROBABLY WONT:
 //  1. Attempt to add context that can be collapsed
-func generateSplitDiffForFileV2(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*api.SplitDiff, error) {
+func getDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*GitDiff, error) {
 
 	// TODO: we can rebuild this function so that we do a diff against
 	// first parent when necessary, instead of having newRev be calculated
@@ -2235,7 +2235,7 @@ func generateSplitDiffForFileV2(relativePath string, repo config.RepoConfig, old
 	scanner.Buffer(buf, maxCapacity)
 	// scanner.Split(ScanGitShowEntry) // read null byte delimited
 
-	parseGitUnifiedDiff(scanner)
+	diff := parseGitUnifiedDiff(scanner)
 
-	return nil, nil
+	return diff, nil
 }

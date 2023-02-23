@@ -20,6 +20,7 @@ import (
 	"gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/livegrep/livegrep/server/config"
+	"github.com/livegrep/livegrep/server/fileviewer"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
 	"github.com/livegrep/livegrep/server/templates"
@@ -145,7 +146,7 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	data, err := gitShowCommit(repoConfig, commit)
+	data, err := fileviewer.GitShowCommit(repoConfig, commit)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error doing git-show: %v\n", err), 500)
@@ -178,7 +179,7 @@ func (s *server) ServeGitBlameJson(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	blameData, err := gitBlameBlob(path, repoConfig, rev)
+	blameData, err := fileviewer.GitBlameBlob(path, repoConfig, rev)
 
 	if err != nil {
 		w.WriteHeader(500)
@@ -206,7 +207,7 @@ func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWrite
 		return
 	}
 
-	data, err := buildSimpleGitLogData(path, rev, repo)
+	data, err := fileviewer.BuildSimpleGitLogData(path, rev, repo)
 
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -235,7 +236,7 @@ func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, 
 		return
 	}
 
-	data := buildDirectoryTree(path, repo, rev)
+	data := fileviewer.BuildDirectoryTree(path, repo, rev)
 	replyJSON(ctx, w, 200, data)
 }
 
@@ -258,7 +259,7 @@ func (s *server) ServeGitLsTreeRendered(ctx context.Context, w http.ResponseWrit
 	}
 
 	fmt.Printf("repo.Path=%s repo.Name=%s\n", repo.Path, repo.Name)
-	data := buildDirectoryTree(path, repo, rev)
+	data := fileviewer.BuildDirectoryTree(path, repo, rev)
 	rendered := templates.RenderDirectoryTree(data, -15, repo.Name, rev, path)
 	w.Write([]byte(rendered))
 }
@@ -285,7 +286,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	data, err := buildSimpleGitLogData(path, firstParent, repo)
+	data, err := fileviewer.BuildSimpleGitLogData(path, firstParent, repo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
 		return
@@ -354,7 +355,7 @@ func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *
 		return
 	}
 
-	data, err := buildFileData(path, repoConfig, rev)
+	data, err := fileviewer.BuildFileData(path, repoConfig, rev)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
 		return
@@ -414,8 +415,8 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	data, err := buildFileData(path, repoConfig, rev)
-	blameData, err := gitBlameBlob(path, repoConfig, rev)
+	data, err := fileviewer.BuildFileData(path, repoConfig, rev)
+	blameData, err := fileviewer.GitBlameBlob(path, repoConfig, rev)
 	data.FileContent.BlameData = blameData
 	if err != nil {
 		errMsg := fmt.Sprintf("delve-error: Error reading file path=%s, rev=%s - %s", path, rev, err)
@@ -474,7 +475,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data, err := buildFileData(path, repo, commit)
+	data, err := fileviewer.BuildFileData(path, repo, commit)
 	if err != nil {
 		errMsg := fmt.Sprintf("Error: reading file - %s", err)
 		logAndServeError(ctx, w, errMsg, 500)
@@ -525,7 +526,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data := generateSplitDiffForFile(path, repoConfig, revA, revB)
+	data := fileviewer.GenerateSplitDiffForFile(path, repoConfig, revA, revB)
 	s.renderPage(ctx, w, r, "sidediff.html", &page{
 		Title:         "Diff",
 		IncludeHeader: false,
@@ -590,7 +591,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 
 	// if the repoRev == "HEAD", resolve it
 	if repoRev == "HEAD" {
-		parsed, err := gitRevParseAbbrev(repoRev, repoConfig.Path)
+		parsed, err := fileviewer.GitRevParseAbbrev(repoRev, repoConfig.Path)
 		log.Printf(ctx, "parsedRev=%s parsedRev.len=%d\n", parsed, len(parsed))
 		if err != nil {
 			log.Printf(ctx, "failed to rev-parse HEAD. %s", err.Error())
@@ -606,18 +607,18 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		commitToLoadFileAt = dataFileCommit
 	}
 
-	data, err := buildFileData(path, repoConfig, commitToLoadFileAt)
+	data, err := fileviewer.BuildFileData(path, repoConfig, commitToLoadFileAt)
 	log.Printf(ctx, "data: %+v err=%v", data, err)
 	// fileContent not filled in, but filepath exists
 	if err != nil {
 		// if this errors out, most likely the file does not exist,
 		// TODO: dicide if this is clean enough, or whether buildFileData
 		// should always return a "default" fileviewercontext
-		data = &fileViewerContext{
+		data = &fileviewer.FileViewerContext{
 			Repo:    repoConfig,
 			RepoRev: repoRev,
 			Commit:  commitToLoadFileAt,
-			FileContent: &sourceFileContent{
+			FileContent: &fileviewer.SourceFileContent{
 				FileName: filepath.Base(path),
 				Invalid:  true,
 			},
@@ -629,9 +630,9 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	// these options do not depend on the file existing.
 	// they do however depend on the `repoRev` being valid.
 	// that will be something to tackle in the future <- TODO(xvandish)
-	tree := buildDirectoryTree(path, repoConfig, repoRev)
-	branches, err := listAllBranches(repoConfig)
-	tags, err := listAllTags(repoConfig)
+	tree := fileviewer.BuildDirectoryTree(path, repoConfig, repoRev)
+	branches, err := fileviewer.ListAllBranches(repoConfig)
+	tags, err := fileviewer.ListAllTags(repoConfig)
 
 	data.DirectoryTree = tree
 	data.Branches = branches
