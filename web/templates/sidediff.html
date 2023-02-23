@@ -1,0 +1,71 @@
+<html>
+
+  <head>
+    <style>
+      .diff-wrapper {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        max-width: 1024px;
+        min-height: 500px;
+        margin: auto;
+        overflow: hidden;
+      }
+      .left {
+        overflow: scroll;
+      }
+
+      .left div {
+        display: flex;
+        gap: 5px;
+      }
+
+      .right {
+        overflow: scroll;
+      }
+
+      .right div {
+        display: flex;
+        gap: 5px;
+      }
+
+
+      span.delete {
+        background-color: #fdcfdf;
+      }
+      span.insert {
+        background-color: #b1f7b1 /* code-diff-added */
+      }
+
+      pre {
+        margin: 0;
+      }
+      pre:has(> span.insert) {
+        background-color: #d8fed8; /* code line bg */
+      }
+
+      pre:has(> span.delete) {
+        background-color: #fff2f2;
+      }
+
+    </style>
+  </head>
+
+  <body>
+
+    {{ with .Data }}
+    <div class="diff-wrapper">
+      {{ with .LeftDiff }}
+      <div class="left">
+        {{ renderSplitDiffHalf . }}
+      </div>
+      {{ end }}
+      {{ with .RightDiff }}
+      <div class="right">
+        {{ renderSplitDiffHalf . }}
+      </div>
+      {{ end }}
+    </div>
+    {{ end }}
+
+  </body>
+</html>
