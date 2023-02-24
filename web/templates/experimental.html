@@ -1153,44 +1153,31 @@ a.link-button:hover {
 
             // TODO (on server, rev-parse so top commit is always HEAD)
 
-            var expandContainer = document.createElement("div");
-            expandContainer.classList.add("row-expander");
+            var expandContainer = elFactory("div", { class: "row-expander"});
             if (commit.Body.length > 0) {
               console.log("commit here")
-              var btn = document.createElement("button");
-              var chevron = document.createElement("img");
-              chevron.src = "/assets/img/chevron-down.svg";
-
-              btn.appendChild(chevron);
-              btn.classList.add("icon-toggle")
-              btn.classList.add("log");
+              var btn = elFactory("button", { class: "icon-toggle log", "data-toggled": "true"},
+                elFactory("img", { "src": "/assets/img/chevron-down.svg"})
+              );
 
               // we use the same css classes/data selectors to control various
               // things, and sometimes open means ~= face up and sometimes face down
               // so we eat the confusion and just set "toggled" to somethign
               // that means, icon down
-              btn.dataset.toggled = "true";
               expandContainer.appendChild(btn);
             }
 
             // always add this, in case some row can expand we dont want shifts
-            tr.appendChild(document.createElement("td"))
-              .appendChild(expandContainer);
           
-            var commitDiffLink = document.createElement("a");
-            commitDiffLink.href = gitHistory.CommitLinkPrefix +"/commit/" + commit.Hash;
-            commitDiffLink.innerHTML = commit.ShortHash;
-            tr.appendChild(document.createElement("td"))
-                .appendChild(commitDiffLink);
-
-            tr.appendChild(document.createElement("td"))
-                .appendChild(document.createTextNode(commit.AuthorEmail));
-
-            tr.appendChild(document.createElement("td"))
-                .appendChild(document.createTextNode(commit.Date));
-
-            tr.appendChild(document.createElement("td"))
-                .appendChild(document.createTextNode(commit.Subject));
+            tr.append(
+              elFactory("td", {}, expandContainer),
+              elFactory("td", {}, 
+                elFactory("a", { href: gitHistory.CommitLinkPrefix +"/commit/" + commit.Hash }, commit.ShortHash)
+              ),
+              elFactory("td", {}, commit.AuthorEmail),
+              elFactory("td", {}, commit.Date),
+              elFactory("td", {}, commit.Subject)
+            );
 
             // Now, add the action buttons that only show on hover
             var buttonsContainer = document.createElement("div");
@@ -1210,16 +1197,13 @@ a.link-button:hover {
 
             buttonsContainer.appendChild(fileviewButtons);
 
-            tr.appendChild(document.createElement("td"))
-              .appendChild(buttonsContainer);
+            tr.appendChild(elFactory("td", {}, buttonsContainer));
 
             // now append the collapsible commit body
             if (commit.Body.length > 0) {
-              var collapsibleCell = document.createElement("td");
-              collapsibleCell.classList.add("expanded-row-content");
-              collapsibleCell.classList.add("hide-row");
-              collapsibleCell.appendChild(document.createElement("pre"))
-                .appendChild(document.createTextNode(commit.Body))
+              var collapsibleCell = elFactory("td", { class: "expanded-row-content hide-row"}, 
+                elFactory("pre", {}, commit.Body)
+              );
               tr.appendChild(collapsibleCell);
             }
 
@@ -1519,7 +1503,11 @@ a.link-button:hover {
           var el = document.createElement(type);
 
           for (key in attributes) {
-            el.setAttribute(key, attributes[key]); 
+            if (key === "innerHTML") {
+              el.innerHTML = attributes[key]
+            } else {
+              el.setAttribute(key, attributes[key]); 
+            }
           }
 
           children.forEach(function(child) {
@@ -1999,35 +1987,24 @@ a.link-button:hover {
                     continue;
                 }
 
-                var c = document.createElement("div");
-                c.classList.add("rlc");
-                var l = document.createElement("a"); 
-                l.href = `/experimental/${tree.name}/+/`; 
-                l.innerText = tree.name;
-                c.appendChild(l);
+                var c = elFactory("div", { class: "rlc"}, 
+                  elFactory("a", { href: `/experimental/${tree.name}/+/` }, tree.name),
+                  elFactory("button", { "data-repo-name": tree.name }, 
+                    elFactory("div", { "innerHTML": favoritesStarSvg })
+                  )
+                );
 
-                // now append a star 
-                var im = document.createElement("div");
-                im.innerHTML = favoritesStarSvg;
-
-                var ic = document.createElement("button");
-                ic.appendChild(im);
-                ic.dataset.repoName = tree.name;
-                c.appendChild(ic);
-                console.log("appending child");
                 linksContainer.appendChild(c);
               }
 
               var cnt = document.createTextNode(`${numResults} repo(s) found.`);
-              var ct = document.createElement("div");
-              ct.appendChild(cnt);
-              ct.appendChild(linksContainer);
+
+              var ct = elFactory("div", {}, cnt, linksContainer);
 
               // not sure if I can do this
               console.log({ linksContainer });
               repoSearchResultsContainer.innerHTML = '';
-              repoSearchResultsContainer.appendChild(cnt);
-              repoSearchResultsContainer.appendChild(linksContainer);
+              repoSearchResultsContainer.appendChild(ct);
 
               // clear the old results container
             })
