@@ -54,6 +54,7 @@
       /* colors ripped from github */
       table tr.hunk-row {
         background-color: #ddf4ff;
+        height: 28px; /* slightly larger than most rows */
       }
 
       table td.blob-num {
@@ -87,16 +88,16 @@
       }
 
       table td.code-deletion {
-        background-color: rgba(248,81,73,0.15);
+        background-color: #ffebe9;
       }
 
       table td.num-addition {
-        background-color: rgba(63,185,80,0.3);
+        background-color: #ccffd8;
         color: black;
       }
 
       table td.code-addition {
-        background-color: rgba(46,160,67,0.15);
+        background-color: #e6ffec;
       } 
 
       table td.empty {
@@ -114,14 +115,19 @@
         border-left: 1px solid hsla(210,18%,87%,1); /* border-color-muted */
       }
 
+      table td.blob-code {
+        white-space: pre-wrap;
+      }
+
     </style>
   </head>
 
   <body>
 
     {{ with .Data }}
-      <table>
+      <table class="chroma">
           <tbody>
+          {{ $l := getLexerForFilename .FileName }}
           {{ range .DiffRows }} 
             {{ $rowType := . | getDiffRowType }}
             {{ $cls := $rowType | getClassFromRowType }}
@@ -130,24 +136,24 @@
               <td class="blob-num-expandable">...</td><td class="blob-hunk-header" colspan="3">{{ .Content }}</td>
               {{ else if (eq $rowType "modified") }}
                 <td class="blob-num num-deletion">{{ .BeforeData.LineNumber }}</td>
-                <td class="blob-code code-deletion"><pre>{{ .BeforeData.Content }}</pre></td>
+                <td class="blob-code code-deletion">{{ getSyntaxHighlightedLine .BeforeData.Content $l }}</td>
                 <td class="blob-num num-addition">{{ .AfterData.LineNumber }}</td>
-                <td class="blob-code code-addition"><pre>{{ .AfterData.Content }}</pre></td>
+                <td class="blob-code code-addition">{{ getSyntaxHighlightedLine .AfterData.Content $l }}</td>
               {{ else if (eq $rowType "deleted") }}
                 <td class="blob-num num-deletion">{{ .Data.LineNumber }}</td>
-                <td class="blob-code code-deletion"><pre>{{ .Data.Content }}</pre></td>
+                <td class="blob-code code-deletion">{{ getSyntaxHighlightedLine .Data.Content $l}}</td>
                 <td class="blob-num empty"></td>
                 <td class="blob-code empty"></td>
               {{ else if (eq $rowType "added") }}
                 <td class="blob-num empty"></td>
                 <td class="blob-code empty"></td>
                 <td class="blob-num num-addition">{{ .Data.LineNumber }}</td>
-                <td class="blob-code code-addition"><pre>{{ .Data.Content }}</pre></td>
+                <td class="blob-code code-addition">{{ getSyntaxHighlightedLine .Data.Content $l  }}</td>
               {{ else if (eq $rowType "context") }}
               <td class="blob-num">{{.BeforeLineNumber}}</td>
-              <td class="blob-code"><pre>{{.Content}}</pre></td>
+              <td class="blob-code">{{getSyntaxHighlightedLine .Content $l }}</td>
               <td class="blob-num">{{.AfterLineNumber}}</td>
-              <td class="blob-code"><pre>{{.Content}}</pre></td>
+              <td class="blob-code">{{getSyntaxHighlightedLine .Content $l  }}</td>
               {{ else }}
               <td colspan="4">
                 wtf

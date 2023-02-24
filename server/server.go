@@ -540,8 +540,10 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		IncludeHeader: false,
 		Data: struct {
 			DiffRows []fileviewer.IDiffRow
+			FileName string
 		}{
 			DiffRows: rows,
+			FileName: filepath.Base(path),
 		},
 	})
 

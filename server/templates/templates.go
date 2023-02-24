@@ -286,6 +286,8 @@ type SyntaxHighlightedContent struct {
 	Content []template.HTML
 }
 
+type SyntaxHighlightedLine template.HTML
+
 // TODO(xvandish): Convert this function so that our build process can use it
 // and inject it into our stylesheets. Right now, manual process.
 func styleToCSS(style *chroma.Style) map[chroma.TokenType]string {
@@ -362,6 +364,45 @@ func timeTrack(start time.Time, name string) {
 	fmt.Printf("%s took %s\n", name, time.Since(start))
 }
 
+func getLexerForFilename(filename string) chroma.Lexer {
+	l := lexers.Match(filename)
+	if l == nil {
+		l = lexers.Fallback
+	}
+	fmt.Printf("using lexer: %s\n", l.Config().Name)
+	return l
+}
+
+func getSyntaxHighlightedLine(line string, l chroma.Lexer) template.HTML {
+	defer timeTrack(time.Now(), "getSyntaxHighlightedLine")
+	if len(strings.TrimSpace(line)) == 0 {
+		return template.HTML("<span></span>")
+	}
+
+	css := styleToCSS(styles.Xcode) // TODO: cache this!
+
+	// TODO: check if getting the lexer failed
+
+	l = chroma.Coalesce(l)
+
+	it, err := l.Tokenise(nil, line)
+
+	if err != nil {
+		return template.HTML(line)
+	}
+
+	tokens := it.Tokens()
+
+	var b strings.Builder
+	for _, token := range tokens {
+		html := html.EscapeString(token.String())
+		attr := styleAttr(css, token.Type)
+		b.WriteString(fmt.Sprintf("<span%s>%s</span>", attr, html))
+	}
+
+	return template.HTML(b.String())
+}
+
 func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighlightedContent {
 	defer timeTrack(time.Now(), fmt.Sprintf("getSyntaxHighlightedContent-%s", filename))
 	l := lexers.Get(language)
@@ -435,6 +476,8 @@ func getFuncs() map[string]interface{} {
 		"renderSplitDiffHalf":              renderSplitDiffHalf,
 		"getDiffRowType":                   getDiffRowType,
 		"getClassFromRowType":              getClassFromRowType,
+		"getSyntaxHighlightedLine":         getSyntaxHighlightedLine,
+		"getLexerForFilename":              getLexerForFilename,
 	}
 }
 
