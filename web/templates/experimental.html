@@ -5,6 +5,16 @@
 <style>
 
 body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+:root {
+  --main-bg-color: brown;
+  --app-main-bg: white;
+  --app-panel-bg: white;
+  --app-subtle-border: #dadcd0;
+  --app-header-panel-bg: rgba(234,238,242,0.5); 
+  --app-link-and-button-text: #337ab7;
+  --secondary-button-hover-bg: #c6d7e6;
+}
 .repository-browser {
   display: flex;
   box-sizing: border-box;
@@ -21,10 +31,8 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
     max-height: none;
     flex: 0 0 auto;
     box-sizing: border-box;
-    border-bottom-style: solid;
-    border-bottom-width: 1px;
-    border-color: #dadcd0;
-    background-color: #f8f9fa;
+    border-bottom: 1px solid var(--app-subtle-border);
+    background-color: var(--app-panel-bg);
 }
 
 .browse-repository-contents { 
@@ -34,17 +42,15 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
     flex: 1 1 100%;
 }
 .repository-navigation {
-  background-color: #eaeaea; 
-      display: flex;
+    /* background-color: #eaeaea;  */
+    display: flex;
     width: 276px;
     flex-direction: column;
     max-width: calc(100% - 510px)!important;
     position: relative;
     flex: 0 0 auto;
-    background-color: #f6f7f9;
     box-sizing: border-box;
-    border-color: #dadcd0;
-    border-right: 1px solid;
+    border-right: 1px solid var(--app-subtle-border);
     max-height: 97vh;
     overflow: auto;
 }
@@ -63,12 +69,9 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
 }
 
 .repository-navigation #side-nav #nav-tab-group {
-  background-color: var(--page-bg-secondary);
-  border-bottom-color: var(--border);
   display: flex;
   overflow: hidden;
   position: relative;
-  background-color: #f6f7f9;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(0,0,0,0.12);
   padding: 10px;
@@ -157,7 +160,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
     border-bottom-width: 1px;
     flex: 0 0 auto;
     border-color: #dadcd0;
-    background-color: #d2e3fc;
+    background-color: var(--app-header-panel-bg);
     min-height: 40px;
     padding: 5px;
 }
@@ -172,6 +175,18 @@ box-sizing: border-box;
 }
 .repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions {
   padding: 0 10px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions #toggle-blame {
+  background-color: white;
+  border: 1px solid var(--app-subtle-border);
+  border-radius: 5px;
+  padding: 5px;
+  color: var(--app-link-and-button-text);
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions #toggle-blame:hover {
+  background-color: var(--secondary-button-hover-bg);
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-header .diff-header-wrapper {
@@ -198,16 +213,21 @@ box-sizing: border-box;
 .repository-detail .main-view .middle-view .file-detail .file-content table {
     border-spacing: 0;
     border-collapse: collapse;
+    /* table-layout: fixed; */
+    width: 100%;
+    tab-size: 4;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.blame-striped {
+  background-color: #eaeaea !important;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.blame-col {
-  background-color: #f9fafb;
   vertical-align: top;
-
+  max-width: 300px;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table .blame-line {
-  width: 240px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -228,6 +248,8 @@ box-sizing: border-box;
   color: #888;
   border-right: 1px solid #dadcd0;
   user-select: none;
+  max-width: 1%;
+  width: 1%;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno:hover {
@@ -235,6 +257,12 @@ box-sizing: border-box;
   color: #000;
 }
 
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.ln {
+  white-space: pre-wrap;
+  padding-left: 1em;
+}
+
+/* TODO: this won't work after blame!! since some lines may not have a third column. switch to last of type */
 /* highlight the code line */
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.highlighted td:nth-child(3) {
   background: rgba(255, 234, 170, 0.75);
@@ -273,7 +301,7 @@ box-sizing: border-box;
 .repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel .lower-detail-header {
   height: 40px;
   border-color: #dadcd0;
-  background-color: #d3e3fc;
+  background-color: var(--app-header-panel-bg);
   display: flex;
   overflow: hidden;
   position: relative;
@@ -331,8 +359,8 @@ box-sizing: border-box;
   opacity: 1;
 }
 
-#git-history-table tr:hover td div.actions-container a {
-  /* background-color: #eaeaea; */
+#git-history-table tr:hover td div.actions-container a:hover {
+  background-color: var(--secondary-button-hover-bg);
 }
 
 #git-history-table tr td div.actions-container a[data-toggled="true"] {
@@ -404,7 +432,7 @@ button.icon-toggle {
   background-color: transparent;
 }
 button.icon-toggle:hover {
-  background-color: #c6d7e6;
+  background-color: var(--secondary-button-hover-bg);
 }
 
 button.icon-toggle[data-toggled='false'] img {
@@ -621,7 +649,6 @@ a > * {
 }
 
 #git-selector-container {
-  margin-left: 10px;
 }
 
 #git-tabs {
@@ -707,14 +734,23 @@ a > * {
 
 #middle-nav > #crumbs-and-selectors {
   display: flex;
+  gap: 10px;
+}
+
+#middle-nav > #crumbs-and-selectors > #path-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 /* yes, this is hearsay. Sorry. */
 a.link-button {
   display: flex;
+  gap: 5px;
   align-items: center;
   padding: 4px 12px;
   border: 1px solid rgba(0, 126, 229, 0.25); 
+  border-radius: 5px;
 }
 
 a.link-button:hover {
@@ -889,7 +925,14 @@ a.link-button:hover {
             </div>
             <div id="middle-nav-actions">
               <!-- TODO: this takes a hefty bit of JS to get the anchors and such right-->
-              <a id="github-link" class="link-button" href="#">View in GitHub</a>
+              <a id="github-link" class="link-button" href="#">
+                <span style="width: 20px;height: 20px;">
+                  <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false">
+                    <path d="M9.0034959,2 C5.13756616,2 2,5.21159623 2,9.17186522 C2,12.3414798 4.01000332,15.0283054 6.79039119,15.9798895 C7.14056599,16.0428619 7.26662891,15.8259568 7.26662891,15.6370393 C7.26662891,15.4691127 7.25962542,15.0143115 7.25962542,14.4195715 C5.31265356,14.8533819 4.8994473,13.4609905 4.8994473,13.4609905 C4.58428999,12.6353513 4.12205926,12.4114492 4.12205926,12.4114492 C3.48474113,11.9636449 4.17108373,11.9776388 4.17108373,11.9776388 C4.87143332,12.0266174 5.2426186,12.7193146 5.2426186,12.7193146 C5.86592974,13.8178345 6.88143664,13.4959752 7.28063591,13.3140547 C7.34366737,12.8522565 7.52575826,12.5373942 7.72185615,12.3554737 C6.16708006,12.1735532 4.52826202,11.5578223 4.52826202,8.80802425 C4.52826202,8.02436678 4.80139836,7.38764509 5.2496221,6.88386529 C5.17958714,6.70194481 4.93446478,5.97426287 5.31965706,4.9876941 C5.31965706,4.9876941 5.90795071,4.79177973 7.24561843,5.72237297 C7.8058981,5.56144331 8.40119525,5.48447695 8.9964924,5.48447695 C9.59178955,5.48447695 10.1870867,5.56844025 10.7473664,5.72237297 C12.0850341,4.79177973 12.6733277,4.9876941 12.6733277,4.9876941 C13.05852,5.97426287 12.8133977,6.70194481 12.7433627,6.88386529 C13.1915864,7.38764509 13.4647228,8.02436678 13.4647228,8.80802425 C13.4647228,11.5648193 11.8259047,12.1735532 10.2641252,12.3484767 C10.516251,12.5723789 10.7403629,13.0061893 10.7403629,13.6778957 C10.7403629,14.6364767 10.7333594,15.4131372 10.7333594,15.6440363 C10.7333594,15.8329537 10.8594223,16.0568558 11.2166006,15.9868864 C13.9969885,15.0353023 15.9999883,12.3484767 15.9999883,9.17886216 C16.0069918,5.21159623 12.8694256,2 9.0034959,2"></path>
+                  </svg>
+                </span>
+                <span>View in GitHub</span>
+              </a>
             </div>
             </nav>
           </div>
@@ -1013,6 +1056,8 @@ a.link-button:hover {
             // 
 
       var blameCols = document.querySelectorAll("td.blame-col");
+      var blameColsValid = []; // stores an array of all the indexes of blame cols that aren't deleted, as well their rowspan
+      var blameColsToDelete = []; // stores the indexes of blame cols to be removed from dom
       var seenStartLines = new Map();
 
       // TODO(xvandish): Add highlights/striping to alternating blame chunks
@@ -1044,24 +1089,49 @@ a.link-button:hover {
           blameCol.appendChild(blameContainer);
           seenStartLines.set(startLine-1, "true");
 
-        // now mark all the empty blameCols in between start and end as ready to be deleted
-        for (var l = startLine; l < endLine; l++) {
-          blameCols[l].id="to-delete";
-            }
+          var startRow = blameCol.closest("tr");
+          blameColsValid.push({ colIdx: startLine-1, startRow, endRowIdx: startRow.rowIndex + (endLine-startLine)+1 });
 
-        // var contentStartLine = contentLines[startLine - 1];
-        // var contentEndLine = contentLines[chunk.EndLine - 1];
+          // now mark all the empty blameCols in between start and end as ready to be deleted
+          for (var l = startLine; l < endLine; l++) {
+            blameColsToDelete.push(l);
+          }
 
-        // contentStartLine.insertBefore(blameCol, contentStartLine.firstChild);
-
-        // get the TD associated with this startLine
         }
       }
-      for (var i = 0; i < blameCols.length; i++) {
-            if (blameCols[i].id == "to-delete") {
-              blameCols[i].remove();
-                }
-          }
+
+      // delete the unneded blamecols
+      for (var i = 0; i < blameColsToDelete.length; i++) {
+        blameCols[blameColsToDelete[i]].remove();
+      }
+
+      // sort the blameCols by rowStartIdx, so we can highlight alternating chunks
+      // from top to bottom
+      blameColsValid.sort((a, b) => a.startRow.rowIndex - b.startRow.rowIndex );
+      console.log({ blameColsValid });
+      // now highlight (in alternating mode) the blame col and the rows it spans
+      // we need to sort the blameCols by the row they st
+
+      for (var i = 0; i < blameColsValid.length; i++) {
+        var { colIdx, startRow, endRowIdx } = blameColsValid[i];
+
+        var prevRow = startRow.previousElementSibling;
+        if (!prevRow) { // TODO: if we add a thead, account for it
+          continue
+        }
+
+        // if prevRow is striped, leave this chunk alone
+        if (prevRow.classList.contains("blame-striped")) {
+          continue
+        }
+
+        // otherwise, stripe startRow-endRow
+        var currRow = startRow;
+        for (var j = startRow.rowIndex; j < endRowIdx; j++) {
+            currRow.classList.add("blame-striped");
+            currRow = currRow.nextElementSibling;
+        }
+      }
     };
 
         var historyFetched = false;
@@ -1172,24 +1242,23 @@ a.link-button:hover {
             );
 
             // Now, add the action buttons that only show on hover
-            var buttonsContainer = document.createElement("div");
-            buttonsContainer.classList.add("actions-container");
-
-
-            var fileviewButtons = elFactory("div", { class: "fileview-buttons-container"}, 
-              elFactory("a", { href: "blah", "data-commit": commit.Hash, class: "diff-link"}, "diff"),
-              elFactory("a", { href: "blah", "data-commit": commit.Hash, class: "view-link", "data-toggled": isMatchingCommit ? "true": "false" }, "view")
-            );
-
+            var shouldDiffLinkBeHidden = false;
             // if this is the last (well, last rendered, first chronologically) commit, or we are using the fileviewer
             // on something thats not a file (directory, repo root) don't render the diff button
             if ((i == commits.length - 1 && gitHistory.MaybeLastPage) || window.scriptData.filepath == "") {
-              fileviewButtons.removeChild(fileviewButtons.childNodes[0]);
+              console.log("diff link should be hidden: isLast=" + (i == commits.length - 1 && gitHistory.MaybeLastPage) + " filepath=" + window.scriptData.filepath)
+              shouldDiffLinkBeHidden = true;
             }
 
-            buttonsContainer.appendChild(fileviewButtons);
+            var fileviewButtons = elFactory("div", { class: "fileview-buttons-container"}, 
+              // we still inject the button since we use its data attribute to know what to diff (atm)
+              elFactory("a", { href: "blah", "data-commit": commit.Hash, class: "diff-link" + (shouldDiffLinkBeHidden ? " hidden": "") }, "diff"),
+              elFactory("a", { href: "blah", "data-commit": commit.Hash, class: "view-link", "data-toggled": isMatchingCommit ? "true": "false" }, "view")
+            );
 
-            tr.appendChild(elFactory("td", {}, buttonsContainer));
+            tr.appendChild(elFactory("td", {}, 
+              elFactory("div", { class: "actions-container" }, fileviewButtons)
+            ));
 
             // now append the collapsible commit body
             if (commit.Body.length > 0) {
@@ -1422,8 +1491,9 @@ a.link-button:hover {
             row.querySelector(".fileview-buttons-container").classList.add("hidden");
 
             // if the buttons were already created, show them
-            if (row.querySelector(".diff-buttons-container")) {
-              row.querySelector("diff-buttons-container").classList.remove("hidden");
+            var dbc = row.querySelector(".diff-buttons-container");
+            if (dbc) {
+              dbc.classList.remove("hidden");
               continue
             } 
 
@@ -1544,6 +1614,41 @@ a.link-button:hover {
 
           // unhide the file-header-wrapper
           document.getElementsByClassName("file-header-wrapper")[0].classList.remove("hidden");
+
+          // loop through all the buttons, hide the diff-buttons-container, show the fileview-buttons-container
+          // additionally, reset buttons and rows to remove toggled/selected highlighting
+
+          var tableRows = document.getElementById("git-history-table").rows;
+          for (var i = 1; i < tableRows.length; i++) { // start at 1 to skip thead
+            var row = tableRows[i];
+            var dbc = row.querySelector(".diff-buttons-container");
+
+            // unselect the diff buttons, and unselect the rows 
+            if (row.classList.contains("current-commit") || row.classList.contains("secondary-row")) {
+              row.classList.remove('current-commit');
+              row.classList.remove("secondary-row");
+              var toggledDiffButtons = dbc.querySelectorAll('[data-toggled="true"]');
+              if (!toggledDiffButtons) {
+                console.error("selected row should have a diff button toggled. " + row)
+              } else {
+                for (var j = 0; j < toggledDiffButtons.length; j++) {
+                  toggledDiffButtons[j].dataset.toggled = "false";
+                }
+              }
+            }
+
+            dbc.classList.add("hidden");
+            row.querySelector(".fileview-buttons-container").classList.remove("hidden");
+
+            // now, select the row with the commit we're loading in and its "view" button
+            if (row.dataset.commit == window.scriptData.diffRightCommit) {
+              console.log("index matches")
+              row.classList.add("current-commit");
+              row.querySelector("a.view-link").dataset.toggled = "true";
+            }
+
+          }
+
         }
 
         window.scriptData = {

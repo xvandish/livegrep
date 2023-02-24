@@ -570,6 +570,8 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 
 // TODO: allow this page to be rendered when no branch is passed. In that case, we should
 // figure out HEAD, then pass that to buildFileData
+// TODO: When dfc is set, allow log to return whether there are "future" entries, so that users
+// can jump back the most recent
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
