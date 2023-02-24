@@ -210,6 +210,16 @@ box-sizing: border-box;
     flex: 1 1 100%;
     font-family: monospace;
 }
+
+/* diff-content will render into this pane and un-hide it, while hiding file-content */
+.repository-detail .main-view .middle-view .file-detail .diff-content {
+    overflow: auto;
+    position: relative;
+    outline: 0;
+    flex: 1 1 100%;
+    font-family: monospace;
+}
+
 .repository-detail .main-view .middle-view .file-detail .file-content table {
     border-spacing: 0;
     border-collapse: collapse;
@@ -971,6 +981,7 @@ a.link-button:hover {
                       </div>
                       {{ end }}
                     </div>
+                    <div class="diff-content hidden"></div>
                   </div>
                   <div class="lower-detail-wrapper closed">
                     <div class="lower-detail-panel">
@@ -1017,15 +1028,30 @@ a.link-button:hover {
             for (var i = 0; i < blameLines.length; i++) {
                   blameLines[i].classList.add("hidden");
             }
+
+            // remove row striping frome fileviewer
+            var stripedRows = document.querySelectorAll("tr.blame-striped");
+            for (var i = 0; i < stripedRows.length; i++) {
+              stripedRows[i].classList.remove("blame-striped");
+            }
             e.target.dataset.shown = "false";
             blameVisible = false;
           } else {
               // re-show the blame for the same file by just un-hiding the blame rows
+              // this is problematic. When we go file->blame->diff->file->blame, on the same 
+              // file, we actually load back in (via network) the file. So when blame goes to re-load
+              // the blame-cols it depends on are no longer there. So what we need to do is cache the contents
+              // of the fileviewer in a different pane, and toggle visibility with css. That way, when switching
+              // modes with the same file as what was previously being viewed, we can avoid the network, and avoid
+              // the rework of recalculating blame
               if (commitForLastBlame == window.scriptData.fileCommitHash) {
                 console.log('blame previously shown for the same file, redisplaying')
                 for (var i = 0; i < blameLines.length; i++) {
-                      blameLines[i].classList.remove("hidden");
+                  blameLines[i].classList.remove("hidden");
                 }
+
+                // re-calculate the striped rows
+                stripeFileRowsForBlame(window.scriptData.blameMeta.blameColsValid);
                 e.target.dataset.shown = "true";
                 blameVisible = true;
                 return;
@@ -1042,6 +1068,30 @@ a.link-button:hover {
               blameVisible = true;
           }
     });
+
+    // whats the nicest, most ergonomic 
+    function stripeFileRowsForBlame(blameColsValid) {
+      for (var i = 0; i < blameColsValid.length; i++) {
+        var { startRow, endRowIdx } = blameColsValid[i];
+
+        var prevRow = startRow.previousElementSibling;
+        if (!prevRow) { // TODO: if we add a thead, account for it
+          continue
+        }
+
+        // if prevRow is striped, leave this chunk alone
+        if (prevRow.classList.contains("blame-striped")) {
+          continue
+        }
+
+        // otherwise, stripe startRow-endRow
+        var currRow = startRow;
+        for (var j = startRow.rowIndex; j < endRowIdx; j++) {
+            currRow.classList.add("blame-striped");
+            currRow = currRow.nextElementSibling;
+        }
+      }
+    }
 
     async function loadBlame () {
       console.log("in onload func");
@@ -1090,13 +1140,16 @@ a.link-button:hover {
           seenStartLines.set(startLine-1, "true");
 
           var startRow = blameCol.closest("tr");
-          blameColsValid.push({ colIdx: startLine-1, startRow, endRowIdx: startRow.rowIndex + (endLine-startLine)+1 });
+          blameColsValid.push({ startRow, endRowIdx: startRow.rowIndex + (endLine-startLine)+1 });
 
           // now mark all the empty blameCols in between start and end as ready to be deleted
           for (var l = startLine; l < endLine; l++) {
             blameColsToDelete.push(l);
           }
 
+          stripeFileRowsForBlame(blameColsValid);
+          // store the blame meta 
+          window.scriptData.blameMeta.blameColsValid = blameColsValid;
         }
       }
 
@@ -1112,26 +1165,6 @@ a.link-button:hover {
       // now highlight (in alternating mode) the blame col and the rows it spans
       // we need to sort the blameCols by the row they st
 
-      for (var i = 0; i < blameColsValid.length; i++) {
-        var { colIdx, startRow, endRowIdx } = blameColsValid[i];
-
-        var prevRow = startRow.previousElementSibling;
-        if (!prevRow) { // TODO: if we add a thead, account for it
-          continue
-        }
-
-        // if prevRow is striped, leave this chunk alone
-        if (prevRow.classList.contains("blame-striped")) {
-          continue
-        }
-
-        // otherwise, stripe startRow-endRow
-        var currRow = startRow;
-        for (var j = startRow.rowIndex; j < endRowIdx; j++) {
-            currRow.classList.add("blame-striped");
-            currRow = currRow.nextElementSibling;
-        }
-      }
     };
 
         var historyFetched = false;
@@ -1346,7 +1379,7 @@ a.link-button:hover {
         // this looks gnarly, but captures urls of the form
         // /eventtracker/org/repo/+/repoRev:filePath
         var urlPathRegex = /\/experimental\/(.*\/\+\/)(.*):(.*)/;
-        async function viewFileAtCommit(event, repo, path, commitHash, clickLocation) {
+        async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
               console.log("in view file");
           // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
@@ -1370,8 +1403,19 @@ a.link-button:hover {
           window.history.pushState({}, "", `${newPathExp}?${sp.toString()}`);
           console.log(window.location.pathname)
 
+          console.log({ "scriptData": window.scriptData, commitHash, path })
+          if(! (window.scriptData.filepath == path)) {
+            console.log(`filepath no match. ${window.scriptData.filepath} != ${path}`);
 
-          if (window.scriptData.filepath == path && window.scriptData.fileCommitHash == commitHash && window.scriptData.currentMode == "fileviewer") {
+          }
+          if(! (window.scriptData.fileCommitHash == commitHash)) {
+            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
+            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
+            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
+            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
+            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
+          }
+          if (window.scriptData.filepath === path && window.scriptData.fileCommitHash === commitHash) {
             return;
           }
 
@@ -1537,25 +1581,43 @@ a.link-button:hover {
           prevRow.querySelector("a.diff-left").setAttribute("data-toggled", "true");
         }
         async function loadDiff(event, path, leftCommitHash, rightCommitHash, clickLocation) {
+              // if the diff we want, given left & right is already present, unhide it
+              if (window.scriptData.diffLeftCommit == leftCommitHash && window.scriptData.diffRightCommit == rightCommitHash) {
+                document.getElementsByClassName("file-content")[0].classList.add("hidden");
+                document.getElementsByClassName("diff-content")[0].classList.remove("hidden");
+                document.getElementsByClassName("file-header-wrapper")[0].classList.add("hidden");
+                // TODO: add a <diff-header> we can hide/show
+                updateOrCreateDiffHeaderWrapper(leftCommitHash, rightCommitHash);
+                window.scriptData.currentMode = "split-diff-mode";
+                return;
+              }
+
               // load the diff
               var diffContent = await fetch(`/diff/${window.scriptData.repo}/${leftCommitHash}/${rightCommitHash}/${window.scriptData.filepath}`)
                 .then(r => r.text())
                 .then(r => r);
                 // TODO: error handling
               
+              var diffContentContainer = document.getElementsByClassName("diff-content")[0];
+              var fileContentContainer = document.getElementsByClassName("file-content")[0];
 
-              // replace fileviewer contents with diff content
-              document.getElementsByClassName("file-content")[0].innerHTML = diffContent;
+              // insert the diffContent into .diff-content
+              document.getElementsByClassName("diff-content")[0].innerHTML = diffContent;
+
+              // hide the fileContent
+              fileContentContainer.classList.add("hidden");
+
+              // show the diffContent
+              diffContentContainer.classList.remove("hidden");
 
               // hide file-header-wrapper
               document.getElementsByClassName("file-header-wrapper")[0].classList.add("hidden");
 
+              // TODO: add a <diff-header> we can hide/show
               updateOrCreateDiffHeaderWrapper(leftCommitHash, rightCommitHash);
               window.scriptData.currentMode = "split-diff-mode";
-
-              // TODO: cache the contents of the fileviewer so when we close the diff we avoid making
-              // the network call to get the file, in the case that we want to see it again at
-              // the same revision
+              window.scriptData.diffLeftCommit = leftCommitHash;
+              window.scriptData.diffRightCommit = rightCommitHash;
         }
 
         // a small function to make adding html attributes easier
@@ -1606,8 +1668,16 @@ a.link-button:hover {
         }
 
         function switchFromDiffViewToFileView(event) {
+          // TODO: this is really not very clean, decide on some abstractions
+          
+          var diffContentContainer = document.getElementsByClassName("diff-content")[0];
+          var fileContentContainer = document.getElementsByClassName("file-content")[0];
+
+          diffContentContainer.classList.add("hidden");
+          fileContentContainer.classList.remove("hidden");
+
           // load the file at diffRightCommit
-          viewFileAtCommit(event, window.scriptData.repo, window.scriptData.filepath, window.scriptData.diffRightCommit, "close-diff-button");
+          loadFileAtCommit(event, window.scriptData.repo, window.scriptData.filepath, window.scriptData.diffRightCommit, "close-diff-button");
 
           // delete the diff-header-wrapper
           document.getElementsByClassName("diff-header-wrapper")[0].remove();
@@ -1668,6 +1738,9 @@ a.link-button:hover {
           prevFilename: {{ .FileName }},
           prevFileCommitHash: {{ .CommitHash }},
           branches: {{ .Branches }},
+          blameMeta: { // information stored by the blame viewer
+            blameColsValid: [], // stores { startRow, endRowIdx } for every start of a blame hunk
+          }
         };
         console.log(window.scriptData);
 
@@ -1735,7 +1808,7 @@ a.link-button:hover {
                 } else if (repo === window.scriptData.repo) {
                   // TODO: implement/allow clicks on directories
                   console.log(`calling viewFileAtCommit repo:${repo} filepath:${filepath} hash:${hash}`)
-                  viewFileAtCommit(event, repo, filepath, hash, "search-results");
+                  loadFileAtCommit(event, repo, filepath, hash, "search-results");
                 }
                 
 
@@ -1777,7 +1850,7 @@ a.link-button:hover {
           if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "view") {
             console.log('viewing')
             event.preventDefault();
-            viewFileAtCommit(event, window.scriptData.repo, window.scriptData.filepath, event.target.dataset.commit, "commit-history");
+            loadFileAtCommit(event, window.scriptData.repo, window.scriptData.filepath, event.target.dataset.commit, "commit-history");
           }
 
           if (event.target.tagName == "A" && event.target.pathname.endsWith("/blah") && event.target.innerHTML == "diff") {
@@ -1786,13 +1859,7 @@ a.link-button:hover {
 
             transformButtonsForDiff(event);
             const [leftCommit, rightCommit] = decideWhatToDiff(event);
-            window.scriptData.diffLeftCommit = leftCommit;
-            window.scriptData.diffRightCommit = rightCommit;
-
-            console.log({ leftCommit, rightCommit });
             loadDiff(event, window.scriptData.filepath, leftCommit, rightCommit, "commit-history");
-
-            // we need to get the index of this diff button in th
           }
 
           if (event.target.tagName == "A" && event.target.href.endsWith("#0")) {
@@ -1854,7 +1921,7 @@ a.link-button:hover {
             var commitHash = event.target.dataset.hash;
             var filePath = event.target.dataset.path;
 
-            viewFileAtCommit(event, window.scriptData.repo, filePath, commitHash, "side-nav");
+            loadFileAtCommit(event, window.scriptData.repo, filePath, commitHash, "side-nav");
           }
           
           console.log(event.target.classList)
