@@ -47,6 +47,10 @@
         background-color: #fff2f2;
       }
 
+      table pre {
+        white-space: pre-wrap;
+      }
+
       /* colors ripped from github */
       table tr.hunk-row {
         background-color: #ddf4ff;
@@ -67,7 +71,14 @@
         cursor: pointer;
         -webkit-user-select: none;
         user-select: none;
+      }
 
+      table td.blob-num-expandable {
+        text-align: center;
+      }
+
+      table td {
+        vertical-align: top;
       }
     
       table td.num-deletion {
@@ -90,6 +101,18 @@
 
       table td.empty {
         background-color: rgba(234,238,242,0.5);
+      }
+
+      table td.blob-hunk-header {
+        padding-top: 4px;
+        padding-bottom: 4px;
+        color: #57606a; /* color-fg-mutued */
+      }
+
+      /* the line numbers on the right should have a left border */
+      table td.blob-code+.blob-num {
+        border-left: 1px solid hsla(210,18%,87%,1); /* border-color-muted */
+      }
 
     </style>
   </head>
@@ -104,27 +127,27 @@
             {{ $cls := $rowType | getClassFromRowType }}
             <tr class="{{$cls}}">
               {{ if (eq $rowType "hunk") }}
-              <td>...</td><td colspan="3">{{ .Content }}</td>
+              <td class="blob-num-expandable">...</td><td class="blob-hunk-header" colspan="3">{{ .Content }}</td>
               {{ else if (eq $rowType "modified") }}
                 <td class="blob-num num-deletion">{{ .BeforeData.LineNumber }}</td>
-                <td class="code-deletion"><pre>{{ .BeforeData.Content }}</pre></td>
+                <td class="blob-code code-deletion"><pre>{{ .BeforeData.Content }}</pre></td>
                 <td class="blob-num num-addition">{{ .AfterData.LineNumber }}</td>
-                <td class="code-addition"><pre>{{ .AfterData.Content }}</pre></td>
+                <td class="blob-code code-addition"><pre>{{ .AfterData.Content }}</pre></td>
               {{ else if (eq $rowType "deleted") }}
                 <td class="blob-num num-deletion">{{ .Data.LineNumber }}</td>
-                <td class="code-deletion"><pre>{{ .Data.Content }}</pre></td>
+                <td class="blob-code code-deletion"><pre>{{ .Data.Content }}</pre></td>
                 <td class="blob-num empty"></td>
-                <td class="empty"></td>
+                <td class="blob-code empty"></td>
               {{ else if (eq $rowType "added") }}
                 <td class="blob-num empty"></td>
-                <td class="empty"></td>
+                <td class="blob-code empty"></td>
                 <td class="blob-num num-addition">{{ .Data.LineNumber }}</td>
-                <td class="code-addition"><pre>{{ .Data.Content }}</pre></td>
+                <td class="blob-code code-addition"><pre>{{ .Data.Content }}</pre></td>
               {{ else if (eq $rowType "context") }}
               <td class="blob-num">{{.BeforeLineNumber}}</td>
-              <td><pre>{{.Content}}</pre></td>
+              <td class="blob-code"><pre>{{.Content}}</pre></td>
               <td class="blob-num">{{.AfterLineNumber}}</td>
-              <td><pre>{{.Content}}</pre></td>
+              <td class="blob-code"><pre>{{.Content}}</pre></td>
               {{ else }}
               <td colspan="4">
                 wtf
