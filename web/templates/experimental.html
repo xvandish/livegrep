@@ -1188,24 +1188,20 @@ a.link-button:hover {
             var buttonsContainer = document.createElement("div");
             buttonsContainer.classList.add("actions-container");
 
-            var diffLink = document.createElement("a");
-            diffLink.href = "blah";
-            diffLink.innerHTML = "diff";
-            diffLink.dataset.commit = commit.Hash;
-            diffLink.className = "diff-link";
 
-            buttonsContainer.appendChild(diffLink);
+            var fileviewButtons = elFactory("div", { class: "fileview-buttons-container"}, 
+              elFactory("a", { href: "blah", "data-commit": commit.Hash, class: "diff-link"}, "diff"),
+              elFactory("a", { href: "blah", "data-commit": commit.Hash, class: "view-link", "data-toggled": isMatchingCommit ? "true": "false" }, "view")
+            );
 
-            var viewLink = document.createElement("a");
-            viewLink.href = "blah"
-            viewLink.innerHTML = "view"
-            viewLink.dataset.commit = commit.Hash;
-            viewLink.dataset.toggled = isMatchingCommit ? "true" : "false";
-            viewLink.className = "view-link";
+            // if this is the last (well, last rendered, first chronologically) commit, or we are using the fileviewer
+            // on something thats not a file (directory, repo root) don't render the diff button
+            if ((i == commits.length - 1 && gitHistory.MaybeLastPage) || window.scriptData.filepath == "") {
+              fileviewButtons.removeChild(fileviewButtons.childNodes[0]);
+            }
 
-            // viewLink.addEventListener("click", viewFileAtCommit.bind(this, gitHistory.Path, commit.Hash), false);
+            buttonsContainer.appendChild(fileviewButtons);
 
-            buttonsContainer.appendChild(viewLink);
             tr.appendChild(document.createElement("td"))
               .appendChild(buttonsContainer);
 
@@ -1324,7 +1320,7 @@ a.link-button:hover {
           console.log(window.location.pathname)
 
 
-          if (window.scriptData.filepath == path && window.scriptData.fileCommitHash == commitHash) {
+          if (window.scriptData.filepath == path && window.scriptData.fileCommitHash == commitHash && window.scriptData.currentMode == "fileviewer") {
             return;
           }
 
@@ -1366,6 +1362,7 @@ a.link-button:hover {
           window.scriptData.prevFileCommitHash = prevFileCommitHash;
           window.scriptData.prevFilepath = prevFilepath;
           window.scriptData.prevFilename = prevFilename;
+          window.scriptData.currentMode = "fileviewer";
 
           if (clickLocation == "commit-history") {
             // replace the current "selected" commit in the history pane
@@ -1417,16 +1414,42 @@ a.link-button:hover {
         function decideWhatToDiff(event) {
           var clickedCommitHash = event.target.dataset.commit; 
 
+          var clickedRow = event.target.closest("tr");
+          
+          // prev is technically next, since rows are rendered top down
+          // so prev here stands for "previous" commit
+          var prevRow = clickedRow.nextElementSibling;
 
           // not great, but eh
-          var prevRow = event.target.parentNode.parentNode.parentNode.nextElementSibling; 
           var prevCommit = prevRow.querySelector(".diff-link").dataset.commit;
 
           return [prevCommit, clickedCommitHash];
         }
 
-        // async function viewFileAtCommit(event, path, commitHash, clickLocation) {
-        
+        function createOrShowLeftRightDiffButtonsToAllEntriesInHistoryPanel() {
+          var diffButtons = elFactory("div", { class: "diff-buttons-container"}, 
+            elFactory("a", { href: "#0", class: "diff-left" }, "left"),
+            elFactory("a", { href: "#0", class: "diff-right" }, "right")
+          );
+
+          var tableRows = document.getElementById("git-history-table").rows;
+          for (var i = 1; i < tableRows.length; i++) { // start at 1 to skip thead
+            var row = tableRows[i];
+
+            // hide the fileviewer buttons
+            row.querySelector(".fileview-buttons-container").classList.add("hidden");
+
+            // if the buttons were already created, show them
+            if (row.querySelector(".diff-buttons-container")) {
+              row.querySelector("diff-buttons-container").classList.remove("hidden");
+              continue
+            } 
+
+            // otherwise, create the buttons
+            row.getElementsByClassName("actions-container")[0].appendChild(diffButtons.cloneNode(true)); 
+          }
+        }
+
         function transformButtonsForDiff(event) {
           var actionsContainer = event.target.parentNode;
           console.log({ actionsContainer });
@@ -1435,10 +1458,6 @@ a.link-button:hover {
           // 1. add "left" and "right" buttons. Highlight right
           // hide "diff" and "view" buttons
           
-          // hide the existing buttons
-          event.target.classList.add("hidden");
-          actionsContainer.querySelector(".view-link").classList.add("hidden");
-
           // if the row we clicked "diff" in isn't the row that we were "view"ing
           // then we need to remove the "current-commit" class from that row,
           // and add it to the row thats clicked
@@ -1447,71 +1466,25 @@ a.link-button:hover {
           currentCommitRow.querySelector(".view-link").dataset.toggled = "false";
 
           // now select the tr that contains the "diff" button that was pressed
-          event.target.closest("tr").classList.add("current-commit");
+          var clickedRow = event.target.closest("tr");
+          clickedRow.classList.add("current-commit");
 
-          // append left/right buttons to the container
-          var leftButton = document.createElement("a");
-          var rightButton = document.createElement("a");
-          leftButton.innerHTML = "left";
-          rightButton.innerHTML = "right";
-          leftButton.href = "#0";
-          rightButton.href = "#0";
-          rightButton.dataset.toggled = "true";
-          actionsContainer.appendChild(leftButton);
-          actionsContainer.appendChild(rightButton);
+          createOrShowLeftRightDiffButtonsToAllEntriesInHistoryPanel();
 
+
+          // highlight the "right" button of the clicked row
+          clickedRow.querySelector("a.diff-right").setAttribute("data-toggled", "true");
           
 
-          // take the prev "diff" button, hide it, then 
-          // 1. add "left" and "right" buttons. Highlight "left"
-          // hide "diff" and "view" buttons
-          var prevRow = event.target.parentNode.parentNode.parentNode.nextElementSibling; 
+          // highight the "left" button of the prevRow
+          var prevRow = clickedRow.nextElementSibling; 
           if (prevRow == null) {
                 return
           }
           prevRow.classList.add("secondary-row");
-          var prevActionsContainer = prevRow.querySelector(".actions-container");
-
-          prevActionsContainer.querySelector(".view-link").classList.add("hidden");
-          prevActionsContainer.querySelector(".diff-link").classList.add("hidden");
-
-          leftButton = document.createElement("a");
-          rightButton = document.createElement("a");
-          leftButton.href = "#0";
-          rightButton.href = "#0";
-          leftButton.innerHTML = "left";
-          leftButton.dataset.toggled = "true";
-          rightButton.innerHTML = "right";
-          prevActionsContainer.appendChild(leftButton);
-          prevActionsContainer.appendChild(rightButton);
-
-          // TODO: Needs to be done to all rows, not just all rows below the 
-          // current diff
-
-          // for every other row in the commit history, add "left" and "right"
-          // buttons and hide the "view" button
-          // this is assuming we haven't already done this
-          var prevPrevRow = prevRow.nextElementSibling;
-          console.log({ prevPrevRow });
-          while (prevPrevRow != null) {
-            console.log("here");
-            var theseActions = prevPrevRow.querySelector(".actions-container"); 
-            theseActions.querySelector(".view-link").classList.add("hidden");
-            theseActions.querySelector(".diff-link").classList.add("hidden");
-
-            leftButton = document.createElement("a");
-            leftButton.innerHTML = "left";
-            leftButton.href = "#0";
-            rightButton = document.createElement("a");
-            rightButton.innerHTML = "right";
-            rightButton.href = "#0";
-            theseActions.appendChild(leftButton);
-            theseActions.appendChild(rightButton);
-            prevPrevRow = prevPrevRow.nextElementSibling;
-          }
+          prevRow.querySelector("a.diff-left").setAttribute("data-toggled", "true");
         }
         async function loadDiff(event, path, leftCommitHash, rightCommitHash, clickLocation) {
-
               // load the diff
               var diffContent = await fetch(`/diff/${window.scriptData.repo}/${leftCommitHash}/${rightCommitHash}/${window.scriptData.filepath}`)
                 .then(r => r.text())
@@ -1526,6 +1499,11 @@ a.link-button:hover {
               document.getElementsByClassName("file-header-wrapper")[0].classList.add("hidden");
 
               updateOrCreateDiffHeaderWrapper(leftCommitHash, rightCommitHash);
+              window.scriptData.currentMode = "split-diff-mode";
+
+              // TODO: cache the contents of the fileviewer so when we close the diff we avoid making
+              // the network call to get the file, in the case that we want to see it again at
+              // the same revision
         }
 
         // a small function to make adding html attributes easier
@@ -1561,7 +1539,7 @@ a.link-button:hover {
                   elFactory("span", { id: "diff-left-commit-sha" }, leftCommitHash.slice(0,8) ) 
                 ),
                 elFactory("div", { class: "right-commit" },
-                  elFactory("span", { id: "diff-righ-commit-sha"}, rightCommitHash.slice(0,8) ),
+                  elFactory("span", { id: "diff-right-commit-sha"}, rightCommitHash.slice(0,8) ),
                   elFactory("div", {}, 
                     elFactory("button", { "data-action": "close-diff" }, "Close Diff")
                   ),

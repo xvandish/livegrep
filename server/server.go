@@ -532,7 +532,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	// most likely, a request for
 	if diff == nil {
 		if revA == revB {
-			io.WriteString(w, "files are identical.")
+			io.WriteString(w, "Commits for comparison are identical.")
 		} else {
 			w.WriteHeader(500)
 		}
