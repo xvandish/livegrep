@@ -1525,30 +1525,48 @@ a.link-button:hover {
               // hide file-header-wrapper
               document.getElementsByClassName("file-header-wrapper")[0].classList.add("hidden");
 
-              // now, insert a diffHeader element
-              var diffHeader = document.createElement("div");
-              diffHeader.className = "diff-header-wrapper";
+              updateOrCreateDiffHeaderWrapper(leftCommitHash, rightCommitHash);
+        }
 
-              var leftDiffHeader = document.createElement("div");
-              var rightDiffHeader = document.createElement("div");
-              rightDiffHeader.className = "right-commit";
+        // a small function to make adding html attributes easier
+        function elFactory(type, attributes, ...children) {
+          var el = document.createElement(type);
 
-              leftDiffHeader.innerHTML = "Commit: " + leftCommitHash.slice(0, 8);
+          for (key in attributes) {
+            el.setAttribute(key, attributes[key]); 
+          }
 
-              var rightCommitDetails = document.createElement("div");
-              rightCommitDetails.innerHTML = "Commit: " + rightCommitHash.slice(0, 8);
+          children.forEach(function(child) {
+            if (typeof child === 'string') {
+                el.appendChild(document.createTextNode(child))
+              } else {
+                el.appendChild(child)
+              }
+          });
 
-              var rightActions = document.createElement("div");
-              var closeBtn = document.createElement("button");
-              closeBtn.innerHTML = "Close Diff";
-              closeBtn.dataset.action = "close-diff";
-              rightActions.appendChild(closeBtn);
-              
-              rightDiffHeader.appendChild(rightCommitDetails);
-              rightDiffHeader.appendChild(rightActions);
+          return el;
+        }
+        function updateOrCreateDiffHeaderWrapper(leftCommitHash, rightCommitHash) {
+              var existingDiffHeader = document.getElementsByClassName("diff-header-wrapper");
+              if (existingDiffHeader.length > 0) {
+                document.getElementById("diff-left-commit-sha").innerText = leftCommitHash.slice(0,8);
+                document.getElementById("diff-right-commit-sha").innerText = rightCommitHash.slice(0,8);
+                return;
+              }
 
-              diffHeader.appendChild(leftDiffHeader);
-              diffHeader.appendChild(rightDiffHeader);
+              var diffHeader = elFactory(
+                "div",
+                { class: "diff-header-wrapper" },
+                elFactory("div", {}, 
+                  elFactory("span", { id: "diff-left-commit-sha" }, leftCommitHash.slice(0,8) ) 
+                ),
+                elFactory("div", { class: "right-commit" },
+                  elFactory("span", { id: "diff-righ-commit-sha"}, rightCommitHash.slice(0,8) ),
+                  elFactory("div", {}, 
+                    elFactory("button", { "data-action": "close-diff" }, "Close Diff")
+                  ),
+                )
+              );
 
               document.getElementsByClassName("file-header")[0].appendChild(diffHeader);
         }
