@@ -639,14 +639,19 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		// if this errors out, most likely the file does not exist,
 		// TODO: dicide if this is clean enough, or whether buildFileData
 		// should always return a "default" fileviewercontext
+		filename := filepath.Base(path)
 		data = &fileviewer.FileViewerContext{
-			Repo:    repoConfig,
-			RepoRev: repoRev,
-			Commit:  commitToLoadFileAt,
+			Repo:       repoConfig,
+			RepoRev:    repoRev,
+			Commit:     commitToLoadFileAt,
+			CommitHash: commitToLoadFileAt,
 			FileContent: &fileviewer.SourceFileContent{
-				FileName: filepath.Base(path),
+				FilePath: path,
+				FileName: filename,
 				Invalid:  true,
 			},
+			FilePath: path,
+			FileName: filename,
 		}
 	}
 
