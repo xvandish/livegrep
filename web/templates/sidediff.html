@@ -51,13 +51,19 @@
         white-space: pre-wrap;
       }
 
+      table.chroma {
+        table-layout: fixed;
+        width: 100%;
+        tab-size: 4;
+      }
+
       /* colors ripped from github */
-      table tr.hunk-row {
+      table.chroma tr.hunk-row {
         background-color: #ddf4ff;
         height: 28px; /* slightly larger than most rows */
       }
 
-      table td.blob-num {
+      table.chroma td.blob-num {
         width: 1%;
         /* min-width: 50px; */
         padding-right: 10px;
@@ -74,48 +80,48 @@
         user-select: none;
       }
 
-      table td.blob-num-expandable {
+      table.chroma td.blob-num-expandable {
         text-align: center;
       }
 
-      table td {
+      table.chroma td {
         vertical-align: top;
       }
     
-      table td.num-deletion {
+      table.chroma td.num-deletion {
         color: black;
         background-color: #ffd7d5;
       }
 
-      table td.code-deletion {
+      table.chroma td.code-deletion {
         background-color: #ffebe9;
       }
 
-      table td.num-addition {
+      table.chroma td.num-addition {
         background-color: #ccffd8;
         color: black;
       }
 
-      table td.code-addition {
+      table.chroma td.code-addition {
         background-color: #e6ffec;
       } 
 
-      table td.empty {
+      table.chroma td.empty {
         background-color: rgba(234,238,242,0.5);
       }
 
-      table td.blob-hunk-header {
+      table.chroma td.blob-hunk-header {
         padding-top: 4px;
         padding-bottom: 4px;
         color: #57606a; /* color-fg-mutued */
       }
 
       /* the line numbers on the right should have a left border */
-      table td.blob-code+.blob-num {
+      table.chroma td.blob-code+.blob-num {
         border-left: 1px solid hsla(210,18%,87%,1); /* border-color-muted */
       }
 
-      table td.blob-code {
+      table.chroma td.blob-code {
         white-space: pre-wrap;
       }
 
@@ -126,6 +132,20 @@
 
     {{ with .Data }}
       <table class="chroma">
+          <thead hidden>
+            <tr>
+              <th>Original file line number</th>
+              <th>Original file line</th>
+              <th>Diff line number</th>
+              <th>Diff line change</th>
+            </tr>
+          </thead>
+          <colgroup>
+            <col width="52">
+            <col>
+            <col width="52">
+            <col>
+          </colgroup>
           <tbody>
           {{ $l := getLexerForFilename .FileName }}
           {{ range .DiffRows }} 
