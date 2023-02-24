@@ -198,6 +198,19 @@ func GitRevParseAbbrev(rev string, repoPath string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+func GitGetLastRevToTouchPath(relativePath, repoPath, repoRev string) (string, error) {
+	// clean
+	cleanPath := path.Clean(relativePath)
+	if cleanPath == "." {
+		cleanPath = ""
+	}
+	out, err := exec.Command("git", "-C", repoPath, "rev-list", "-1", repoRev, "--", relativePath).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 type gitTreeEntry struct {
 	Mode       string
 	ObjectType string
@@ -1023,8 +1036,6 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			headlink = segments[len(segments)-1].Name
 		}
 	}
-
-	fmt.Printf("FileContetn: %+v\n", fileContent)
 
 	normalizedName, normalizedPath := getFileNameAndPathFromContent(fileContent, dirContent)
 	return &FileViewerContext{

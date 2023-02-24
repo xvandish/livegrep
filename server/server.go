@@ -627,11 +627,21 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		}
 	}
 
-	// if dfc is declared, view that file at that commit, not
-	// the repo commit
-	commitToLoadFileAt := repoRev
+	var commitToLoadFileAt string
 	if dataFileCommit != "" {
+		// if dfc is declared, view that file at that commit, not
+		// the repo commit
 		commitToLoadFileAt = dataFileCommit
+	} else {
+		// otherwise, get the last commit to modify the file. We use this to be more specific
+		// about what we're seeing, which is useful for the frontend
+		lastRev, err := fileviewer.GitGetLastRevToTouchPath(path, repoConfig.Path, repoRev)
+		if err != nil {
+			// still attempt to load the file at the repo commit, which will probably fail
+			commitToLoadFileAt = repoRev
+		} else {
+			commitToLoadFileAt = lastRev
+		}
 	}
 
 	data, err := fileviewer.BuildFileData(path, repoConfig, commitToLoadFileAt)
