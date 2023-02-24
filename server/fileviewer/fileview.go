@@ -2244,10 +2244,11 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 	// fmt.Printf("diff: %+v\n", diff)
 
 	// for debugging, loop through every hunk and line and print line numbers
-	for _, hunk := range diff.Hunks {
-		for _, line := range hunk.Lines {
-			fmt.Printf("newLineNumber=%d oldLineNumber=%d originalLineNumber=%d\n", line.NewLineNumber, line.OriginalLineNumber, line.OriginalLineNumber)
-		}
+	for i, hunk := range diff.Hunks {
+		fmt.Printf("hunk=%d has %d lines\n", i, len(hunk.Lines))
+		// 	for _, line := range hunk.Lines {
+		// fmt.Printf("newLineNumber=%d oldLineNumber=%d originalLineNumber=%d\n", line.NewLineNumber, line.OriginalLineNumber, line.OriginalLineNumber)
+		// }
 	}
 
 	return diff
@@ -2288,6 +2289,8 @@ func GetDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRe
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("diff-command=%s\n", cmd.String())
 
 	err = cmd.Start()
 	if err != nil {
@@ -2524,6 +2527,13 @@ func getDiffRowsFromHunk(hunk *GitDiffHunk, hunkIndex int) []IDiffRow {
 		// modifiedLines = []
 		// }
 
+	}
+
+	// Do one more pass to process the remaining list of modified lines.
+	// This may happen, for example, if a diff contains only deleted/added lines,
+	// so the prior for-loop only ever adds to modifiedLines
+	if len(modifiedLines) > 0 {
+		rows = append(rows, getModifiedDiffRows(modifiedLines)...)
 	}
 
 	return rows
