@@ -527,8 +527,19 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	// data := fileviewer.GenerateSplitDiffForFile(path, repoConfig, revA, revB)
-	data, err := fileviewer.GetDiffBetweenTwoCommits(path, repoConfig, revA, revB, false)
-	rows := data.GetDiffRowsSplit()
+	diff, err := fileviewer.GetDiffBetweenTwoCommits(path, repoConfig, revA, revB, false)
+
+	// most likely, a request for
+	if diff == nil {
+		if revA == revB {
+			io.WriteString(w, "files are identical.")
+		} else {
+			w.WriteHeader(500)
+		}
+		return
+	}
+
+	rows := diff.GetDiffRowsSplit()
 	if err != nil {
 		log.Printf(ctx, "sidediff err=%v\n", err)
 		io.WriteString(w, err.Error())

@@ -2210,7 +2210,7 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 	header, err := parseGitDiffHeader(input)
 
 	fmt.Printf("header: %v err:%v\n", header, err)
-	if err != nil {
+	if err != nil || header == nil {
 		return nil
 	}
 
@@ -2261,6 +2261,8 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 //  1. Attempt to add context that can be collapsed
 func GetDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*GitDiff, error) {
 
+	// TODO: decide whether its worth it to bounce early if oldRev == newRev or to let diff check
+
 	// TODO: we can rebuild this function so that we do a diff against
 	// first parent when necessary, instead of having newRev be calculated
 	// by someone before us
@@ -2306,6 +2308,7 @@ func GetDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRe
 
 // the following is all presentation code - used to generate the rows for a split
 // diff. IDiffRow isDiffRow is hacky way around Go's lack on union types
+// It's also, before I forget, mostly ripped from GitHub Desktops code
 
 type IDiffRow interface {
 	isDiffRow()

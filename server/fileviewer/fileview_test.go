@@ -200,6 +200,16 @@ func TestParseUnifiedGitDiffWithMultipleHunks(t *testing.T) {
 
 }
 
+func TestParseUnifiedGitDiffEmptyDiff(t *testing.T) {
+	scanner := bufio.NewScanner(strings.NewReader(""))
+
+	diff := parseGitUnifiedDiff(scanner)
+
+	if diff != nil {
+		t.Errorf("diff is not nil. It should be! diff=%+v\n", diff)
+	}
+}
+
 func TestNumberFromGroup(t *testing.T) {
 	cases := []struct {
 		in  []byte
