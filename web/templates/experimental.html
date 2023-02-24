@@ -1027,18 +1027,14 @@ a.link-button:hover {
           var endLine = chunkRange.EndLine;
 
 
-          var blameContainer = document.createElement("div");
-          blameContainer.classList.add("blame-line")
+          var blameContainer = elFactory("div", { class: "blame-line"}, 
+            elFactory("a", { href: chunk.CommitLink }, chunk.CommitSummary )          
+          );
 
-          var linkToDiff = document.createElement("a");
-          linkToDiff.href = chunk.CommitLink;
-          linkToDiff.innerHTML = chunk.CommitSummary;
 
-          blameContainer.appendChild(linkToDiff);
-
-              if (seenStartLines.has(startLine - 1)) {
-                console.error("startLine=" + (startLine-1) + " has been seen before")
-              }
+          if (seenStartLines.has(startLine - 1)) {
+            console.error("startLine=" + (startLine-1) + " has been seen before")
+          }
 
           console.log("commitHash=" + chunk.ShortHash + " startLine=" + startLine + " startLine+1=" + (startLine+1))
           var blameCol = blameCols[startLine - 1];
@@ -1119,18 +1115,14 @@ a.link-button:hover {
             existingTable.remove();
           }
 
-          var table = document.createElement('table');
-          table.id = "git-history-table";
-
-          var thead = document.createElement('thead');
-          var theadRow = document.createElement("tr");
-          thead.appendChild(theadRow);
           var headerItems = ["", "Short Hash", "Author", "Commit Date", "Subject", ""];
-          for (var i = 0; i < headerItems.length; i++) {
-            theadRow.appendChild(document.createElement("th")).
-                  appendChild(document.createTextNode(headerItems[i]));
-          }
-          table.appendChild(thead)
+          var table = elFactory("table", { id: "git-history-table"}, 
+            elFactory("thead", {}, 
+              elFactory("tr", {}, 
+                ...headerItems.map(item => elFactory("th", {}, item))
+              )
+            )
+          );
 
           var foundMatchingCommit = false;
           for (var i = 0; i < commits.length; i++) {
@@ -1260,9 +1252,7 @@ a.link-button:hover {
             } else {
               fullPath += pathPart;
             }
-            var link = document.createElement("a");
-            link.href = window.location.pathname.replace(urlPathRegex, `/experimental/$1$2:${fullPath}`);
-            link.innerText = pathPart;
+            var link = elFactory("a", { href: window.location.pathname.replace(urlPathRegex, `/experimental/$1$2:${fullPath}`) }, pathPart);
             newPathElements.push(link);
           }
 
@@ -2248,21 +2238,12 @@ a.link-button:hover {
           for (var i = 0; i < repos.length; i++) {
             var repoName = repos[i];
             console.log({ repoName });
-            var c = document.createElement("div");
-            c.classList.add("rlc");
-            
-            var link = document.createElement("a");
-            link.innerText = repoName;
-            link.href = "/experimental/"+repoName+"/+/";
-            c.appendChild(link);
-
-            var ic = document.createElement("button");
-            ic.classList.add("starred");
-            ic.dataset.repoName = repoName;
-            var icc = document.createElement("div");
-            icc.innerHTML = favoritesStarSvg;
-            ic.appendChild(icc);
-            c.appendChild(ic);
+            var c = elFactory("div", { class: "rlc"},
+              elFactory("a", { href: "/experimental/"+repoName+"/+/" }, repoName),
+              elFactory("button", { class: "starred", "data-repo-name": repoName }, 
+                elFactory("div", { "innerHTML": favoritesStarSvg })
+              )
+            );
 
             favoritesContainer.appendChild(c);
           }
