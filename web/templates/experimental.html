@@ -14,6 +14,8 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   --app-header-panel-bg: rgba(234,238,242,0.5); 
   --app-link-and-button-text: #337ab7;
   --secondary-button-hover-bg: #c6d7e6;
+  --code-line-wrap: pre;
+  --diff-table-layout: fixed;
 }
 .repository-browser {
   display: flex;
@@ -104,7 +106,6 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   display:flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
   padding-top: 3px;
   padding-bottom: 3px;
   text-decoration: none;
@@ -176,8 +177,12 @@ box-sizing: border-box;
 .repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions {
   padding: 0 10px;
 }
+.repository-detail .main-view .middle-view .file-detail .file-header .diff-actions {
+  padding: 0 10px;
+}
 
-.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions #toggle-blame {
+/* buttons for both file-header-wrapper and diff-header-wrapper */
+.repository-detail .main-view .middle-view .file-detail .file-header button {
   background-color: white;
   border: 1px solid var(--app-subtle-border);
   border-radius: 5px;
@@ -185,7 +190,7 @@ box-sizing: border-box;
   color: var(--app-link-and-button-text);
 }
 
-.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions #toggle-blame:hover {
+.repository-detail .main-view .middle-view .file-detail .file-header button:hover {
   background-color: var(--secondary-button-hover-bg);
 }
 
@@ -258,6 +263,7 @@ box-sizing: border-box;
   color: #888;
   border-right: 1px solid #dadcd0;
   user-select: none;
+  text-align: right;
   max-width: 1%;
   width: 1%;
 }
@@ -268,7 +274,7 @@ box-sizing: border-box;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.ln {
-  white-space: pre-wrap;
+  white-space: var(--code-line-wrap);
   padding-left: 1em;
 }
 
@@ -1658,7 +1664,7 @@ a.link-button:hover {
                 ),
                 elFactory("div", { class: "right-commit" },
                   elFactory("span", { id: "diff-right-commit-sha"}, rightCommitHash.slice(0,8) ),
-                  elFactory("div", {}, 
+                  elFactory("div", { class: "diff-actions "}, 
                     elFactory("button", { "data-action": "close-diff" }, "Close Diff")
                   ),
                 )
@@ -2457,6 +2463,19 @@ a.link-button:hover {
           }
 
           return favorites;
+        }
+
+        function toggleLineWrapping(event) {
+          var root = document.documentElement;
+
+          // line wrapping should effect both diff/fileview mods (probably)
+          if (event.target.dataset.toggled == "true") {
+            root.style.setProperty("--code-line-wrap", "pre");
+            root.style.setProperty("--diff-table-layout", "auto");
+          } else {
+            root.style.setProperty("--code-line-wrap", "pre-wrap");
+            root.style.setProperty("--diff-table-layout", "fixed");
+          }
         }
 
 

@@ -47,12 +47,8 @@
         background-color: #fff2f2;
       }
 
-      table pre {
-        white-space: pre-wrap;
-      }
-
       table.chroma {
-        table-layout: fixed;
+        table-layout: var(--diff-table-layout);
         width: 100%;
         tab-size: 4;
         border-collapse: collapse;
@@ -124,7 +120,7 @@
       }
 
       table.chroma td.blob-code {
-        white-space: pre-wrap;
+        white-space: var(--code-line-wrap);
       }
 
     </style>
