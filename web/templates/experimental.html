@@ -2508,14 +2508,26 @@ a.link-button:hover {
           var lno = getLineNumberFromRange(lineRange);
 
           var url = window.scriptData.repoConfig.metadata["url_pattern"];
+          var githubUrl = window.scriptData.repoConfig.metadata["github"];
           if (!url) {
             console.error(`The index file you provided does not provide repositories[${window.scriptData.repo}].metadata.url_pattern. External links to file sources will not work. See the README for more information on file viewing.`);
             return;
           }
 
-          // do I really need to do the root stuff I was doing before? TKTK
-
           var transformedFilePath = window.scriptData.filepath;
+          // do I really need to do the root stuff I was doing before? TKTK
+          if (transformedFilePath == "") {
+            if (githubUrl != "") return githubUrl;
+
+            // otherwise, 
+            // otherwise, take the url pattern, then split off everthing after '{name}/'
+            // e.g "https://github.com/{name}/blob/{version}/{path}#L{lno}" -> "https://github.com/{name}/"
+            var idx = url.indexOf("{name}/");  
+            var cutStr = url.substring(0, idx+7); // idx + len of search term
+            url = cutStr.replace("{name}", repoName);
+            return url;
+          }
+
 
           // If {path} already has a slash in front of it, trim extra leading
           // slashes from `pathInRepo` to avoid a double-slash in the URL.
