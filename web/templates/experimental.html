@@ -1773,59 +1773,9 @@ a.link-button:hover {
               autocompleteMenu.style.display = "none";
               autocompleteMenuOpen = "false";
             } else {
-              console.log("click is inside of input or menu!");
-              // if the click was on a file link, we want to load that file into the viewer
-              // and trigger all the necessary downstream changes
-              // 1. load the new file in
-              // 2. change the file-tree (brute is okay for now)
-              // 3. re-load the blame pane
-              // 4. load in the new history panel
-              // TODO: Make a semantically nice way of doing all of this later
-
-              // the brute force, non-spa way of doing this is to just let the page reload
-              // we can do better!
-              if (event.target.tagName == "A") {
-                console.log("click was on an anchor tag")
-                // extract the repo, commitHash and filepath -
-                // /delve/xvandish/livegrep/blob|tree/hash/path...
-                // ~= /delve/$repo/blob|tree|/hash/path
-                console.log(event.target.pathname)
-                console.log("hash is: " + event.target.hash);
-                var match = event.target.pathname.match(urlPathRegex);
-                var repo = match[1];
-                var hash = match[2];
-                var filepath = match[3];
-
-              
-                // different scenarios
-                // 1. if the click is on a file, DIFFERENT than the one we're on now
-                // 2. If the click is on the file we're on now, TDB
-                // 3. If the click is on a line in the current file, jump to that line
-                // 4. if the click is on a directory.. TKTK - implement the directory viewer that shows files/folders as icons
-                
-                // just update the hash in the url to jump to the right line number
-                // TODO: problem. filepath, if it has a hash
-                if (repo !== window.scriptData.repo) {
-                  console.log("different repo! reloading..");
-                  reuturn;
-                }
-
-                event.preventDefault();
-                if (filepath === window.scriptData.filepath) {
-                  console.log("same file, updating hash")
-                  window.location.hash = event.target.hash;
-                } else if (repo === window.scriptData.repo) {
-                  // TODO: implement/allow clicks on directories
-                  console.log(`calling viewFileAtCommit repo:${repo} filepath:${filepath} hash:${hash}`)
-                  loadFileAtCommit(event, repo, filepath, hash, "search-results");
-                }
-                
-
-                // finally, close the autocomplete menu
-                console.log("closing autocomplete menu");
-                autocompleteMenu.style.display = "none";
-                autocompleteMenuOpen = false;
-              }
+              // No SPA like behavior. Typicall search results come from HEAD
+              // not fun to try to reconcile HEAD against the rev we have selected,
+              // then update if necessary, etc... Just let the page reload
             }
 
           } 
