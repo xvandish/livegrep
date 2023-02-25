@@ -380,6 +380,11 @@ func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *
 	})
 }
 
+func logAndServeError(ctx context.Context, w http.ResponseWriter, errMsg string, errCode int) {
+	log.Printf(ctx, errMsg)
+	http.Error(w, errMsg, errCode)
+}
+
 func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// start := time.Now()
 	parent := r.URL.Query().Get(":parent")
@@ -547,12 +552,12 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	rows := diff.GetDiffRowsSplit()
 	if err != nil {
-		log.Printf(ctx, "sidediff err=%v\n", err)
+		log.Printf(ctx, "splitdiff err=%v\n", err)
 		io.WriteString(w, err.Error())
 		return
 	}
 
-	s.renderPage(ctx, w, r, "sidediff.html", &page{
+	s.renderPage(ctx, w, r, "splitdiff.html", &page{
 		Title:         "Diff",
 		IncludeHeader: false,
 		Data: struct {
