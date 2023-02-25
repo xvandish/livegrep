@@ -403,7 +403,9 @@ func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.
 
 	simpleGitLog.MaybeLastPage = len(simpleGitLog.Commits) < 1000
 	simpleGitLog.IsPaginationReq = firstParent != "HEAD"
-	simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
+	if len(simpleGitLog.Commits) > 0 {
+		simpleGitLog.NextParent = simpleGitLog.Commits[len(simpleGitLog.Commits)-1].Hash
+	}
 	simpleGitLog.Repo = repo
 	simpleGitLog.PathSegments = getPathSegments(strings.Split(cleanPath, "/"), repo)
 	simpleGitLog.Path = cleanPath
