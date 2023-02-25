@@ -1068,89 +1068,6 @@ var searchOptions = {
   case: "auto",
 };
 
-function updateQuery(inputEvnt) {
-  searchOptions.q = inputEvnt.target.value;
-  doSearch();
-}
-
-function toggleControlButton(button) {
-  var currValue = button.getAttribute("data-selected") === "true";
-  button.setAttribute("data-selected", !currValue);
-  searchOptions[button.getAttribute("name")] = !currValue;
-  doSearch();
-}
-
-function toggleMoreFileMatches(e) {
-  document
-    .querySelector(".path-results .extra-results")
-    .classList.toggle("hidden");
-  var textContainer = e.currentTarget.querySelector("#toggle-btn-text");
-  textContainer.innerText =
-    textContainer.innerText === "Show all" ? "Show less" : "Show all";
-  e.currentTarget.querySelector("img").classList.toggle("open");
-}
-
-function handleFileExtBtnClick(e) {
-  var q = searchBox.value;
-  var ext = e.target.innerText;
-  if (regexToggle.dataset.selected == "true") {
-    q = "path:\\" + ext + "$ " + q;
-  } else {
-    q = "path:" + ext + " " + q;
-  }
-  searchBox.value = q;
-  searchBox.dispatchEvent(new Event("input"));
-}
-
-var urlFetching;
-function doSearch() {
-  if (searchOptions.q === "") {
-    resultsContainer.innerHTML = "";
-    errorsBox.style.display = "none";
-    return;
-  }
-
-  // var time1 = performance.now();
-  // var time2;
-
-  var urlToFetch = `/api/v2/getRenderedSearchResults/?q=${encodeURIComponent(
-    searchOptions.q
-  )}&regex=${searchOptions.regex}&fold_case=${searchOptions.case}`;
-  console.log({ urlToFetch });
-  urlFetching = urlToFetch;
-  fetch(urlToFetch)
-    .then(function (r) {
-      time2 = performance.now();
-      if (!r.ok) {
-        return Promise.reject(r.text());
-      } else {
-        return r.text();
-      }
-    })
-    .then(function (text) {
-      if (urlToFetch != urlFetching) {
-        // don't display if the results are for an old query. This is hacky,
-        // but works just fine. TODO: use an abortController and fancier
-        // ids to keep track of in-flight searches
-        return;
-      }
-      resultsContainer.innerHTML = text;
-      errorsBox.style.display = "none";
-
-      // TODO: Decide whether to show time information
-      // var timeTaken = ((time2 - time1) / 1000).toFixed(3);
-      // document.getElementById("searchtime").innerText = timeTaken + "s";
-      // document.getElementById("searchtimebox").style.display = "initial";
-    })
-    .catch(function (err) {
-      err.then(function (errText) {
-        // display the help area, clear previous results, and show the new error
-        resultsContainer.innerHTML = "";
-        errorsBox.querySelector("#errortext").innerText = errText;
-        errorsBox.style.display = "initial";
-      });
-    });
-}
 
 function toggleRepoSeachAutocompleteMenu() {
   if (repoAutocompleteMenuOpen) {
@@ -1706,7 +1623,6 @@ function init(initData) {
   loadRepoFavoritesFromLocalStorage();
 
   var scopedSearchQuery = `repo:${window.scriptData.repo} `;
-  searchOptions.q = scopedSearchQuery;
   searchBox.value = scopedSearchQuery;
   searchBox.addEventListener("focusin", function () {
     autocompleteMenu.style.display = "initial";
@@ -1716,37 +1632,7 @@ function init(initData) {
   // get the open git search tab
   openTab = document.querySelector("#git-tabs > li[data-selected='true']");
 
-  // since we want the content inside the autocomplete menu to be clickable,
-  // we can't close the menu on focusout. We could keep track of the menu
-  // status with a global, and the global click handler can decide what to do
-
-  // should we use a gloabl to close the autocompleteMenu?
-  // whats in reality the best way to do this?
-  // searchBox.addEventListener('focusout', function() {
-  //   var menu = document.getElementById("autocomplete-menu");
-  //   autocompleteMenu.style.display = "none";
-  // });
-
-  caseSelect.addEventListener("change", function (e) {
-    var newVal = e.target.value;
-    searchOptions["case"] = newVal;
-    updateSearchParamState();
-  });
-  regexToggle.addEventListener("click", function () {
-    toggleControlButton(this);
-  });
-  searchBox.addEventListener("input", updateQuery);
-  repoSearchBox.addEventListener("input", doRepoSearch);
   gitSearchBox.addEventListener("input", searchBranches);
-
-  console.log("hello");
-  window.addEventListener("locationchange", function () {
-    console.log("location changed!");
-  });
-  window.addEventListener("popstate", function (e) {
-    console.log("poppedstate");
-    initStateFromQueryParams();
-  });
 
   document.getElementById("toggle-blame").addEventListener("click", toggleBlame);
   document.getElementById("toggle-history").addEventListener("click", toggleHistoryPanel);
