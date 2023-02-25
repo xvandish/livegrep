@@ -1,0 +1,75 @@
+{{template "layout" .}}
+
+{{ define "body"}}
+<div class="about-text">
+    <p>
+        This fileviewer is a rip-off of the publically Google fileviewer for <a href="https://cs.opensource.google/">cs.opensource.google</a>.
+    </p>
+
+    <h2>Goals</h2>
+    <div>
+        <ul>
+            <li>Provide a fast, near local-disk speed experience while browsing a trees files</li>
+            <li>Provide access to common Git operations, log, blame, diff, for the current file</li>
+            <li>Make it easy to search within and browse files</li>
+            <li>Provide an intuitive browsing experience</li>
+        </ul>
+    </div>
+
+    <h2>Features</h2>
+    <div>
+        <section>
+        <h3>View Repo At Different Revisions</h3>
+            <h4>Repo Selector</h4>
+            This selector will allow you to switch between all the repositories that livegrep is configured to allow filebrowsing for. A list of all repositories is shown when you initally open it (yes, all, even if its in the 1000s). To filter repositories, a search bar is provided. Under the hood this search bar takes your query and runs a `repo:${yourQuery}` filter against codesearch.
+
+            To speed up access to common repos, "favorites" are provided. Each repo has a star icon next to it, click it and a repo will be added to your favorites. Favorites are shown at the very top of the list. Thanks to Sean Renaud for the suggestion.
+            <h4>Branch/Tag/Commit Selector</h4>
+            This is really three selectors combined into one tabbed popup.
+
+        </section>
+
+        <section>
+        <h3>View at file at different points in its history</h3>
+        </section>
+
+        <section>
+        <h3>Git Blame Functionality</h3>
+        </section>
+
+        <section>
+        <h3>Git Split Diff Functionality</h3>
+        </section>
+
+
+        <h3>Blame View</h3>
+        <h3>Diff Functionality</h3>
+    </div>
+
+    <h2>Trade-Offs</h2>
+    <div>
+        <ul>
+        </ul>
+    </div>
+
+    <h2>Not Implemented Features</h2>
+    <div>
+        <ul>
+            <li>A settings page allowing you to configure your experience. Line-wrapping, font-size, themes, eetc</li>
+            <li>A dropdown menu allowing you to copy/view links to the current file/repo</li>
+            <li>Highlighting matches of your search query after you open a file found during a search. This is a gnarly problem to solve:
+                <ul>
+                    <li></li>
+                </ul>
+            </li>
+
+        </ul>
+    </div>
+
+    <h2>Future Potential</h2>
+    <div></div>
+
+    <p>The fileviewer was developed by Rodrigo Silva Mendoza as 10% time project</p>
+
+</div>
+{{ end}t}

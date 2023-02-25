@@ -504,6 +504,13 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 	})
 }
 
+func (s *server) ServeAboutFileviewer(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	s.renderPage(ctx, w, r, "fileviewer_about.html", &page{
+		Title:         "fileviewer about",
+		IncludeHeader: true,
+	})
+}
+
 func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -978,6 +985,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
+	m.Add("GET", "/about-fileviewer", srv.Handler(srv.ServeAboutFileviewer))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
