@@ -18,7 +18,6 @@ import (
 	htmlf "github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
 	"github.com/alecthomas/chroma/styles"
-	"github.com/sergi/go-diff/diffmatchpatch"
 
 	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/fileviewer"
@@ -220,26 +219,6 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 	}
 
 	return template.HTML(outHtml)
-}
-
-func renderSplitDiffHalf(sd *api.SplitDiffHalf) template.HTML {
-	var b strings.Builder
-
-	for _, line := range sd.Lines {
-		b.WriteString(fmt.Sprintf("<div><span>%d</span><pre>", line.Lno))
-		for _, part := range line.Line {
-			cls := ""
-			if part.Type == diffmatchpatch.DiffInsert {
-				cls = "insert"
-			} else if part.Type == diffmatchpatch.DiffDelete {
-				cls = "delete"
-			}
-			b.WriteString(fmt.Sprintf("<span class=\"%s\">%s</span>", cls, part.Text))
-		}
-		b.WriteString("</pre></div>")
-	}
-
-	return template.HTML(b.String())
 }
 
 // used to cap slice iteration
@@ -473,7 +452,6 @@ func getFuncs() map[string]interface{} {
 		"convertContentBlobToArrayOfLines": convertContentBlobToArrayOfLines,
 		"getSyntaxHighlightedContent":      getSyntaxHighlightedContent,
 		"renderDirectoryTree":              RenderDirectoryTree,
-		"renderSplitDiffHalf":              renderSplitDiffHalf,
 		"getDiffRowType":                   getDiffRowType,
 		"getClassFromRowType":              getClassFromRowType,
 		"getSyntaxHighlightedLine":         getSyntaxHighlightedLine,

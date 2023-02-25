@@ -2,8 +2,6 @@ package api
 
 import (
 	"io/fs"
-
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 type InnerError struct {
@@ -135,39 +133,6 @@ type TreeNode struct {
 	ParentDir *TreeNode
 	Type      string
 	Children  []*TreeNode
-}
-
-type DiffLine2 struct {
-	// A line can be made of up of eqalities, inserts, deletes or any combination
-	Line []*DiffPart
-	Lno  uint32
-}
-
-type DiffPart struct {
-	Text string
-	Type diffmatchpatch.Operation
-}
-
-// either a left or right side of the diff
-type SplitDiffHalf struct {
-	Lines []*DiffLine2
-	// LinesMap map[uint32]*DiffLine2
-	LinesMap map[uint32]uint32
-
-	// We use a line map. That, however, removes our ability to insert blank lines
-	// so what we'll need to do is have the keys of LinesMap point to indices in in .Lines
-
-	// when appending parts of a line together, this line
-	// is a "buffer" per-se, of previously seen parts that all belong
-	// on the same line. Once we determine that the buffer should be
-	// flushed, it is written to lines
-	LineUnderConstruction *DiffLine2
-	// contentLength, type, filename?
-}
-
-type SplitDiff struct {
-	LeftDiff  *SplitDiffHalf
-	RightDiff *SplitDiffHalf
 }
 
 type GitBranch struct {

@@ -533,7 +533,6 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// data := fileviewer.GenerateSplitDiffForFile(path, repoConfig, revA, revB)
 	diff, err := fileviewer.GetDiffBetweenTwoCommits(path, repoConfig, revA, revB, false)
 
 	// most likely, a request for
