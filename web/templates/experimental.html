@@ -1390,7 +1390,6 @@ a.link-button:hover {
         // /eventtracker/org/repo/+/repoRev:filePath
         var urlPathRegex = /\/experimental\/(.*\/\+\/)(.*):(.*)/;
         async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
-              console.log("in view file");
           // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
           // var oldPath = window.location.pathname;
@@ -1413,19 +1412,12 @@ a.link-button:hover {
           window.history.pushState({}, "", `${newPathExp}?${sp.toString()}`);
           console.log(window.location.pathname)
 
-          console.log({ "scriptData": window.scriptData, commitHash, path })
-          if(! (window.scriptData.filepath == path)) {
-            console.log(`filepath no match. ${window.scriptData.filepath} != ${path}`);
-
-          }
-          if(! (window.scriptData.fileCommitHash == commitHash)) {
-            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
-            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
-            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
-            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
-            console.log(`hash no match. ${window.scriptData.fileCommitHash} != ${commitHash}`);
-          }
           if (window.scriptData.filepath === path && window.scriptData.fileCommitHash === commitHash) {
+            // update the external link
+            if (sp.has("dfc")) {
+              var range = parseHashForLineRange(document.location.hash);
+              document.getElementById("external-link").setAttribute("href", getExternalLink(range));
+            }
             return;
           }
 
@@ -1446,8 +1438,8 @@ a.link-button:hover {
           var filename = path.split(/[\\/]/).pop();
           document.getElementById("filename").innerHTML = filename;
 
-          // TODO(xvandish): replace the breadcrumbs
           replacePathBreadcrumbs(path);
+
 
 
           // TODO(xvandish): replace the url part once we actually load via urls..
@@ -1468,6 +1460,11 @@ a.link-button:hover {
           window.scriptData.prevFilepath = prevFilepath;
           window.scriptData.prevFilename = prevFilename;
           window.scriptData.currentMode = "fileviewer";
+
+          // replace the external link, depends on window.scriptData globals
+          // which is why we don't do it earlier
+          var range = parseHashForLineRange(document.location.hash);
+          document.getElementById("external-link").setAttribute("href", getExternalLink(range));
 
           if (clickLocation == "commit-history") {
             // replace the current "selected" commit in the history pane
@@ -1735,6 +1732,7 @@ a.link-button:hover {
           repo: {{ $repo }},
           repoCommit: {{ .Commit }},
           repoCommitHash: {{ .CommitHash }},
+          repoRev: {{ .RepoRev }},
           filepath: {{ .FilePath }},
           filename: {{ .FileName }},
           fileCommitHash: {{ .CommitHash }},
@@ -1744,6 +1742,7 @@ a.link-button:hover {
           prevRepo: {{ $repo }},
           prevRepoCommit: {{ .Commit }},
           prevRepoCommitHash: {{ .CommitHash }},
+          prevRepoRev: {{ .RepoRev }},
           prevFilepath: {{ .FilePath }},
           prevFilename: {{ .FileName }},
           prevFileCommitHash: {{ .CommitHash }},
@@ -2535,9 +2534,14 @@ a.link-button:hover {
             transformedFilePath = transformedFilePath.replace(/^\/+/, "");
           }
 
+          var version = window.scriptData.repoRev;
+          var dfc = new URLSearchParams(window.location.search).get("dfc")
+          if (dfc){ // if we're viewing this file at this specific commit, use it. Otherwise, use repo branch/tag/commit
+            version = dfc;
+          }
 
           url = url.replace("{lno}", lno);
-          url = url.replace("{version}", window.scriptData.fileCommitHash);
+          url = url.replace("{version}", version);
           url = url.replace("{name}", window.scriptData.repo);
           url = url.replace("{path}", transformedFilePath);
           console.log({ url });
