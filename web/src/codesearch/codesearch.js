@@ -9,9 +9,6 @@ var helpArea;
 var caseSelect;
 var regexToggle;
 
-var liveDot;
-var liveText;
-
 var searchOptions = {
   q: "",
   regex: false,
@@ -289,8 +286,6 @@ function init() {
   caseSelect = document.getElementById("case-sensitivity-toggle");
   regexToggle = document.querySelector("button[id=toggle-regex]");
   errorsBox = document.getElementById("regex-error");
-  liveDot = document.getElementById("live-status-dot");
-  liveText = document.getElementById("live-status-text");
 
   caseSelect.addEventListener("change", function (e) {
     var newVal = e.target.value;

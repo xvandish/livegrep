@@ -123,37 +123,6 @@ button:hover {
     display: none;
 }
 
-#live-status-main-info-container {
-    display: flex;
-    align-items: center;
-    color: #888;
-    font-style: normal;
-}
-
-#live-status-sub-info {
-    color: #888;
-}
-
-.live-dot {
-    height: 12px;
-    width: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 10px;
-}
-
-.live-dot[data-status='up'] {
-    background-color: rgb(56, 142, 60);
-}
-
-.live-dot[data-status='error'] {
-    background-color: red;
-}
-
-.live-dot[data-status='warn'] {
-    background-color: #FFEFCF;
-}
-
 #errortext {
     color: #DD3B38;
     font-size: 14px;
