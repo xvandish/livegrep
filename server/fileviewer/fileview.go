@@ -123,6 +123,7 @@ type FileViewerContext struct {
 	DirectoryTree *api.TreeNode
 	Branches      []api.GitBranch
 	Tags          []api.GitTag
+	RepoConfig    config.RepoConfig
 }
 
 type SourceFileContent struct {

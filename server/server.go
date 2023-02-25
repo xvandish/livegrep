@@ -680,6 +680,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	data.Branches = branches
 	data.Tags = tags
 	data.RepoRev = repoRev
+	data.RepoConfig = repoConfig
 
 	// script_data := &struct {
 	// 	URL
