@@ -34,9 +34,6 @@
       <li class="header-action">
         <a data-action-name="help" title="View the help screen. Keyboard shortcut: ?" href="#">help [<span class='shortcut'>?</span>]</a>
       </li>
-      <li class="header-action">
-        <a data-action-name="toggleBlame" title="Toggle blame" href="#">toggle blame</a>
-      </li>
     </ul>
     <ul class="header-actions with-selection" style="display:none">
       <li class="header-action">
@@ -73,9 +70,7 @@
           </ul>
           {{ with .ReadmeContent }}
             <div style="width:85%;">
-              <div class="file-content">
-                {{ template "filecontent" . }}
-              </div>
+              {{ template "filecontent" . }}
             </div>
           {{end}}
         </div>
@@ -83,17 +78,6 @@
       {{with .FileContent}}
         {{ template "filecontent" . }}
       {{end}}
-  </div>
-  <div id="history-pane" data-open="true">
-    <div class="title-bar" style="height:40px;">
-      <div class="tabs">
-        <button>History</button>
-      </div>
-      <div class="actions">
-        <button id="toggle-history-pane">O/C</button>
-      </div>
-    </div>
-    <button id="load-more-history-btn">Load more</button>
   </div>
 
   <section class="help-screen u-modal-overlay hidden">

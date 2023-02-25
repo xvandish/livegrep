@@ -5,64 +5,6 @@ var KeyCodes = {
   SLASH_OR_QUESTION_MARK: 191,
 };
 
-function toggleBlamePane() {
-  document.querySelectorAll(".blame-pane").forEach((e) => {
-    e.classList.toggle('hidden');
-  });
-}
-
-// open/close the pane
-function toggleHistoryPane() {
-  var historyPane = document.getElementById("history-pane");
-  var isOpen = historyPane.dataset.open == "true";
-  console.log({ isOpen });
-
-  if (isOpen) {
-    historyPane.style.height = "40px";
-    historyPane.dataset.open = "false"
-  } else {
-    historyPane.style.height = "100%";
-    historyPane.dataset.open = "true";
-  }
-}
-
-function getGitHistory() {
-  console.log('in getGitHistory');
-  var logLink = document.getElementById("commit-history");
-  logLink = logLink.getAttribute('href') + "?partial=true";
-  console.log({ logLink });
-
-  var historyPane = document.getElementById("history-pane");
-  var historyGetBtn = document.getElementById("load-more-history-btn");
-
-  fetch(logLink)
-    .then(function (r) {
-      return r.text();
-    })
-    .then(function (html) {
-      historyPane.insertAdjacentHTML("beforeend", html);
-    })
-}
-
-function swapRawBlob(clickedBlobLink) {
-  // given a click on a link to a blob, we intercept it (we should)
-  // switch to a button eventually <- TODO(xvandish)
-
-  // then, we call the same link, except we swap `/delve/` with `/raw/`
-  var rawUrl = clickedBlobLink.replace("/delve/", "/raw/");
-  console.log({ rawUrl });
-
-  fetch(rawUrl)
-    .then(function (r) {
-      return r.text();
-    })
-    .then(function (html) {
-      var contentWrapper = document.getElementsByClassName("content-wrapper")[0]
-        contentWrapper.replaceChildren();
-        contentWrapper.innerHTML = html;
-    });
-}
-
 function getSelectedText() {
   return window.getSelection ? window.getSelection().toString() : null;
 }
@@ -357,7 +299,6 @@ function initializeActionButtons() {
       return doSearch(null, false, true);
     },
     help: showHelp,
-    toggleBlame: toggleBlamePane,
   };
 
   for (var actionName in ACTION_MAP) {
@@ -404,8 +345,6 @@ function initializePage(initData) {
   root = document.getElementsByClassName("file-content")[0];
   lineNumberContainer = document.querySelector(".file-content");
   helpScreen = document.getElementsByClassName("help-screen")[0];
-
-  getGitHistory();
 
   // The native browser handling of hashes in the location is to scroll
   // to the element that has a name matching the id. We want to prevent
@@ -467,23 +406,6 @@ function initializePage(initData) {
     ) {
       // check against card, not overlay
       hideHelp();
-    }
-
-    if (event.target.id = "toggle-history-pane") {
-      // toggleHistoryPane();
-      // console.log("toggling history pane");
-    }
-
-    if (event.target.nodeName == "A") {
-        event.preventDefault();
-        // TODO: make sure this is a click on a blob...
-        var targetUrl = event.target.href;
-        console.log({ targetUrl });
-        if (targetUrl.includes("/delve/") && targetUrl.includes("/blob/")) {
-        swapRawBlob(event.target.href);
-
-        // TODO: get the commit hash and replace the url.
-      }
     }
   });
 }
