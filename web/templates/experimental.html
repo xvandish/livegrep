@@ -14,7 +14,7 @@ body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direc
   --app-header-panel-bg: rgba(234,238,242,0.5); 
   --app-link-and-button-text: #337ab7;
   --secondary-button-hover-bg: #c6d7e6;
-  --code-line-wrap: pre;
+  --code-line-wrap: pre-wrap;
   --diff-table-layout: fixed;
 }
 .repository-browser {
@@ -2086,6 +2086,8 @@ a.link-button:hover {
           } else {
             repoAutocompleteMenu.style.display = "initial";
             repoAutocompleteMenuOpen = true;
+            loadRepoFavoritesFromLocalStorage(); // reload the favorites
+
             // for now, launch a new search every time to keep results up to date
             // later on we can add a "haveDoneInitialSearch" repo to keep track
             // of initialization
@@ -2155,7 +2157,7 @@ a.link-button:hover {
                     continue;
                 }
 
-                var c = elFactory("div", { class: "rlc"}, 
+                var c = elFactory("div", { class: "rlc", "data-repo-name": tree.name}, 
                   elFactory("a", { href: `/experimental/${tree.name}/+/` }, tree.name),
                   elFactory("button", { "data-repo-name": tree.name }, 
                     elFactory("div", { "innerHTML": favoritesStarSvg })
@@ -2396,8 +2398,6 @@ a.link-button:hover {
           try {
             favorites = JSON.parse(favorites);
           } catch (err) {
-            console.log("wtf");
-            console.error("failed to parse repo-favorites value. Starting fresh. Err:" + err)
             window.localStorage.setItem("repo-favorites", JSON.stringify({})) // store blank favorites
             return; // no more work to do
           }
@@ -2405,18 +2405,25 @@ a.link-button:hover {
             favorites = {};
           }
 
-          var repos = Object.keys(favorites);
-          if (repos.length == 0) return; // nothing to do
+          if (favorites.length == 0) return; // nothing to do
 
-          // add the remaining favorites to the repo-selector, assuming the user hasn't done a search yet
-          // TODO:
           var favoritesContainer = document.getElementById("favorite-repos");
+
+          // remove elements from favorites that already exist in the container
+          for (var i = 0; i < favoritesContainer.children.length; i++) {
+            var repoName = favoritesContainer.children[i].getAttribute("data-repo-name");
+            if (favorites[repoName]) {
+              delete favorites[repoName]
+            }
+          }
   
+          var repos = Object.keys(favorites);
+
           console.log({ repos });
           for (var i = 0; i < repos.length; i++) {
             var repoName = repos[i];
             console.log({ repoName });
-            var c = elFactory("div", { class: "rlc"},
+            var c = elFactory("div", { class: "rlc", "data-repo-name": repoName},
               elFactory("a", { href: "/experimental/"+repoName+"/+/" }, repoName),
               elFactory("button", { class: "starred", "data-repo-name": repoName }, 
                 elFactory("div", { "innerHTML": favoritesStarSvg })
@@ -2438,11 +2445,10 @@ a.link-button:hover {
           if (!(clickEvnt.target.classList.contains("starred"))) {
             favorites[repoName] = 1;
             clickEvnt.target.classList.add("starred");
-
-            // TODO: move the element (maybe the next time they close the list?)
           } else {
             delete favorites[repoName];
             clickEvnt.target.classList.remove("starred");
+            clickEvnt.target.closest("div").remove();
           }
 
           // store our updated favorites
