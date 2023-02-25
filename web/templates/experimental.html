@@ -1388,7 +1388,7 @@ a.link-button:hover {
 
         // this looks gnarly, but captures urls of the form
         // /eventtracker/org/repo/+/repoRev:filePath
-        var urlPathRegex = /\/experimental\/(.*\/\+\/)(.*):(.*)/;
+        var urlPathRegex = /\/experimental\/(.*)\/\+\/(.*):(.*)/;
         async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
           // given a path like so - experimental/nytimes/eventtracker-server/blob/HEAD/service.go
           // which is experimental/${repo}/blob/${commitHash}/${filePath}
@@ -1406,7 +1406,7 @@ a.link-button:hover {
           }
 
           // replace the file pathname with the new one
-          var newPathExp = window.location.pathname.replace(urlPathRegex, `/experimental/$1$2:${path}`);
+          var newPathExp = window.location.pathname.replace(urlPathRegex, `/experimental/$1/+/$2:${path}`);
           console.log({ newPathExp });
           console.log(window.location.pathname)
           window.history.pushState({}, "", `${newPathExp}?${sp.toString()}`);
@@ -1479,7 +1479,7 @@ a.link-button:hover {
 
             // now select the clicked button
             event.target.dataset.toggled = "true";
-          } else if (clickLocation == "side-nav") {
+          } else {
             // replace the current "selected" file
             var selectedPath = document.querySelector("#side-nav div.selected");
             if (selectedPath) {
@@ -1487,7 +1487,8 @@ a.link-button:hover {
             }
 
             // select the file that was clicked
-            event.target.parentNode.classList.toggle("selected");
+            var clickedFileLink = document.querySelector(`#side-nav a[data-path='${path}']`);
+            if (clickedFileLink) clickedFileLink.parentNode.classList.add("selected");
           }
 
           // if the blameLayer was open, re-open it
@@ -1790,12 +1791,10 @@ a.link-button:hover {
                 // ~= /delve/$repo/blob|tree|/hash/path
                 console.log(event.target.pathname)
                 console.log("hash is: " + event.target.hash);
-                var match = event.target.pathname.match(linkExtractReg);
-                console.log({ match });
+                var match = event.target.pathname.match(urlPathRegex);
                 var repo = match[1];
-                var objectType = match[2]; // blob|tree
-                var hash = match[3];
-                var filepath = match[4];
+                var hash = match[2];
+                var filepath = match[3];
 
               
                 // different scenarios
@@ -2504,6 +2503,7 @@ a.link-button:hover {
 
         // given the current file, get a link to it
         function getExternalLink(lineRange) {
+          console.log("getExternalLink called")
           var lno = getLineNumberFromRange(lineRange);
 
           var url = window.scriptData.repoConfig.metadata["url_pattern"];
