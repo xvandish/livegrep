@@ -19,6 +19,7 @@ import (
 	"github.com/bmizerany/pat"
 	"gopkg.in/alexcesaro/statsd.v2"
 
+	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/fileviewer"
 	"github.com/livegrep/livegrep/server/log"
@@ -38,6 +39,7 @@ type page struct {
 	Config        *config.Config
 	AssetHashes   map[string]string
 	Nonce         template.HTMLAttr // either `` or ` nonce="..."`
+	BodyId        string
 }
 
 type server struct {
@@ -701,11 +703,25 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		fmt.Printf("filecontent is nil\n")
 	}
 
+	script_data := &struct {
+		RepoConfig config.RepoConfig
+		RepoName   string
+		Commit     string
+		CommitHash string
+		RepoRev    string
+		FilePath   string
+		FileName   string
+		Branches   []api.GitBranch // TODO: fix this
+	}{repoConfig, repoConfig.Name, data.Commit, data.CommitHash, data.RepoRev, data.FilePath, data.FileName, data.Branches}
+
+	fmt.Printf("going to render page\n")
 	s.renderPage(ctx, w, r, "experimental.html", &page{
 		Title:         "experimental",
 		IncludeHeader: false,
-		ScriptName:    "fileview",
+		ScriptName:    "experimental",
+		ScriptData:    script_data,
 		Data:          data,
+		BodyId:        "fileviewer-body",
 	})
 }
 

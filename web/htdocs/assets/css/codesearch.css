@@ -1,3 +1,5 @@
+@import "fileview.css";
+
 /* Credit - https://aykevl.nl/2014/09/fix-jumping-scrollbar */
 /* makes it so that on naviagtions (or events) the scrollbar
  * appearing doesn't cause a layout shift */
@@ -400,6 +402,9 @@ button:hover {
 #resultarea {
     font-size: 0.75em;
 }
+
+/* how much backwards compatability should I leave...? */
+/* should I just make it so that */
 
 /* File viewer */
 .file-viewer, .git-show, .simple-git-log {
