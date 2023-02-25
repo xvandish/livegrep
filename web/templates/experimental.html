@@ -982,7 +982,7 @@ a.link-button:hover {
                       </div>
                     </div>
                     <div class="file-content">
-                      {{ if and .FileContent not .FileContent.Invalid }}
+                      {{ if and .FileContent (not .FileContent.Invalid) }}
                         {{ template "filecontent" .FileContent }}
                       {{ else if .DirContent }}
                         {{ template "filecontent" .DirContent.ReadmeContent }}
