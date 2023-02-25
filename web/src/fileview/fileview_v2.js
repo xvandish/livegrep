@@ -1674,6 +1674,7 @@ function initScriptData(initData) {
 function init(initData) {
   "use strict";
 
+  console.log("init fileviewV2Init");
   console.log({ initData });
   initScriptData(initData);
 
@@ -1776,6 +1777,7 @@ function init(initData) {
   });
 }
 
-window.onload = function () {
-  init(window.scriptData);
-};
+// window.onload = function () {
+//   init(window.scriptData);
+// };
+window.fileviewV2Init = init;

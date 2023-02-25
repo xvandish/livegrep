@@ -280,6 +280,8 @@ function handleFileExtBtnClick(e) {
 function init() {
   "use strict";
 
+  console.log("in cs init");
+
   searchBox = document.getElementById("searchbox");
   resultsContainer = document.querySelector("#resultarea > #results");
   helpArea = document.getElementById("helparea");
@@ -356,6 +358,8 @@ function init() {
 
   renderSearchHistory();
 }
+
+window.codesearchInit = init;
 
 module.exports = {
   init: init,
