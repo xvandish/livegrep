@@ -1158,9 +1158,7 @@ a.link-button:hover {
             blameColsToDelete.push(l);
           }
 
-          stripeFileRowsForBlame(blameColsValid);
           // store the blame meta 
-          window.scriptData.blameMeta.blameColsValid = blameColsValid;
         }
       }
 
@@ -1172,7 +1170,8 @@ a.link-button:hover {
       // sort the blameCols by rowStartIdx, so we can highlight alternating chunks
       // from top to bottom
       blameColsValid.sort((a, b) => a.startRow.rowIndex - b.startRow.rowIndex );
-      console.log({ blameColsValid });
+      stripeFileRowsForBlame(blameColsValid);
+      window.scriptData.blameMeta.blameColsValid = blameColsValid;
       // now highlight (in alternating mode) the blame col and the rows it spans
       // we need to sort the blameCols by the row they st
 
