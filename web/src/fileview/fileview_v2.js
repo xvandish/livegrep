@@ -1150,7 +1150,7 @@ function doRepoSearch(inputEvnt) {
         var c = elFactory(
           "div",
           { class: "rlc", "data-repo-name": tree.name },
-          elFactory("a", { href: `/experimental/${tree.name}/+/` }, tree.name),
+          elFactory("a", { href: `/experimental/${tree.name}/+/HEAD:` }, tree.name),
           elFactory(
             "button",
             { "data-repo-name": tree.name },
@@ -1377,9 +1377,9 @@ function initLineNumbers(lineNumberContainer) {
     });
   } else {
     // TODO
-    // document
-    //   .getElementById("external-link")
-    //   .setAttribute("href", getExternalLink(null));
+    document
+      .getElementById("external-link")
+      .setAttribute("href", getExternalLink(null));
   }
 }
 
@@ -1426,7 +1426,7 @@ function loadRepoFavoritesFromLocalStorage() {
     var c = elFactory(
       "div",
       { class: "rlc", "data-repo-name": repoName },
-      elFactory("a", { href: "/experimental/" + repoName + "/+/" }, repoName),
+      elFactory("a", { href: "/experimental/" + repoName + "/+/HEAD:" }, repoName),
       elFactory(
         "button",
         { class: "starred", "data-repo-name": repoName },
@@ -1507,7 +1507,10 @@ function getLineNumberFromRange(range) {
 // given the current file, get a link to it
 function getExternalLink(lineRange) {
   console.log("getExternalLink called");
-  var lno = getLineNumberFromRange(lineRange);
+  var lno = 0;
+  if (lineRange) {
+    lno = getLineNumberFromRange(lineRange);
+  }
 
   var url = window.scriptData.repoConfig.metadata["url_pattern"];
   var githubUrl = window.scriptData.repoConfig.metadata["github"];
@@ -1545,7 +1548,11 @@ function getExternalLink(lineRange) {
     version = dfc;
   }
 
-  url = url.replace("{lno}", lno);
+  if (lno > 0) {
+    url = url.replace("{lno}", lno);
+  } else {
+    url = url.replace("#L{lno}", "");
+  }
   url = url.replace("{version}", version);
   url = url.replace("{name}", window.scriptData.repo);
   url = url.replace("{path}", transformedFilePath);
