@@ -237,6 +237,13 @@ box-sizing: border-box;
   max-width: 300px;
 }
 
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.blame-col:empty {
+  padding: 0;
+  margin: 0;
+  border: none;
+  width: 0px;
+}
+
 .repository-detail .main-view .middle-view .file-detail .file-content table .blame-line {
   white-space: nowrap;
   overflow: hidden;
