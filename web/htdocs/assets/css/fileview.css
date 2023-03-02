@@ -791,3 +791,26 @@ a.link-button:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.splitter {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    max-width: none;
+    position: relative;
+    background-color: #e8eaed;
+    border-color: #e8eaed;
+}
+
+.splitter.vertical {
+    cursor: col-resize;
+    width: 4px;
+}
+
+.splitter.horizontal {
+  cursor: row-resize;
+  height: 4px;
+}
+
+.splitter:hover {
+  background-color: #dadce0;
+}

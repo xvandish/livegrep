@@ -1,3 +1,5 @@
+import { resizable } from "./resizer";
+
 var blameVisible = false;
 var commitForLastBlame = "";
 var linkExtractReg = /\/delve\/(.*)\/(blob|tree)\/(\w*)\/(.*)/;
@@ -167,12 +169,17 @@ async function loadBlame() {
   // we need to sort the blameCols by the row they st
 }
 
+/*
+* Toggle the history panel and splitter that is rendered over it allowing it
+* to expand/collapse
+*/
 function toggleHistoryPanel(e) {
     if (e.target.dataset.toggled == "false") {
       e.target.dataset.toggled = "true";
     } else {
       e.target.dataset.toggled = "false";
     }
+
     // load the history if this is the first time opening the panel
     if (!historyFetched) {
       loadHistory();
@@ -180,6 +187,7 @@ function toggleHistoryPanel(e) {
     }
 
     historyPanel.classList.toggle("closed");
+    horizontalLowerPaneSplitter.classList.toggle("hidden");
 }
 
 // TODO(xvandish): general features to add
@@ -1060,6 +1068,9 @@ var lineNumberContainer;
 var root;
 var sideNav;
 var historyPanel;  
+var verticalNavigationSplitter;
+var horizontalLowerPaneSplitter;
+var navigationPane;
 
 var searchOptions = {
   q: "",
@@ -1593,6 +1604,8 @@ function initScriptData(initData) {
   };
 }
 
+
+
 // initData is passed to us via the go template setting script_data,
 // then entry.js calling `init(window.script_data);`
 function init(initData) {
@@ -1624,7 +1637,20 @@ function init(initData) {
   root = document.querySelector(".file-content"); // TODO: this is identical to lineNumberContainer
   sideNav = document.getElementById("side-nav");
   historyPanel = document.getElementsByClassName("lower-detail-wrapper")[0];
+  
+  // there's probably a better, more abstract way to do this, but for now this is how we roll
+  // verticalNavigationSplitter = document.querySelector(".splitter.vertical");
+  horizontalLowerPaneSplitter = document.querySelector("#file-pane-splitter");
+  // navigationPane = document.querySelector(".repository-navigation");
 
+  // if (!verticalNavigationSplitter || !horizontalLowerPaneSplitter || !navigationPane) {
+  //   console.error("selector is off");
+  // }
+
+  // attatch resize handlers to every splitter
+  document.querySelectorAll('.splitter').forEach(function (el) {
+    resizable(el);
+  });
 
   initLineNumbers(lineNumberContainer);
   loadRepoFavoritesFromLocalStorage();

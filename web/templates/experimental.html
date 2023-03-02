@@ -1,59 +1,78 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
-    {{linkTag .Nonce "stylesheet" "/assets/css/codesearch.min.css" .AssetHashes}}
-    {{scriptTag .Nonce "/assets/js/fileview_v2.min.js" .AssetHashes}}
-    {{scriptTag .Nonce "/assets/js/codesearch.min.js" .AssetHashes}}
-    <script{{.Nonce}}>
-      window.scriptData = {{.ScriptData}};
-      window.onload = function() {
-        window.fileviewV2Init(window.scriptData);
-        window.codesearchInit(window.scriptData);
-      }
 
-    </script>
-  </head>
-  {{ with .Data }}
-  <body id="fileviewer-body">
-    <div id="app">
-      <div id="app-bar">
-        <header>
-          <div id="logo-box">
-            <img src="/assets/img/nyt_super_t.svg" width="32px" height="32px"></img>
-            <div id="super-pipe"></div>
-            <a href="/search">Codesearch</a>
-          </div>
-          <div id="input-line-wrapper">
+<head>
+  {{linkTag .Nonce "shortcut icon" "/assets/img/favicon.ico" .AssetHashes}}
+  {{linkTag .Nonce "stylesheet" "/assets/css/codesearch.min.css" .AssetHashes}}
+  {{scriptTag .Nonce "/assets/js/fileview_v2.min.js" .AssetHashes}}
+  {{scriptTag .Nonce "/assets/js/codesearch.min.js" .AssetHashes}}
+  <script{{.Nonce}}>
+    window.scriptData = {{.ScriptData }};
+    window.onload = function () {
+      window.fileviewV2Init(window.scriptData);
+      window.codesearchInit(window.scriptData);
+    }
+
+  </script>
+</head>
+{{ with .Data }}
+
+<body id="fileviewer-body">
+  <div id="app">
+    <div id="app-bar">
+      <header>
+        <div id="logo-box">
+          <img src="/assets/img/nyt_super_t.svg" width="32px" height="32px"></img>
+          <div id="super-pipe"></div>
+          <a href="/search">Codesearch</a>
+        </div>
+        <div id="input-line-wrapper">
           <div class="input-line">
             <div class="inline-search-options left">
               <label for="searchbox">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search" data-darkreader-inline-stroke="" style="--darkreader-inline-stroke:currentColor;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  class="feather feather-search" data-darkreader-inline-stroke=""
+                  style="--darkreader-inline-stroke:currentColor;">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
               </label>
             </div>
             <div class="inline-search-options">
               <div class="select-with-icon-container">
                 <div class="icon">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                  <g id="regular-expression">
-                          <path id="upper-case" d="M7.53 7L4 17h2.063l.72-2.406h3.624l.72 2.406h2.062L9.65 7h-2.12zm1.064 1.53L9.938 13H7.25l1.344-4.47z"></path>
-                          <path id="lower-case" d="M18.55 17l-.184-1.035h-.055c-.35.44-.71.747-1.08.92-.37.167-.85.25-1.44.25-.564 0-.955-.208-1.377-.625-.42-.418-.627-1.012-.627-1.784 0-.808.283-1.403.846-1.784.568-.386 1.193-.607 2.208-.64l1.322-.04v-.335c0-.772-.396-1.158-1.187-1.158-.61 0-1.325.18-2.147.55l-.688-1.4c.877-.46 1.85-.69 2.916-.69 1.024 0 1.59.22 2.134.662.545.445.818 1.12.818 2.03V17h-1.45m-.394-3.527l-.802.027c-.604.018-1.054.127-1.35.327-.294.2-.442.504-.442.912 0 .58.336.87 1.008.87.48 0 .865-.137 1.152-.414.29-.277.436-.645.436-1.103v-.627"></path>
-                  </g>
-                </svg>
+                    <g id="regular-expression">
+                      <path id="upper-case"
+                        d="M7.53 7L4 17h2.063l.72-2.406h3.624l.72 2.406h2.062L9.65 7h-2.12zm1.064 1.53L9.938 13H7.25l1.344-4.47z">
+                      </path>
+                      <path id="lower-case"
+                        d="M18.55 17l-.184-1.035h-.055c-.35.44-.71.747-1.08.92-.37.167-.85.25-1.44.25-.564 0-.955-.208-1.377-.625-.42-.418-.627-1.012-.627-1.784 0-.808.283-1.403.846-1.784.568-.386 1.193-.607 2.208-.64l1.322-.04v-.335c0-.772-.396-1.158-1.187-1.158-.61 0-1.325.18-2.147.55l-.688-1.4c.877-.46 1.85-.69 2.916-.69 1.024 0 1.59.22 2.134.662.545.445.818 1.12.818 2.03V17h-1.45m-.394-3.527l-.802.027c-.604.018-1.054.127-1.35.327-.294.2-.442.504-.442.912 0 .58.336.87 1.008.87.48 0 .865-.137 1.152-.414.29-.277.436-.645.436-1.103v-.627">
+                      </path>
+                    </g>
+                  </svg>
                 </div>
-              <select id="case-sensitivity-toggle" }="">
-                <option value="auto">auto</option>
-                <option value="false">match</option>
-                <option value="true">ignore</option>
-              </select>
+                <select id="case-sensitivity-toggle" }="">
+                  <option value="auto">auto</option>
+                  <option value="false">match</option>
+                  <option value="true">ignore</option>
+                </select>
               </div>
-              <button type="button" class="regex-toggle" id="toggle-regex" data-selected="false" title="Toggle regex" name="regex">
+              <button type="button" class="regex-toggle" id="toggle-regex" data-selected="false" title="Toggle regex"
+                name="regex">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
                   <g id="regular-expression">
-                          <path id="left-bracket" d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732"></path>
-                          <path id="dot" d="M10 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"></path>
-                          <path id="star" d="M14.25 7.013l-.24 2.156 2.187-.61.193 1.47-1.992.14 1.307 1.74-1.33.71-.914-1.833-.8 1.822-1.38-.698 1.296-1.74-1.98-.152.23-1.464 2.14.61-.24-2.158h1.534"></path>
-                          <path id="right-bracket" d="M21 12.045c0 .982-.152 1.896-.457 2.744A6.51 6.51 0 0 1 19.236 17h-1.453a8.017 8.017 0 0 0 1.225-2.31c.29-.855.434-1.74.434-2.66 0-.91-.14-1.797-.422-2.66a7.913 7.913 0 0 0-1.248-2.374h1.465a6.764 6.764 0 0 1 1.313 2.28c.3.86.45 1.782.45 2.764"></path>
+                    <path id="left-bracket"
+                      d="M3 12.045c0-.99.15-1.915.45-2.777A6.886 6.886 0 0 1 4.764 7H6.23a7.923 7.923 0 0 0-1.25 2.374 8.563 8.563 0 0 0 .007 5.314c.29.85.7 1.622 1.23 2.312h-1.45a6.53 6.53 0 0 1-1.314-2.223 8.126 8.126 0 0 1-.45-2.732">
+                    </path>
+                    <path id="dot" d="M10 16a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"></path>
+                    <path id="star"
+                      d="M14.25 7.013l-.24 2.156 2.187-.61.193 1.47-1.992.14 1.307 1.74-1.33.71-.914-1.833-.8 1.822-1.38-.698 1.296-1.74-1.98-.152.23-1.464 2.14.61-.24-2.158h1.534">
+                    </path>
+                    <path id="right-bracket"
+                      d="M21 12.045c0 .982-.152 1.896-.457 2.744A6.51 6.51 0 0 1 19.236 17h-1.453a8.017 8.017 0 0 0 1.225-2.31c.29-.855.434-1.74.434-2.66 0-.91-.14-1.797-.422-2.66a7.913 7.913 0 0 0-1.248-2.374h1.465a6.764 6.764 0 0 1 1.313 2.28c.3.86.45 1.782.45 2.764">
+                    </path>
                   </g>
                 </svg>
               </button>
@@ -65,131 +84,133 @@
 
               <div class="query-hint query-hint-and-index-info" style="padding-top: 2px;">
                 <div>
-                    <span>Special terms:</span>
-                    <code>path:</code>
-                    <code>-path:</code>
-                    <code>repo:</code>
-                    <code>-repo:</code>
-                    <code>max_matches:</code>
+                  <span>Special terms:</span>
+                  <code>path:</code>
+                  <code>-path:</code>
+                  <code>repo:</code>
+                  <code>-repo:</code>
+                  <code>max_matches:</code>
                 </div>
                 <div id='regex-error'>
                   <span id='errortext'></span>
                 </div>
               </div>
               <div id="resultbox">
-<div id='helparea'>
-  <div id="joined-stuff">
-    <div id='recent-searches'>
-        <div class="helpsection"><h3>Recent Searches</h3></div>
-        <!-- js will populate this with history from localstorage -->
-        <div class="searches-container"></div>
-    </div>
-    <div id="terms-wrapper">
-        <div class='helpsection'>
-            <h3>Special query terms</h3>
-        </div>
-        <table id='query-terms-table'>
-            <tr>
-            <td><code class="query-hint-text">path:</code></td>
-            <td>
-                <span>Only include results from matching files.</span>
-                <br/>
-                <span class="query-hint">OR</span>
-                <br />
-                <span>Only search filenames.</span>
-            </td>
-            <td>
-                <div id="multiple-examples">
-                    <a href="/search?q=hello+path:test">example</a>
-                    <a href="/search?q=path:test">example</a>
+                <div id='helparea'>
+                  <div id="joined-stuff">
+                    <div id='recent-searches'>
+                      <div class="helpsection">
+                        <h3>Recent Searches</h3>
+                      </div>
+                      <!-- js will populate this with history from localstorage -->
+                      <div class="searches-container"></div>
+                    </div>
+                    <div id="terms-wrapper">
+                      <div class='helpsection'>
+                        <h3>Special query terms</h3>
+                      </div>
+                      <table id='query-terms-table'>
+                        <tr>
+                          <td><code class="query-hint-text">path:</code></td>
+                          <td>
+                            <span>Only include results from matching files.</span>
+                            <br />
+                            <span class="query-hint">OR</span>
+                            <br />
+                            <span>Only search filenames.</span>
+                          </td>
+                          <td>
+                            <div id="multiple-examples">
+                              <a href="/search?q=hello+path:test">example</a>
+                              <a href="/search?q=path:test">example</a>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td><code class="query-hint-text">-path:</code></td>
+                          <td>Exclude results from matching files.</td>
+                          <td><a href="/search?q=hello+-path:test">example</a></td>
+                        </tr>
+                        <tr>
+                          <td><code class="query-hint-text">repo:</code></td>
+                          <td>
+                            <span>Only include results from matching repositories.</span>
+                            <br />
+                            <span class="query-hint">OR</span>
+                            <br />
+                            <span>Only search repo names.</span>
+                          </td>
+                          <td>
+                            <div id="multiple-examples">
+                              <a href="/search?q=hello+repo:{{.Repo.Name}}">example</a>
+                              <a href="/search?q=repo:{{.Repo.Name}}">example</a>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td><code class="query-hint-text">-repo:</code></td>
+                          <td>Exclude results from matching repositories.</td>
+                          <td><a href="/search?q=hello+-repo:{{.Repo.Name}}">example</a></td>
+                        </tr>
+                        <tr>
+                          <td><code class="query-hint-text">max_matches:</code></td>
+                          <td>Adjust the limit on number of matching lines returned. Default is 50.</td>
+                          <td><a href="/search?q=hello+max_matches:5">example</a></td>
+                        </tr>
+                        <tr>
+                          <td><code class="query-hint-text">(<em>special-term</em>:)</code></td>
+                          <td>Escape one of the above terms by wrapping it in parentheses (with regex enabled).</td>
+                          <td><a href="/search?q=(file:)&regex=true">example</a></td>
+                        </tr>
+                      </table>
+                      <div>
+                        <p>
+                          See <a href="https://github.com/google/re2/wiki/Syntax">the RE2
+                            documentation</a> for a complete listing of supported regex syntax.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-            </td>
-            </tr>
-            <tr>
-            <td><code class="query-hint-text">-path:</code></td>
-            <td>Exclude results from matching files.</td>
-            <td><a href="/search?q=hello+-path:test">example</a></td>
-            </tr>
-            <tr>
-            <td><code class="query-hint-text">repo:</code></td>
-            <td>
-                <span>Only include results from matching repositories.</span>
-                <br />
-                <span class="query-hint">OR</span>
-                <br />
-                <span>Only search repo names.</span>
-            </td>
-            <td>
-                <div id="multiple-examples">
-                    <a href="/search?q=hello+repo:{{.Repo.Name}}">example</a>
-                    <a href="/search?q=repo:{{.Repo.Name}}">example</a>
+                <div id="resultarea">
+                  <div id="results"></div>
                 </div>
-            </td>
-            </tr>
-            <tr>
-            <td><code class="query-hint-text">-repo:</code></td>
-            <td>Exclude results from matching repositories.</td>
-            <td><a href="/search?q=hello+-repo:{{.Repo.Name}}">example</a></td>
-            </tr>
-            <tr>
-            <td><code class="query-hint-text">max_matches:</code></td>
-            <td>Adjust the limit on number of matching lines returned. Default is 50.</td>
-            <td><a href="/search?q=hello+max_matches:5">example</a></td>
-            </tr>
-            <tr>
-            <td><code class="query-hint-text">(<em>special-term</em>:)</code></td>
-            <td>Escape one of the above terms by wrapping it in parentheses (with regex enabled).</td>
-            <td><a href="/search?q=(file:)&regex=true">example</a></td>
-            </tr>
-        </table>
-        <div>
-            <p>
-                See <a href="https://github.com/google/re2/wiki/Syntax">the RE2
-                documentation</a> for a complete listing of supported regex syntax.
-            </p>
-        </div>
-    </div>
-    </div>
-</div>
-              <div id="resultarea">
-                <div id="results"></div>
-              </div>
               </div>
             </div>
+          </div>
         </div>
-      </div>
-          <a href="/about-fileviewer">About & Help</a>
-        </header>
-      </div>
-      <div id="repository-browser-wrapper">
-        <div id="nested-wrapper">
+        <a href="/about-fileviewer">About & Help</a>
+      </header>
+    </div>
+    <div id="repository-browser-wrapper">
+      <div id="nested-wrapper">
         <div class="repository-browser">
           <div class="browse-repository-breadcrumb">
             <nav id="middle-nav">
               {{$repo := .Repo.Name}}
               <div id="crumbs-and-selectors">
-              <div id="repo-selector-container" class="meta-selector-container">
-                <a href="/experimental/{{ $repo }}/+/">{{$repo}}</a>
-                <button id="repo-search-toggle">
-                  <img src="/assets/img/chevron-down.svg" />
-                </button>
-                <div id="repo-autocomplete-menu">
-                  <div>
-                  <input type="text" placeholder="Search for repositories" id="repo-search-input" />
-                  </div>
-                  <div id="repos-resultarea">
-                    <div id="favorite-repos"></div>
-                    <div id="repos-results"></div>
+                <div id="repo-selector-container" class="meta-selector-container">
+                  <a href="/experimental/{{ $repo }}/+/HEAD:">{{$repo}}</a>
+                  <button id="repo-search-toggle">
+                    <img src="/assets/img/chevron-down.svg" />
+                  </button>
+                  <div id="repo-autocomplete-menu">
+                    <div>
+                      <input type="text" placeholder="Search for repositories" id="repo-search-input" />
+                    </div>
+                    <div id="repos-resultarea">
+                      <div id="favorite-repos"></div>
+                      <div id="repos-results"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div id="git-selector-container" class="meta-selector-container">
-                <a href="/experimental/{{ $repo }}/+/{{ .RepoRev }}:">{{.RepoRev}}</a>
-                <button id="git-search-toggle">
-                  <img src="/assets/img/chevron-down.svg" />
-                </button>
-                <div id="git-autocomplete-menu">
-                  <!-- Want 3 panes. 
+                <div id="git-selector-container" class="meta-selector-container">
+                  <a href="/experimental/{{ $repo }}/+/{{ .RepoRev }}:">{{.RepoRev}}</a>
+                  <button id="git-search-toggle">
+                    <img src="/assets/img/chevron-down.svg" />
+                  </button>
+                  <div id="git-autocomplete-menu">
+                    <!-- Want 3 panes. 
                     On the left we want branch, tag, commit
                     On the right we want the results.
                     At the top, a search filter -->
@@ -205,50 +226,55 @@
                     </div>
                     <div id="git-content">
                       <div id="git-branches-container">
-                      {{ range .Branches }}
-                      <!-- the following urls will be updated when the current file being viewed changes -->
-                      <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}" data-shown="true" class="flex-link">
-                        <span>{{.Name}}</span>
-                        <span>{{.LastActivityDate}}</span>
-                      </a>
-                      {{ end }}
+                        {{ range .Branches }}
+                        <!-- the following urls will be updated when the current file being viewed changes -->
+                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}"
+                          data-shown="true" class="flex-link">
+                          <span>{{.Name}}</span>
+                          <span>{{.LastActivityDate}}</span>
+                        </a>
+                        {{ end }}
                       </div>
                       <div id="git-tags-container" class="hidden">
-                      {{ range .Tags }}
-                      <a href="/experimental/{{$repo}}/{{.Name}}" class="flex-link">
-                        <span>{{.Name}}</span>
-                        <span>{{.LastActivityDate}}</span>
-                      </a>
-                      {{ end }}
-                      {{ if not .Tags }}
+                        {{ range .Tags }}
+                        <a href="/experimental/{{$repo}}/{{.Name}}" class="flex-link">
+                          <span>{{.Name}}</span>
+                          <span>{{.LastActivityDate}}</span>
+                        </a>
+                        {{ end }}
+                        {{ if not .Tags }}
                         <span>This repo does not have any tags</span>
-                      {{ end }}
+                        {{ end }}
                       </div>
                       <!-- In the case that there are a lot of commits, we lazy load
                       this infomration, unlike branches/tags, which are loaded on
                       page load -->
                       <div id="git-commits-container" class="hidden">
-                      <span>Not Yet Implemented</span>
+                        <span>Not Yet Implemented</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+                <div id="path-breadcrumbs">
+                  {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}"
+                    class="path-segment">{{$e.Name}}</a>{{end}}
                 </div>
               </div>
-              <div id="path-breadcrumbs">
-              {{range $i, $e := .PathSegments}}{{if gt $i 0}}/{{end}}<a href="{{$e.Path}}" class="path-segment">{{$e.Name}}</a>{{end}}
+              <div id="middle-nav-actions">
+                <!-- TODO: this takes a hefty bit of JS to get the anchors and such right-->
+                <a id="external-link" class="link-button" href="#">
+                  <span style="width: 20px;height: 20px;">
+                    <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" fit="" height="100%" width="100%"
+                      preserveAspectRatio="xMidYMid meet" focusable="false">
+                      <path
+                        d="M9.0034959,2 C5.13756616,2 2,5.21159623 2,9.17186522 C2,12.3414798 4.01000332,15.0283054 6.79039119,15.9798895 C7.14056599,16.0428619 7.26662891,15.8259568 7.26662891,15.6370393 C7.26662891,15.4691127 7.25962542,15.0143115 7.25962542,14.4195715 C5.31265356,14.8533819 4.8994473,13.4609905 4.8994473,13.4609905 C4.58428999,12.6353513 4.12205926,12.4114492 4.12205926,12.4114492 C3.48474113,11.9636449 4.17108373,11.9776388 4.17108373,11.9776388 C4.87143332,12.0266174 5.2426186,12.7193146 5.2426186,12.7193146 C5.86592974,13.8178345 6.88143664,13.4959752 7.28063591,13.3140547 C7.34366737,12.8522565 7.52575826,12.5373942 7.72185615,12.3554737 C6.16708006,12.1735532 4.52826202,11.5578223 4.52826202,8.80802425 C4.52826202,8.02436678 4.80139836,7.38764509 5.2496221,6.88386529 C5.17958714,6.70194481 4.93446478,5.97426287 5.31965706,4.9876941 C5.31965706,4.9876941 5.90795071,4.79177973 7.24561843,5.72237297 C7.8058981,5.56144331 8.40119525,5.48447695 8.9964924,5.48447695 C9.59178955,5.48447695 10.1870867,5.56844025 10.7473664,5.72237297 C12.0850341,4.79177973 12.6733277,4.9876941 12.6733277,4.9876941 C13.05852,5.97426287 12.8133977,6.70194481 12.7433627,6.88386529 C13.1915864,7.38764509 13.4647228,8.02436678 13.4647228,8.80802425 C13.4647228,11.5648193 11.8259047,12.1735532 10.2641252,12.3484767 C10.516251,12.5723789 10.7403629,13.0061893 10.7403629,13.6778957 C10.7403629,14.6364767 10.7333594,15.4131372 10.7333594,15.6440363 C10.7333594,15.8329537 10.8594223,16.0568558 11.2166006,15.9868864 C13.9969885,15.0353023 15.9999883,12.3484767 15.9999883,9.17886216 C16.0069918,5.21159623 12.8694256,2 9.0034959,2">
+                      </path>
+                    </svg>
+                  </span>
+                  <!-- use {{ .ExternalDomain }} if you want flexibility-->
+                  <span>View in GitHub</span>
+                </a>
               </div>
-            </div>
-            <div id="middle-nav-actions">
-              <!-- TODO: this takes a hefty bit of JS to get the anchors and such right-->
-              <a id="external-link" class="link-button" href="#">
-                <span style="width: 20px;height: 20px;">
-                  <svg viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" fit="" height="100%" width="100%" preserveAspectRatio="xMidYMid meet" focusable="false">
-                    <path d="M9.0034959,2 C5.13756616,2 2,5.21159623 2,9.17186522 C2,12.3414798 4.01000332,15.0283054 6.79039119,15.9798895 C7.14056599,16.0428619 7.26662891,15.8259568 7.26662891,15.6370393 C7.26662891,15.4691127 7.25962542,15.0143115 7.25962542,14.4195715 C5.31265356,14.8533819 4.8994473,13.4609905 4.8994473,13.4609905 C4.58428999,12.6353513 4.12205926,12.4114492 4.12205926,12.4114492 C3.48474113,11.9636449 4.17108373,11.9776388 4.17108373,11.9776388 C4.87143332,12.0266174 5.2426186,12.7193146 5.2426186,12.7193146 C5.86592974,13.8178345 6.88143664,13.4959752 7.28063591,13.3140547 C7.34366737,12.8522565 7.52575826,12.5373942 7.72185615,12.3554737 C6.16708006,12.1735532 4.52826202,11.5578223 4.52826202,8.80802425 C4.52826202,8.02436678 4.80139836,7.38764509 5.2496221,6.88386529 C5.17958714,6.70194481 4.93446478,5.97426287 5.31965706,4.9876941 C5.31965706,4.9876941 5.90795071,4.79177973 7.24561843,5.72237297 C7.8058981,5.56144331 8.40119525,5.48447695 8.9964924,5.48447695 C9.59178955,5.48447695 10.1870867,5.56844025 10.7473664,5.72237297 C12.0850341,4.79177973 12.6733277,4.9876941 12.6733277,4.9876941 C13.05852,5.97426287 12.8133977,6.70194481 12.7433627,6.88386529 C13.1915864,7.38764509 13.4647228,8.02436678 13.4647228,8.80802425 C13.4647228,11.5648193 11.8259047,12.1735532 10.2641252,12.3484767 C10.516251,12.5723789 10.7403629,13.0061893 10.7403629,13.6778957 C10.7403629,14.6364767 10.7333594,15.4131372 10.7333594,15.6440363 C10.7333594,15.8329537 10.8594223,16.0568558 11.2166006,15.9868864 C13.9969885,15.0353023 15.9999883,12.3484767 15.9999883,9.17886216 C16.0069918,5.21159623 12.8694256,2 9.0034959,2"></path>
-                  </svg>
-                </span>
-                <!-- use {{ .ExternalDomain }} if you want flexibility-->
-                <span>View in GitHub</span>
-              </a>
-            </div>
             </nav>
           </div>
           <div class="browse-repository-contents">
@@ -257,9 +283,11 @@
                 <div id="nav-tab-group">
                   <span>Files</span>
                 </div>
-              {{ renderDirectoryTree .DirectoryTree -15 $repo .Commit .FilePath }}
+                {{ renderDirectoryTree .DirectoryTree -15 $repo .Commit .FilePath }}
               </nav>
             </div>
+            <!-- Used to resize the file tree on the left -->
+            <div class="splitter vertical" data-direction="horizontal"></div>
             <div class="repository-detail">
               <div class="main-view">
                 <div class="middle-view">
@@ -268,7 +296,8 @@
                       <div class="file-header-wrapper">
                         <div class="file-info">
                           <span id="filename">{{.FileName}}</span>
-                          <span class="commit-info">(@ <a id="short-hash-link" href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
+                          <span class="commit-info">(@ <a id="short-hash-link"
+                              href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
                         </div>
                         <div class="file-actions">
                           <button id="toggle-blame">Blame</button>
@@ -278,83 +307,49 @@
                     <div class="file-content">
                       {{ if and .FileContent (not .FileContent.Invalid) }}
                         {{ template "filecontent" .FileContent }}
-                      {{ else if .DirContent }}
+                      {{ else if and .DirContent .DirContent.ReadmeContent }}
                         {{ template "filecontent" .DirContent.ReadmeContent }}
+                      <!-- TODO: Not the only case. If viewing the root of a repository,
+                        or a directory, just show a blank pane -->
                       {{ else }}
                       <div id="file-does-not-exist-warning-container">
                         <p>The file does not exist at this point in history.</p>
+                        <p>Or, you're viewing a directory without a readme and you've hit a TODO of mine to add some helpful menu here if that's the case.</p>
                       </div>
                       {{ end }}
                     </div>
                     <div class="diff-content hidden"></div>
                   </div>
+                  <!-- This splitter is hidden unless/until the lower pane is open-->
+                  <div class="splitter horizontal hidden" id="file-pane-splitter" data-direction="vertical"></div>
                   <div class="lower-detail-wrapper closed">
                     <div class="lower-detail-panel">
                       <div class="lower-detail-header">
                         <h4 style="font-weight:500;">History</h4>
-                        <button id="toggle-history" class="icon-toggle" title="toggle commit history" data-toggled="false">
+                        <button id="toggle-history" class="icon-toggle" title="toggle commit history"
+                          data-toggled="false">
                           <img src="/assets/img/chevron-down.svg" />
                         </button>
                       </div>
                       <div class="lower-detail-content">
+                      <!-- TODO: Add a loading spinner while loading content if its taking longer than,
+                        say, 200ms -->
                       </div>
 
-                    </div> 
+                    </div>
                   </div>
                 </div>
               </div>
 
+            </div>
           </div>
         </div>
-      </div>
 
       </div>
-      </div>
+    </div>
 
   </div>
-  </body>
-  {{ end }}
+</body>
+{{ end }}
+
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
