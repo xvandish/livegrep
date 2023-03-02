@@ -309,8 +309,48 @@ func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo c
  */
 var customGitLogFormat = "format:commit %H <%h>%nauthor <%an> <%ae>%nsubject %s%ndate %ah%nbody %b"
 
+const (
+	partsPerCommitBasic         = 10 // number of \x00-separated fields per commit
+	partsPerCommitWithFileNames = 11 // number of \x00-separated fields per commit with names of modified files also returned
+
+	// don't include refs (faster, should be used if refs are not needed)
+	// outputs (with null sep between each field) commitHash authorName authorEmail authorDate committerName commiterEmail commiterDate raw body(unwrapped subject and body) ParentHashes
+	logFormatWithoutRefs = "--format=format:%H%x00%aN%x00%aE%x00%at%x00%cN%x00%cE%x00%ct%x00%s%x00%b%x00%P%x00"
+)
+
 // The named capture groups are just for human readability
 var gitLogRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\x00`)
+
+// a commit signature. Either author or commiter
+type Signature struct {
+	Name  string
+	Email string
+	Date  time.Time
+}
+
+type CommitId string
+
+func (c CommitId) Short() string {
+	if len(c) >= 7 {
+		return string(c)[:7]
+	}
+	return string(c)
+}
+
+type GitCommit struct {
+	ID        CommitId
+	Author    Signature
+	Committer *Signature // pointer since its sometimes nil
+	Subject   string
+	Body      string
+	Parents   []CommitId
+	Files     []string // not sure if going to use, when log is run with --name-only, lists all files changed by commit
+}
+
+type GitLog struct {
+	Commits       []*GitCommit
+	MaybeLastPage bool
+}
 
 // Later on when we add support for CommitCommiter we can abstract Author to it's own struct
 type Commit struct {
@@ -356,24 +396,234 @@ func getPathSegments(pathSplits []string, repo config.RepoConfig) []breadCrumbEn
 	return segments
 }
 
-// We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
-func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.RepoConfig) (*SimpleGitLog, error) {
-	cleanPath := path.Clean(relativePath)
+func parseTimeFromLogPart(part []byte) (time.Time, error) {
+	t, err := strconv.ParseInt(string(part), 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(t, 0).UTC(), nil
+}
+
+// reads the next commit from rawLog, and advances rawLog by all the data read
+func parseNextCommitFromLog(rawLog []byte, partsPerCommit int) (commit *GitCommit, rest []byte, err error) {
+	parts := bytes.SplitN(rawLog, []byte{'\x00'}, partsPerCommit+1)
+	if len(parts) < partsPerCommit {
+		return nil, nil, errors.New(fmt.Sprintf("invalid commit log entry: %q", parts))
+	}
+
+	// log outputs are newline separated, so all but the 1st commit ID part
+	// has an erroneous leading newline
+	parts[0] = bytes.TrimPrefix(parts[0], []byte{'\n'})
+	commitId := CommitId(parts[0])
+
+	authorTime, err := parseTimeFromLogPart(parts[3])
+	if err != nil {
+		return nil, nil, errors.New(fmt.Sprintf("parsing git commit author time: %s", err))
+	}
+	committerTime, err := parseTimeFromLogPart(parts[6])
+	if err != nil {
+		return nil, nil, errors.New(fmt.Sprintf("parsing git commit committer time: %s", err))
+	}
+
+	var parentCommits []CommitId
+	if parentPart := parts[9]; len(parentPart) > 0 {
+		parentIds := bytes.Split(parentPart, []byte{' '})
+		parentCommits = make([]CommitId, len(parentIds))
+		for i, id := range parentIds {
+			parentCommits[i] = CommitId(id)
+		}
+	}
+
+	// TODO: if the commit has file names parse them
+	// write the pareCommitFileNames
+	fileNames, nextCommit := parseCommitFileNames(partsPerCommit, parts)
+
+	commit = &GitCommit{
+		ID:        commitId,
+		Author:    Signature{Name: string(parts[1]), Email: string(parts[2]), Date: authorTime},
+		Committer: &Signature{Name: string(parts[4]), Email: string(parts[5]), Date: committerTime},
+		Subject:   string(parts[7]),
+		Body:      string(parts[8]),
+		Parents:   parentCommits,
+		Files:     fileNames,
+	}
+
+	// if there is more data to process, advance rawLog for the next read
+	if len(parts) == partsPerCommit+1 {
+		rest = parts[partsPerCommit]
+		if string(nextCommit) != "" {
+			// if filenames are included, the nextcommit was in the chunk read by parseCommitFileNames.
+			// so re-add it
+			rest = append(append(nextCommit, '\x00'), rest...)
+		}
+	}
+
+	return commit, rest, nil
+}
+
+func parseCommitFileNames(partsPerCommit int, parts [][]byte) ([]string, []byte) {
+	var fileNames []string
+	var nextCommit []byte
+	if partsPerCommit == partsPerCommitWithFileNames {
+		parts[10] = bytes.TrimPrefix(parts[10], []byte{'\n'})
+		fileNamesRaw := parts[10]
+		fileNameParts := bytes.Split(fileNamesRaw, []byte{'\n'})
+		for i, name := range fileNameParts {
+			// The last item contains the files modified, some empty space, and the commit ID for the next commit. Drop
+			// the empty space and the next commit ID (which will be processed in the next iteration).
+			if string(name) == "" || i == len(fileNameParts)-1 {
+				continue
+			}
+			fileNames = append(fileNames, string(name))
+		}
+		nextCommit = fileNameParts[len(fileNameParts)-1]
+	}
+	return fileNames, nextCommit
+}
+
+func parseCommitLogOutput(rawLog []byte, nameOnly bool) ([]*GitCommit, error) {
+	// why do this work?? n
+	// I guess, what's more expensive, starting with a slice of len&capacity=0 or
+	// splitting the rawLog?, a
+	allParts := bytes.Split(rawLog, []byte{'\x00'})
+	partsPerCommit := partsPerCommitBasic
+	if nameOnly {
+		partsPerCommit = partsPerCommitWithFileNames
+	}
+
+	numCommits := len(allParts) / partsPerCommit
+	commits := make([]*GitCommit, 0, numCommits)
+	for len(rawLog) > 0 {
+		var commit *GitCommit
+		var err error
+		commit, rawLog, err = parseNextCommitFromLog(rawLog, partsPerCommit)
+		if err != nil {
+			return nil, err
+		}
+		commits = append(commits, commit)
+	}
+	return commits, nil
+}
+
+type CommitOptions struct {
+	Range string // commit range (revspec, "A..HEAD")
+
+	N     uint // limit the number of commits to `n` (0 is no limit)
+	SkipN uint // skip `n` commits at beginning. Used for pagination reqs
+
+	// MessageQuery string // include only commits whose commit message contains this substring
+
+	// Author string // include only commits whose author matches this
+	// After  string // include only commits after this date
+	// Before string // include only commits before this date
+
+	// Reverse   bool // Whether or not commits should be given in reverse order (optional)
+	// DateOrder bool // Whether or not commits should be sorted by date (optional)
+
+	Path   string // only commits modifying the given path are selected
+	Follow bool   // follow the history of the path beyond renames (single path only)
+
+	// When true we opt out of attempting to fetch missing revisions
+	NoEnsureRevision bool
+
+	// When true return the names of the files changed in the commit
+	// This is a frustrating name, --name-only doesn't exclude the rest of the things
+	// you asked for from being included
+	NameOnly bool
+}
+
+func ensureSafeSpecArg(spec string) error {
+	if strings.HasPrefix(spec, "-") {
+		return errors.New(fmt.Sprintf("invalid git revision spec %s (begins with '-')", spec))
+	}
+	return nil
+}
+
+func (opts CommitOptions) genLogArgs(initialArgs []string) (args []string, err error) {
+	if err := ensureSafeSpecArg(opts.Range); err != nil {
+		return nil, err
+	}
+
+	args = initialArgs
+
+	// we currently always set N to 1000 on the server
+	if opts.N != 0 {
+		args = append(args, "-n", strconv.FormatUint(uint64(opts.N), 10))
+	}
+
+	if opts.SkipN != 0 {
+		args = append(args, "--skip", strconv.FormatUint(uint64(opts.SkipN), 10))
+	}
+
+	// TODO: the rest of the filtering that we don't do
+	if opts.Range != "" {
+		args = append(args, opts.Range)
+	}
+	// Such a dumb name
+	if opts.NameOnly {
+		args = append(args, "--name-only")
+	}
+	if opts.Follow {
+		args = append(args, "--follow")
+	}
+	if opts.Path != "" {
+		args = append(args, "--", opts.Path)
+	}
+
+	return args, nil
+}
+
+func BuildGitLog(relativePath string, logArgs CommitOptions, repo config.RepoConfig) (*GitLog, error) {
+	args, err := logArgs.genLogArgs([]string{"-C", repo.Path, "log", logFormatWithoutRefs})
+	if err != nil {
+		return nil, err
+	}
+
 	start := time.Now()
-	out, err := exec.Command("git", "-C", repo.Path, "log", "-n", "1000", "-z", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath).Output()
+	cmd := exec.Command("git", args...)
+	log.Printf("Commits cmd=%s\n", cmd.String())
+
+	out, err := cmd.Output()
 	fmt.Printf("took %s to get git log\n", time.Since(start))
 	if err != nil {
 		fmt.Printf("err=%s\n", err.Error())
 		return nil, err
 	}
-	// Null terminate our thing
+
 	start = time.Now()
-	out = append(out, byte(rune(0)))
-	err = os.WriteFile("./tmp-log", out, 0644)
+	commits, err := parseCommitLogOutput(out, logArgs.NameOnly)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GitLog{
+		Commits:       commits,
+		MaybeLastPage: len(commits) == int(logArgs.N),
+	}, nil
+}
+
+// We should add a bound for this - make it max at 3 seconds (use project-vi as reference)
+func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.RepoConfig) (*SimpleGitLog, error) {
+	cleanPath := path.Clean(relativePath)
+	start := time.Now()
+	cmd := exec.Command("git", "-C", repo.Path, "log", "-n", "1000", "-z", "--no-abbrev", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath)
+	log.Printf("BuildSimpleGitLogData cmd=%s", cmd.String())
+
+	out, err := cmd.Output()
+	fmt.Printf("took %s to get git log\n", time.Since(start))
 	if err != nil {
 		fmt.Printf("err=%s\n", err.Error())
 		return nil, err
 	}
+
+	// Null terminate our thing
+	start = time.Now()
+	// out = append(out, byte(rune(0)))
+	// err = os.WriteFile("./tmp-log", out, 0644)
+	// if err != nil {
+	// 	fmt.Printf("err=%s\n", err.Error())
+	// 	return nil, err
+	// }
 
 	matches := gitLogRegex.FindAllSubmatch(out, -1)
 
@@ -383,7 +633,6 @@ func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	// fmt.Printf("git log matches=%+v\n", matches)
 
 	for i, match := range matches {
-		fmt.Printf("match_matches_len=%d\n", len(match))
 		if len(match) != 8 {
 			log.Fatalf("GIT_LOG_ERROR: match len < 8: %+v\n", match)
 			continue

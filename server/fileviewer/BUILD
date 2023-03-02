@@ -18,7 +18,11 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
-        "fileview_test.go"
+        "fileview_test.go",
+    ],
+    data = [
+        "simple_log.txt",
+        "simple_log_name_only.txt"
     ],
     embed = [":go_default_library"],
 )
