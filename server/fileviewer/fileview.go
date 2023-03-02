@@ -79,7 +79,7 @@ var extToLangMap map[string]string = map[string]string{
 
 // Grabbed from the extensions GitHub supports here - https://github.com/github/markup
 var supportedReadmeExtensions = []string{
-	"markdown", "mdown", "mkdn", "md", "textile", "rdoc", "org", "creole", "mediawiki", "wiki",
+	"", "markdown", "mdown", "mkdn", "md", "textile", "rdoc", "org", "creole", "mediawiki", "wiki",
 	"rst", "asciidoc", "adoc", "asc", "pod",
 }
 
@@ -274,7 +274,7 @@ func buildReadmeRegex(supportedReadmeExtensions []string) *regexp.Regexp {
 		}
 	}
 	repoRegexAlt := buf.String()
-	repoFileRegex := regexp.MustCompile(fmt.Sprintf("((?i)readme)\\.(%s)", repoRegexAlt))
+	repoFileRegex := regexp.MustCompile(fmt.Sprintf("((?i)readme)\\.?(%s)", repoRegexAlt))
 
 	return repoFileRegex
 }
