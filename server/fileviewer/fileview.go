@@ -482,17 +482,12 @@ func parseCommitFileNames(partsPerCommit int, parts [][]byte) ([]string, []byte)
 }
 
 func parseCommitLogOutput(rawLog []byte, nameOnly bool) ([]*GitCommit, error) {
-	// why do this work?? n
-	// I guess, what's more expensive, starting with a slice of len&capacity=0 or
-	// splitting the rawLog?, a
-	allParts := bytes.Split(rawLog, []byte{'\x00'})
 	partsPerCommit := partsPerCommitBasic
 	if nameOnly {
 		partsPerCommit = partsPerCommitWithFileNames
 	}
 
-	numCommits := len(allParts) / partsPerCommit
-	commits := make([]*GitCommit, 0, numCommits)
+	commits := make([]*GitCommit, 0)
 	for len(rawLog) > 0 {
 		var commit *GitCommit
 		var err error
