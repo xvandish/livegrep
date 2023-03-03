@@ -1071,6 +1071,7 @@ var historyPanel;
 var verticalNavigationSplitter;
 var horizontalLowerPaneSplitter;
 var navigationPane;
+var openGitMetaTab;
 
 var searchOptions = {
   q: "",
@@ -1185,8 +1186,8 @@ function searchRepos(inputEvnt) {
     });
 }
 
-function searchBranches(inputEvnt) {
-  var branches = window.scriptData.branches;
+// search branches, tags, commits
+function searchOpenGitMetaTab(inputEvnt) {
   var searchQuery = inputEvnt.target.value;
   searchQuery = searchQuery.trim();
 
@@ -1198,35 +1199,38 @@ function searchBranches(inputEvnt) {
   // for matching repos, data-shown="true", otherwise, "false"
 
   const re = new RegExp(searchQuery);
+  var container = document.getElementById(`git-${openGitMetaTab.dataset.tab}-container`);
+  if (!container) {
+    console.error("container for git tab=" + openGitMetaTab + " could not be found. Exiting search");
+    return
+  }
 
-  var branchesContainer = document.getElementById("git-branches-container");
-
-  var childLen = branchesContainer.children.length;
+  var childLen = container.children.length;
 
   for (var i = 0; i < childLen; i++) {
-    var branchLink = branchesContainer.children[i];
-    var branchName = branchLink.dataset.branchName; // repo-name
-    if (branchName.search(re) != -1) {
-      branchLink.dataset.shown = "true";
+    var link = container.children[i];
+    var name = link.dataset.name; // repo-name
+    if (name.search(re) != -1) {
+      link.dataset.shown = "true";
     } else {
-      branchLink.dataset.shown = "false";
+      link.dataset.shown = "false";
     }
   }
 }
 
-var openTab;
+
 function switchGitSearchTab(clickEvnt) {
   var tabToSwitchTo = clickEvnt.target.dataset.tab;
 
-  if (tabToSwitchTo == openTab.dataset.tab) return;
+  if (tabToSwitchTo == openGitMetaTab.dataset.tab) return;
 
   // switches selected state of tabs
-  openTab.dataset.selected = "false";
+  openGitMetaTab.dataset.selected = "false";
   clickEvnt.target.dataset.selected = "true";
 
   // hide the old content
   document
-    .getElementById(`git-${openTab.dataset.tab}-container`)
+    .getElementById(`git-${openGitMetaTab.dataset.tab}-container`)
     .classList.toggle("hidden");
 
   // show the new content
@@ -1234,7 +1238,7 @@ function switchGitSearchTab(clickEvnt) {
     .getElementById(`git-${tabToSwitchTo}-container`)
     .classList.toggle("hidden");
 
-  openTab = clickEvnt.target;
+  openGitMetaTab = clickEvnt.target;
 }
 
 // ----------- Start of line number and hash handling ------------ //
@@ -1637,6 +1641,8 @@ function init(initData) {
   root = document.querySelector(".file-content"); // TODO: this is identical to lineNumberContainer
   sideNav = document.getElementById("side-nav");
   historyPanel = document.getElementsByClassName("lower-detail-wrapper")[0];
+  // get the open git search tab
+  openGitMetaTab = document.querySelector("#git-tabs > li[data-selected='true']");
   
   // there's probably a better, more abstract way to do this, but for now this is how we roll
   // verticalNavigationSplitter = document.querySelector(".splitter.vertical");
@@ -1662,11 +1668,9 @@ function init(initData) {
     autocompleteMenuOpen = true;
   });
 
-  // get the open git search tab
-  openTab = document.querySelector("#git-tabs > li[data-selected='true']");
 
   repoSearchBox.addEventListener("input", searchRepos);
-  gitSearchBox.addEventListener("input", searchBranches);
+  gitSearchBox.addEventListener("input", searchOpenGitMetaTab);
 
   document.getElementById("toggle-blame").addEventListener("click", toggleBlame);
   document.getElementById("toggle-history").addEventListener("click", toggleHistoryPanel);

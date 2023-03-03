@@ -134,15 +134,3 @@ type TreeNode struct {
 	Type      string
 	Children  []*TreeNode
 }
-
-type GitBranch struct {
-	Name             string
-	IsHead           bool
-	LastActivityDate string
-}
-
-type GitTag struct {
-	Name             string
-	IsHead           bool
-	LastActivityDate string
-}

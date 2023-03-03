@@ -228,7 +228,7 @@
                       <div id="git-branches-container">
                         {{ range .Branches }}
                         <!-- the following urls will be updated when the current file being viewed changes -->
-                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-branch-name="{{.Name}}"
+                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" data-name="{{.Name}}"
                           data-shown="true" class="flex-link">
                           <span>{{.Name}}</span>
                           <span>{{.LastActivityDate}}</span>
@@ -237,7 +237,7 @@
                       </div>
                       <div id="git-tags-container" class="hidden">
                         {{ range .Tags }}
-                        <a href="/experimental/{{$repo}}/{{.Name}}" class="flex-link">
+                        <a href="/experimental/{{$repo}}/+/{{.Name}}:{{$.Data.FilePath}}" class="flex-link" data-name="{{.Name}}">
                           <span>{{.Name}}</span>
                           <span>{{.LastActivityDate}}</span>
                         </a>

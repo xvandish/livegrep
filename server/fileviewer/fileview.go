@@ -119,8 +119,8 @@ type FileViewerContext struct {
 	FileName string
 
 	DirectoryTree *api.TreeNode
-	Branches      []api.GitBranch
-	Tags          []api.GitTag
+	Branches      []GitBranch
+	Tags          []GitTag
 	RepoConfig    config.RepoConfig
 }
 
@@ -320,6 +320,18 @@ const (
 
 // The named capture groups are just for human readability
 var gitLogRegex = regexp.MustCompile("(?ms)" + `commit\s(?P<commitHash>\w*)\s<(?P<shortHash>\w*)>\nauthor\s<(?P<authorName>[^>]*)>\s<(?P<authorEmail>[^>]*)>\nsubject\s(?P<commitSubject>[^\n]*)\ndate\s(?P<commitDate>[^\n]*)\nbody\s(?P<commitBody>[\s\S]*?)\x00`)
+
+type GitBranch struct {
+	Name             string
+	IsHead           bool
+	LastActivityDate string
+}
+
+type GitTag struct {
+	Name             string
+	IsHead           bool
+	LastActivityDate string
+}
 
 // a commit signature. Either author or commiter
 type Signature struct {
@@ -1526,7 +1538,7 @@ func ReverseSlice(s interface{}) {
 	}
 }
 
-func ListAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
+func ListAllBranches(repo config.RepoConfig) ([]GitBranch, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
 	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
 
@@ -1548,13 +1560,13 @@ func ListAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	buf := make([]byte, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 
-	branches := make([]api.GitBranch, 0)
+	branches := make([]GitBranch, 0)
 	headIdx := -1
 	idx := 0
 	for scanner.Scan() {
 		words := strings.Split(scanner.Text(), "\x00")
 		isHead := words[0] == "*"
-		branches = append(branches, api.GitBranch{Name: words[2], IsHead: isHead, LastActivityDate: words[1]})
+		branches = append(branches, GitBranch{Name: words[2], IsHead: isHead, LastActivityDate: words[1]})
 		if isHead {
 			headIdx = idx
 		}
@@ -1579,19 +1591,19 @@ func ListAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	return branches, nil
 }
 
-func parseGitListTagsOutput(input *bufio.Scanner) []api.GitTag {
-	tags := make([]api.GitTag, 0)
+func parseGitListTagsOutput(input *bufio.Scanner) []GitTag {
+	tags := make([]GitTag, 0)
 	for input.Scan() {
 		words := bytes.SplitN(input.Bytes(), []byte("\x00"), 3)
 
-		tags = append(tags, api.GitTag{Name: string(words[2]), IsHead: bytes.Equal(words[0], []byte("*")), LastActivityDate: string(words[1])})
+		tags = append(tags, GitTag{Name: string(words[2]), IsHead: bytes.Equal(words[0], []byte("*")), LastActivityDate: string(words[1])})
 	}
 
 	ReverseSlice(tags)
 	return tags
 }
 
-func ListAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
+func ListAllTags(repo config.RepoConfig) ([]GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
 	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
 
@@ -1602,7 +1614,6 @@ func ListAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	}
 
 	err = cmd.Start()
-
 	if err != nil {
 		return nil, err
 	}

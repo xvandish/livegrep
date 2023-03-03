@@ -19,7 +19,6 @@ import (
 	"github.com/bmizerany/pat"
 	"gopkg.in/alexcesaro/statsd.v2"
 
-	"github.com/livegrep/livegrep/server/api"
 	"github.com/livegrep/livegrep/server/config"
 	"github.com/livegrep/livegrep/server/fileviewer"
 	"github.com/livegrep/livegrep/server/log"
@@ -708,13 +707,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	data.RepoRev = repoRev
 	data.RepoConfig = repoConfig
 
-	// script_data := &struct {
-	// 	URL
-	// }{repoConfig, path, rev, data.CommitHash}
-
-	if data.FileContent == nil {
-		fmt.Printf("filecontent is nil\n")
-	}
+	fmt.Printf("tags are:%v\n", tags)
 
 	script_data := &struct {
 		RepoConfig config.RepoConfig
@@ -724,10 +717,9 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		RepoRev    string
 		FilePath   string
 		FileName   string
-		Branches   []api.GitBranch // TODO: fix this
+		Branches   []fileviewer.GitBranch // TODO: fix this
 	}{repoConfig, repoConfig.Name, data.Commit, data.CommitHash, data.RepoRev, data.FilePath, data.FileName, data.Branches}
 
-	fmt.Printf("going to render page\n")
 	s.renderPage(ctx, w, r, "experimental.html", &page{
 		Title:         "experimental",
 		IncludeHeader: false,
