@@ -460,3 +460,21 @@ func TestParseCommitLogOutput(t *testing.T) {
 		}
 	}
 }
+
+const exampleTagsRevListOutput = "\x00Aug\x0019\x002022\x00v0.1.0\n" +
+	"\x00Aug 19 2022\x00v1.0.0\n"
+
+func TestParseGitListTagsOutput(t *testing.T) {
+	scanner := bufio.NewScanner(strings.NewReader(exampleTagsRevListOutput))
+
+	const maxCapacity = 100 * 1024 * 1024
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
+	tags := parseGitListTagsOutput(scanner)
+
+	if len(tags) != 2 {
+		t.Errorf("expected 2 tags but got %d\n", len(tags))
+	}
+
+}

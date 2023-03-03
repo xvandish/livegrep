@@ -1579,6 +1579,18 @@ func ListAllBranches(repo config.RepoConfig) ([]api.GitBranch, error) {
 	return branches, nil
 }
 
+func parseGitListTagsOutput(input *bufio.Scanner) []api.GitTag {
+	tags := make([]api.GitTag, 0)
+	for input.Scan() {
+		words := bytes.SplitN(input.Bytes(), []byte("\x00"), 3)
+
+		tags = append(tags, api.GitTag{Name: string(words[2]), IsHead: bytes.Equal(words[0], []byte("*")), LastActivityDate: string(words[1])})
+	}
+
+	ReverseSlice(tags)
+	return tags
+}
+
 func ListAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
 	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
@@ -1601,14 +1613,7 @@ func ListAllTags(repo config.RepoConfig) ([]api.GitTag, error) {
 	buf := make([]byte, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
 
-	tags := make([]api.GitTag, 0)
-	for scanner.Scan() {
-		words := strings.Split(scanner.Text(), "\x00")
-		tags = append(tags, api.GitTag{Name: words[2], IsHead: words[0] == "*", LastActivityDate: words[1]})
-	}
-
-	ReverseSlice(tags)
-
+	tags := parseGitListTagsOutput(scanner)
 	return tags, nil
 }
 
