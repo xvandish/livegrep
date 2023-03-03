@@ -79,7 +79,7 @@ var extToLangMap map[string]string = map[string]string{
 
 // Grabbed from the extensions GitHub supports here - https://github.com/github/markup
 var supportedReadmeExtensions = []string{
-	"", "markdown", "mdown", "mkdn", "md", "textile", "rdoc", "org", "creole", "mediawiki", "wiki",
+	"markdown", "mdown", "mkdn", "md", "textile", "rdoc", "org", "creole", "mediawiki", "wiki",
 	"rst", "asciidoc", "adoc", "asc", "pod",
 }
 
@@ -1209,7 +1209,15 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			// Git supports case sensitive files, so README.md & readme.md in the same tree is possible
 			// so in this case we just grab the first matching file
 			if readmePath != "" {
-				continue
+				break
+			}
+
+			// special case, for README or readme without an extension
+			if strings.ToLower(dirEntries[i].Name) == "readme" {
+				readmeName = dirEntries[i].Name
+				readmePath = obj + dirEntries[i].Name
+				readmeLang = "md"
+				break
 			}
 
 			parts := supportedReadmeRegex.FindStringSubmatch(dirEntries[i].Name)
