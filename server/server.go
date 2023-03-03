@@ -667,7 +667,6 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	}
 
 	data, err := fileviewer.BuildFileData(path, repoConfig, commitToLoadFileAt)
-	log.Printf(ctx, "data: %+v err=%v", data, err)
 	// fileContent not filled in, but filepath exists
 	if err != nil {
 		// if this errors out, most likely the file does not exist,
