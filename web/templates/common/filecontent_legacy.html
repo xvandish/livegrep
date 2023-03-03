@@ -1,0 +1,17 @@
+{{define "filecontent_legacy"}}
+<div class="file-content">
+  {{ $lang := .Language }}
+  {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang .FileName }}
+  <table>
+    <tbody class="chroma">
+    {{ range $i, $e := $highlightedContent.Content }}
+      {{$lineNum := toLineNum $i}}
+      <tr>
+        <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
+        <td id="LC{{$lineNum}}" style="white-space: pre;">{{ $e }}</td>
+      </tr>
+    {{ end }}
+    </tbody>
+  </table>
+</div>
+{{end}}
