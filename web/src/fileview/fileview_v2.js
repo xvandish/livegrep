@@ -1092,7 +1092,7 @@ function toggleRepoSeachAutocompleteMenu() {
     // for now, launch a new search every time to keep results up to date
     // later on we can add a "haveDoneInitialSearch" repo to keep track
     // of initialization
-    doRepoSearch();
+    searchRepos();
   }
 }
 
@@ -1108,7 +1108,7 @@ function toggleGitAutocompleteMenu() {
 }
 
 // we do a simple search
-function doRepoSearch(inputEvnt) {
+function searchRepos(inputEvnt) {
   var searchQuery = ""; // initialize to empty search so we can manually call
 
   if (inputEvnt) {
@@ -1665,6 +1665,7 @@ function init(initData) {
   // get the open git search tab
   openTab = document.querySelector("#git-tabs > li[data-selected='true']");
 
+  repoSearchBox.addEventListener("input", searchRepos);
   gitSearchBox.addEventListener("input", searchBranches);
 
   document.getElementById("toggle-blame").addEventListener("click", toggleBlame);
