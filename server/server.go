@@ -238,7 +238,12 @@ func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, 
 		return
 	}
 
-	data := fileviewer.BuildDirectoryTree(path, repo, rev)
+	data, err := fileviewer.BuildDirectoryTree(path, repo, rev)
+	if err != nil {
+		writeError(ctx, w, 500, "", err.Error())
+		return
+	}
+
 	replyJSON(ctx, w, 200, data)
 }
 
@@ -261,7 +266,13 @@ func (s *server) ServeGitLsTreeRendered(ctx context.Context, w http.ResponseWrit
 	}
 
 	fmt.Printf("repo.Path=%s repo.Name=%s\n", repo.Path, repo.Name)
-	data := fileviewer.BuildDirectoryTree(path, repo, rev)
+	data, err := fileviewer.BuildDirectoryTree(path, repo, rev)
+
+	if err != nil {
+		writeError(ctx, w, 500, "", err.Error())
+		return
+	}
+
 	rendered := templates.RenderDirectoryTree(data, -15, repo.Name, rev, path)
 	w.Write([]byte(rendered))
 }
@@ -585,6 +596,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 // figure out HEAD, then pass that to buildFileData
 // TODO: When dfc is set, allow log to return whether there are "future" entries, so that users
 // can jump back the most recent
+// TODO: handle empty repos better
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -685,7 +697,8 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	// these options do not depend on the file existing.
 	// they do however depend on the `repoRev` being valid.
 	// that will be something to tackle in the future <- TODO(xvandish)
-	tree := fileviewer.BuildDirectoryTree(path, repoConfig, repoRev)
+	// TODO: use goroutines to do these in parallel
+	tree, err := fileviewer.BuildDirectoryTree(path, repoConfig, repoRev)
 	branches, err := fileviewer.ListAllBranches(repoConfig)
 	tags, err := fileviewer.ListAllTags(repoConfig)
 

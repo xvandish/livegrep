@@ -144,6 +144,10 @@ var rootPadding = -15
 
 // not fun to read
 func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
+	if rootDir == nil {
+		return ""
+	}
+
 	cls := ""
 
 	// if this rootNode has nothing to do with the open file (filepath)

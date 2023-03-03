@@ -576,7 +576,7 @@ func BuildGitLog(relativePath string, logArgs CommitOptions, repo config.RepoCon
 
 	start := time.Now()
 	cmd := exec.Command("git", args...)
-	log.Printf("Commits cmd=%s\n", cmd.String())
+	fmt.Printf("Commits cmd=%s\n", cmd.String())
 
 	out, err := cmd.Output()
 	fmt.Printf("took %s to get git log\n", time.Since(start))
@@ -602,7 +602,7 @@ func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.
 	cleanPath := path.Clean(relativePath)
 	start := time.Now()
 	cmd := exec.Command("git", "-C", repo.Path, "log", "-n", "1000", "-z", "--no-abbrev", "--pretty="+customGitLogFormat, firstParent, "--", cleanPath)
-	log.Printf("BuildSimpleGitLogData cmd=%s", cmd.String())
+	fmt.Printf("BuildSimpleGitLogData cmd=%s", cmd.String())
 
 	out, err := cmd.Output()
 	fmt.Printf("took %s to get git log\n", time.Since(start))
@@ -629,7 +629,7 @@ func BuildSimpleGitLogData(relativePath string, firstParent string, repo config.
 
 	for i, match := range matches {
 		if len(match) != 8 {
-			log.Fatalf("GIT_LOG_ERROR: match len < 8: %+v\n", match)
+			fmt.Printf("GIT_LOG_ERROR: match len < 8: %+v\n", match)
 			continue
 		}
 		simpleGitLog.Commits[i] = &Commit{
@@ -1186,7 +1186,7 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 	// we still want the fileviewer to load, and we want to display a message like
 	// "The file does not exist at the commit"
 	if err != nil {
-		log.Printf("error getting object type: %v\n", err)
+		fmt.Printf("error getting object type: %v\n", err)
 		return nil, err
 	}
 
@@ -1393,32 +1393,12 @@ TreeNode {
 }
 */
 
-// At a given commit, build the directory tree
-// The frontend will have to be responsible for traversing it and finding/opening the current
-func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit string) *api.TreeNode {
-	// cleanPath := path.Clean(relativePath)
-	// to start out, we always compute the tree for the root.
-	defer timeTrack(time.Now(), "buildDirectoryTree")
-	cmd := exec.Command("git", "-C", repo.Path, "ls-tree",
-		"--long", // show size
-		"--full-name",
-		"-z",
-		"-r", // for recursion
-		"-t",
-		commit,
-	)
-	fmt.Printf("cmd=%s\n", cmd.String())
-
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func buildDirectoryTree(out []byte) (*api.TreeNode, error) {
 	lines := strings.Split(string(out), "\x00")
 	rootDir := &api.TreeNode{Name: "root"}
 	currDir := rootDir
 	prevDepth := 0
+	var err error
 
 	for i, line := range lines {
 		// fmt.Printf("line=%s\n", line)
@@ -1428,17 +1408,14 @@ func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 		}
 		tabPos := strings.IndexByte(line, '\t')
 		if tabPos == -1 {
-			// return nil, errors.Errorf("invalid `git ls-tree` output: %q", out)
-			log.Fatalf("invalid ls-tree output")
+			return nil, errors.New(fmt.Sprintf("invalid `git ls-tree` output: %q", out))
 		}
 
 		info := strings.SplitN(line[:tabPos], " ", 4)
 		name := line[tabPos+1:]
 
 		if len(info) != 4 {
-
-			log.Fatalf("invalid ls-tree output")
-			// return nil, errors.Errorf("invalid `git ls-tree` output: %q", out)
+			return nil, errors.New(fmt.Sprintf("invalid `git ls-tree` output: %q", out))
 		}
 
 		typ := info[1] // blob,commit,tree
@@ -1459,7 +1436,7 @@ func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 
 		modeVal, err := strconv.ParseInt(info[0], 8, 32)
 		if err != nil {
-			log.Fatalf(err.Error())
+			return nil, err
 			// return nil, err
 		}
 
@@ -1506,8 +1483,32 @@ func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 		}
 	}
 
-	// fmt.Printf("%+v\n", rootDir)
-	return rootDir
+	return rootDir, nil
+}
+
+// At a given commit, build the directory tree
+// The frontend will have to be responsible for traversing it and finding/opening the current
+func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit string) (*api.TreeNode, error) {
+	// cleanPath := path.Clean(relativePath)
+	// to start out, we always compute the tree for the root.
+	defer timeTrack(time.Now(), "buildDirectoryTree")
+	cmd := exec.Command("git", "-C", repo.Path, "ls-tree",
+		"--long", // show size
+		"--full-name",
+		"-z",
+		"-r", // for recursion
+		"-t",
+		commit,
+	)
+	fmt.Printf("cmd=%s\n", cmd.String())
+
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return buildDirectoryTree(out)
 }
 
 // TODO(xvandish): Would be cool to eventually diff arbitratry files across repos.
@@ -2033,7 +2034,7 @@ func parseGitDiffHunk(hs *HunkScanner) *GitDiffHunk {
 	}
 
 	if len(hunk.Lines) == 1 {
-		log.Printf("error. malformed hunk\n")
+		fmt.Printf("error. malformed hunk\n")
 	}
 
 	return hunk
