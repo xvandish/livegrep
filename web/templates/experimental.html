@@ -22,8 +22,10 @@
     <div id="app-bar">
       <header>
         <div id="logo-box">
+          <!-- Remove logo until we have clearing to use it
           <img src="/assets/img/nyt_super_t.svg" width="32px" height="32px"></img>
           <div id="super-pipe"></div>
+          -->
           <a href="/search">Codesearch</a>
         </div>
         <div id="input-line-wrapper">
@@ -300,7 +302,8 @@
                               href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
                         </div>
                         <div class="file-actions">
-                          <button id="toggle-blame">Blame</button>
+                          <!-- -- only shown when viewing files -->
+                          <button id="toggle-blame" {{ if or (not .FileContent) (.FileContent.Invalid) }}class="hidden"{{end}}>Blame</button>
                         </div>
                       </div>
                     </div>

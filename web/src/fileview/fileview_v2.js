@@ -557,6 +557,10 @@ async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
     if (clickedFileLink) clickedFileLink.parentNode.classList.add("selected");
   }
 
+  // unhide the blame button if it wasn't shown before (we started with an
+  // invalid path)
+  document.getElementById("toggle-blame").classList.remove("hidden");
+
   // if the blameLayer was open, re-open it
   if (blameVisible) {
     loadBlame();
