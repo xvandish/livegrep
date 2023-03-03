@@ -599,7 +599,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	repo := r.URL.Query().Get(":repo")
 
 	repoRevAndPath := pat.Tail("/experimental/:parent/:repo/+/", r.URL.Path)
-	fmt.Printf("repoRevAndPath: %s\n", repoRevAndPath)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
 	sp := strings.Split(repoRevAndPath, ":")
 
 	log.Printf(ctx, "sp=%v\n", sp)
@@ -696,16 +696,23 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	// that will be something to tackle in the future <- TODO(xvandish)
 	// TODO: use goroutines to do these in parallel
 	tree, err := fileviewer.BuildDirectoryTree(path, repoConfig, repoRev)
+	if err != nil {
+		log.Printf(ctx, "Error building directory tree: %s\n", err.Error())
+	}
 	branches, err := fileviewer.ListAllBranches(repoConfig)
+	if err != nil {
+		log.Printf(ctx, "Error getting branches: %s\n", err.Error())
+	}
 	tags, err := fileviewer.ListAllTags(repoConfig)
+	if err != nil {
+		log.Printf(ctx, "Error getting tags: %s\n", err.Error())
+	}
 
 	data.DirectoryTree = tree
 	data.Branches = branches
 	data.Tags = tags
 	data.RepoRev = repoRev
 	data.RepoConfig = repoConfig
-
-	fmt.Printf("tags are:%v\n", tags)
 
 	script_data := &struct {
 		RepoConfig config.RepoConfig
