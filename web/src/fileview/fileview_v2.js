@@ -567,13 +567,11 @@ async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
     commitForLastBlame = commitHash;
   }
 
-  // reload the history even if its not being viewed right now
-  if (prevFilepath != path) {
-    console.log("fetching history since we switched to a new file");
+  // if the commitHistory was open, re-load it's contents
+  if (!historyPanel.classList.has("closed")) {
+    console.log("fetching history since we switched to a new file and panel is open");
     loadHistory();
   }
-
-  // if the commitHistory was open, re-load it's contents
 }
 
 function expandLogLine(event) {
