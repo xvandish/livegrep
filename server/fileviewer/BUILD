@@ -23,8 +23,6 @@ go_test(
     data = [
         "simple_log.txt",
         "simple_log_name_only.txt",
-        "long_log.txt",
-        "really_long_log.txt",
     ],
     embed = [":go_default_library"],
 )
