@@ -19,8 +19,8 @@
       <li class="header-action">
         <a id="external-link" data-action-name="" title="View at {{.ExternalDomain}}. Keyboard shortcut: v" href="#">view at {{.ExternalDomain}} [<span class='shortcut'>v</span>]</a>
       </li>,
-      <li class="header-action new">
-        <a id="commit-history" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">NEW: history [<span class='shortcut'>h</span>]</a>
+      <li class="header-action">
+        <a id="commit-history" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">history [<span class='shortcut'>h</span>]</a>
       </li>,
       {{if .Permalink}}
       <li class="header-action">
@@ -43,7 +43,7 @@
         search for selected text globally [/]
       </li>,
       <li class="header-action new">
-        <a id="commit-history" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">NEW: history [<span class='shortcut'>h</span>]</a>
+        <a id="commit-history" title="View commit history at. Keyboard shortcut: h" href="{{.LogLink}}">history [<span class='shortcut'>h</span>]</a>
       </li>,
       <li class="header-action">
         previous match [p]
@@ -56,6 +56,10 @@
       </li>
     </ul>
   </header>
+
+  <div class="alert">
+    <a href="{{.MigrationUrl}}" class="new">View in the new fileviewer</a>
+  </div>
 
   <div class="content-wrapper">
       {{with .DirContent}}
@@ -70,13 +74,13 @@
           </ul>
           {{ with .ReadmeContent }}
             <div style="width:85%;">
-              {{ template "filecontent" . }}
+              {{ template "filecontent_legacy" . }}
             </div>
           {{end}}
         </div>
       {{end}}
       {{with .FileContent}}
-        {{ template "filecontent" . }}
+        {{ template "filecontent_legacy" . }}
       {{end}}
   </div>
 

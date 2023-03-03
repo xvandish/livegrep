@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -122,6 +121,12 @@ type FileViewerContext struct {
 	Branches      []GitBranch
 	Tags          []GitTag
 	RepoConfig    config.RepoConfig
+
+	// the url that maps from /delve to /experimental
+	// while experimental points to the new fileviewer.
+	// Still TBD whether we will override /delve or switch
+	// to a different prefix
+	MigrationUrl string
 }
 
 type SourceFileContent struct {
@@ -257,6 +262,10 @@ func getFileUrl(repo string, pathFromRoot string, name string, isDir bool) strin
 		fileUrl += "/"
 	}
 	return fileUrl
+}
+
+func migrationUrl(repo, path, rev string) string {
+	return "/experimental/" + repo + "/+/" + rev + ":" + path
 }
 
 func buildReadmeRegex(supportedReadmeExtensions []string) *regexp.Regexp {
@@ -1176,7 +1185,6 @@ func GitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 var fileDoesNotExistError = errors.New("This file does not exist at this point in history")
 
 func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (*FileViewerContext, error) {
-	fmt.Printf("buildFileData - commit=%s\n", commit)
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)
 	if err == nil {
@@ -1316,6 +1324,7 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		Headlink:        headlink,
 		FilePath:        normalizedPath,
 		FileName:        normalizedName,
+		MigrationUrl:    migrationUrl(repo.Name, cleanPath, commit),
 	}, nil
 }
 
@@ -1326,9 +1335,11 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 func getFileNameAndPathFromContent(fc *SourceFileContent, dc *directoryContent) (string, string) {
 	if fc != nil {
 		return fc.FileName, fc.FilePath
+	} else if dc.ReadmeContent != nil {
+		return dc.ReadmeContent.FileName, dc.ReadmeContent.FilePath
 	}
 
-	return dc.ReadmeContent.FileName, dc.ReadmeContent.FilePath
+	return "", ""
 }
 
 // TODO: add capability to diff files
@@ -1441,8 +1452,7 @@ func buildDirectoryTree(out []byte) (*api.TreeNode, error) {
 			// Size of "-" indicates a dir or submodule.
 			size, err = strconv.ParseInt(sizeStr, 10, 64)
 			if err != nil || size < 0 {
-				// return nil, errors.Errorf("invalid `git ls-tree` size output: %q (error: %s)", sizeStr, err)
-				log.Fatalf("invalid ls-tree output")
+				return nil, errors.New(fmt.Sprintf("invalid `git ls-tree` size output: %q (error: %s)", sizeStr, err))
 			}
 		}
 

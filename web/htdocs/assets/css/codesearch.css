@@ -456,7 +456,7 @@ button:hover {
 
 .file-viewer .content-wrapper {
     /* Offset the content so that the overlapping header doesn't occlude it. */
-    margin-top: 6em;
+    margin-top: 2em;
 }
 
 .file-viewer .dir-viewer-wrapper {
@@ -669,6 +669,17 @@ div.example {
 .example .link {
     font-size: 80%;
     float: right;
+}
+
+.file-viewer .alert {
+    margin-top: 6em;
+    padding: 10px;
+    background-color: aliceblue;
+    font-weight: bold;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Chroma colors for the xcode theme */
