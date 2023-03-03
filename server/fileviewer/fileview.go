@@ -1216,7 +1216,7 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 			// Git supports case sensitive files, so README.md & readme.md in the same tree is possible
 			// so in this case we just grab the first matching file
 			if readmePath != "" {
-				break
+				continue
 			}
 
 			// special case, for README or readme without an extension
@@ -1224,7 +1224,7 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 				readmeName = dirEntries[i].Name
 				readmePath = obj + dirEntries[i].Name
 				readmeLang = "md"
-				break
+				continue
 			}
 
 			parts := supportedReadmeRegex.FindStringSubmatch(dirEntries[i].Name)
