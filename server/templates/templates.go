@@ -106,8 +106,8 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 	return codeParts
 }
 
-func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit string, fileInPath bool) string {
-	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, node.Type, commit, node.Path)
+func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, repoRev string, fileInPath bool) string {
+	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, node.Type, repoRev, node.Path)
 	leftComp := imgLink
 	btnCls := "arrow"
 	if fileInPath {
@@ -123,7 +123,7 @@ func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, commit strin
 	if paddingLeft < 0 {
 		paddingLeft = 0
 	}
-	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" data-path=\"%s\" data-hash=\"%s\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, node.Path, commit, link, leftComp, node.Name)
+	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" data-path=\"%s\" data-hash=\"%s\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, node.Path, repoRev, link, leftComp, node.Name)
 }
 
 var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
@@ -143,7 +143,7 @@ var rootPadding = -15
 // selector
 
 // not fun to read
-func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commit, filepath string) template.HTML {
+func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, repoRev, filepath string) template.HTML {
 	if rootDir == nil {
 		return ""
 	}
@@ -171,7 +171,7 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 
 		// now, render either the folder name, or file name
 		// if folder, it will later loop and render the children
-		link := getTreeItemLink(rootDir, paddingLeft, repoName, commit, fileInPath)
+		link := getTreeItemLink(rootDir, paddingLeft, repoName, repoRev, fileInPath)
 		if rootDir.Type == "tree" {
 			outHtml += fmt.Sprintf("<div>%s</div>", link)
 		} else {
@@ -202,7 +202,7 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 				// if left == 0 {
 				// 	nextPadding = 0
 				// }
-				link := getTreeItemLink(child, paddingLeft+15, repoName, commit, fileInPath)
+				link := getTreeItemLink(child, paddingLeft+15, repoName, repoRev, fileInPath)
 				isSelected := child.Path == filepath
 				cls := ""
 				if isSelected {
@@ -211,7 +211,7 @@ func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, commi
 				outHtml += fmt.Sprintf("<div class=\"%s\">%s</div>", cls, link)
 			} else {
 				// fmt.Printf("at child with name=%s, depth=%d going to loop through its children.\n", child.Name, depth+1)
-				outHtml += string(RenderDirectoryTree(child, paddingLeft+15, repoName, commit, filepath))
+				outHtml += string(RenderDirectoryTree(child, paddingLeft+15, repoName, repoRev, filepath))
 			}
 		}
 		outHtml += "</div>"

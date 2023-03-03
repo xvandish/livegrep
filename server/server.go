@@ -344,13 +344,26 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
-	rev := r.URL.Query().Get(":rev")
 
-	path := ""
-	if strings.HasPrefix(r.URL.Path, "/delve/"+parent+"/"+repo+"/tree/") {
-		path = pat.Tail("/raw/:parent/:repo/tree/:rev/", r.URL.Path)
+	repoRevAndPath := pat.Tail("/raw-blob/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
 	} else {
-		path = pat.Tail("/raw/:parent/:repo/blob/:rev/", r.URL.Path)
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
 	}
 
 	parentMap, ok := s.newRepos[parent]
@@ -1008,8 +1021,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	// the following handlers render HTML that JS code fetches and inlines into the page
 	// so the pages don't have any headers or extra things
-	m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
-	m.Add("GET", "/raw/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlobRaw))
+	// m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
+	m.Add("GET", "/raw-blob/:parent/:repo/+/", srv.Handler(srv.ServeGitBlobRaw))
 	m.Add("GET", "/experimental/:parent/:repo/+/", srv.Handler(srv.ServeExperimental))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))

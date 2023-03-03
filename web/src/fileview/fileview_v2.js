@@ -486,7 +486,7 @@ async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
   }
 
   // TODO(blob or tree)
-  var fileContent = await fetch(`/raw/${repo}/blob/${commitHash}/${path}`)
+  var fileContent = await fetch(`/raw-blob/${repo}/+/${commitHash}:${path}`)
     .then((r) => r.text())
     .then((r) => r);
 
