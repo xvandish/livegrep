@@ -568,7 +568,7 @@ async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
   }
 
   // if the commitHistory was open, re-load it's contents
-  if (!historyPanel.classList.has("closed")) {
+  if (!historyPanel.classList.contains("closed")) {
     console.log("fetching history since we switched to a new file and panel is open");
     loadHistory();
   }
