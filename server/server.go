@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	texttemplate "text/template"
 	"time"
@@ -218,6 +220,80 @@ func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWrite
 
 	replyJSON(ctx, w, 200, data)
 	// now we need to marshal data to json
+}
+
+// returns whether the filebrowser is enabled for the particular repo
+// mentioned, and if so the repoConfig
+// repo is a string like `xvandish/livegrep`
+func (s *server) filebrowseEnabled(repo string) (*config.RepoConfig, error) {
+	if len(s.repos) == 0 {
+		return nil, errors.New("File browsing and git commands not enabled")
+	}
+
+	repoConfig, ok := s.repos[repo]
+
+	if !ok {
+		return nil, errors.New("repo: %s not found. Maybe reload the server to read the latest config.\n")
+	}
+
+	return &repoConfig, nil
+}
+
+// what should the url be? I'd like to do something lik
+// api/v2/json/git-log/:parent/:repo/?rev=x&path=x&after=x&blah
+func (s *server) ServeGitLogJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	queryVals := r.URL.Query()
+
+	parent := queryVals.Get(":parent")
+	repo := queryVals.Get(":repo")
+
+	repoConfig, err := s.filebrowseEnabled(parent + "/" + repo)
+
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	// see fileviewer.CommitOptions documentation for details
+	// on each option
+	revspec := queryVals.Get("revspec")
+	path := queryVals.Get("path")
+
+	// check the numerical values
+	first := queryVals.Get("first")
+
+	var firstVal uint64
+	if queryVals.Has("first") {
+		firstVal, err = strconv.ParseUint(first, 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("could not parse first: %s\n", err.Error()), 500)
+		}
+	}
+
+	var afterCursorVal uint64
+	if queryVals.Has("afterCursor") {
+		afterCursorVal, err = strconv.ParseUint(queryVals.Get("afterCursor"), 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("could not parse afterCursor: %s\n", err.Error()), 500)
+		}
+
+	}
+
+	opts := fileviewer.CommitOptions{
+		Range: revspec,
+		Path:  path,
+		N:     uint(firstVal),
+		SkipN: uint(afterCursorVal),
+	}
+
+	commitLog, err := fileviewer.BuildGitLog(opts, *repoConfig)
+
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	replyJSON(ctx, w, 200, commitLog)
 }
 
 func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -1059,6 +1135,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/getRenderedFileTree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeRendered))
 	// m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
+	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/", srv.Handler(srv.ServeGitLogJson))
 	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
 	m.Add("GET", "/api/v2/json/git-ls-tree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeJson))
 	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))

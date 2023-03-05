@@ -589,7 +589,7 @@ func (opts CommitOptions) genLogArgs(initialArgs []string) (args []string, err e
 	return args, nil
 }
 
-func BuildGitLog(relativePath string, logArgs CommitOptions, repo config.RepoConfig) (*GitLog, error) {
+func BuildGitLog(logArgs CommitOptions, repo config.RepoConfig) (*GitLog, error) {
 	args, err := logArgs.genLogArgs([]string{"-C", repo.Path, "log", logFormatWithoutRefs})
 	if err != nil {
 		return nil, err
