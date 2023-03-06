@@ -298,6 +298,7 @@
                       <div class="file-header-wrapper">
                         <div class="file-info">
                           <span id="filename">{{.FileName}}</span>
+                          <!-- TODO: improve this to only show until dfc isn't null -->
                           <span class="commit-info">(@ <a id="short-hash-link"
                               href="/delve/{{$repo}}/commit/{{ .Commit }}">{{ .ShortCommitHash }}</a> )</span>
                         </div>
