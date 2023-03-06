@@ -8,6 +8,7 @@ body#fileviewer-body { margin: 0; min-height: 100vh; overflow: hidden; display: 
   --app-header-panel-bg: rgba(234,238,242,0.5); 
   --app-link-and-button-text: #337ab7;
   --secondary-button-hover-bg: #c6d7e6;
+  --tertiary-button-hover-bg: rgba(60,64,67,0.04);
   --code-line-wrap: pre-wrap;
   --diff-table-layout: fixed;
 }
@@ -335,6 +336,7 @@ box-sizing: border-box;
   position: relative;
   overflow: scroll; /* TODO: make this hidden like google */
   display: flex;
+  flex-direction: column;
   transition: height 500ms cubic-bezier(0.35, 0, 0.25, 1);
   height: 100%;
   width: 100%;
@@ -439,6 +441,20 @@ box-sizing: border-box;
 
 #git-history-table .hide-row {
   display: none;
+}
+
+#git-history-table-pagination-btns button {
+  display: block;
+  width: 100%;
+  height: 30px;
+  border: none;
+  background-color: inherit;
+  border-top: 0.5px solid var(--app-subtle-border); /* TODO: double border on first from bottom table */
+}
+
+#git-history-table-pagination-btns button:hover {
+  background-color: var(--tertiary-button-hover-bg);
+  color: #185abc; /* googles primary default */
 }
 
 /* TODO(xvandish): Scope this to the table */

@@ -100,6 +100,7 @@ type FileViewerContext struct {
 	PathSegments    []breadCrumbEntry
 	Repo            config.RepoConfig
 	RepoRev         string // the commit/rev the repo is being viewed at (branch, commit, tag, etc)
+	HeadRev         string // the rev that HEAD points to. May be the same as RepoRev
 	Commit          string
 	CommitHash      string
 	ShortCommitHash string

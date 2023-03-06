@@ -683,6 +683,7 @@ func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.R
 // TODO: When dfc is set, allow log to return whether there are "future" entries, so that users
 // can jump back the most recent
 // TODO: handle empty repos better
+// TODO: we really need to know the HEAD rev!
 func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -727,15 +728,17 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
+	// TODO: cache this, or precompute it
+	// important to know what branch/tag/commit
+	headRev, err := fileviewer.GitRevParseAbbrev("HEAD", repoConfig.Path)
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("failed to fetch HEAD ref\n", repo))
+		return
+	}
+
 	// if the repoRev == "HEAD", resolve it
 	if repoRev == "HEAD" {
-		parsed, err := fileviewer.GitRevParseAbbrev(repoRev, repoConfig.Path)
-		log.Printf(ctx, "parsedRev=%s parsedRev.len=%d\n", parsed, len(parsed))
-		if err != nil {
-			log.Printf(ctx, "failed to rev-parse HEAD. %s", err.Error())
-		} else {
-			repoRev = parsed
-		}
+		repoRev = headRev
 	}
 
 	var commitToLoadFileAt string
@@ -801,6 +804,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	data.Tags = tags
 	data.RepoRev = repoRev
 	data.RepoConfig = repoConfig
+	data.HeadRev = headRev
 
 	script_data := &struct {
 		RepoConfig config.RepoConfig
@@ -808,10 +812,11 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 		Commit     string
 		CommitHash string
 		RepoRev    string
+		HeadRev    string
 		FilePath   string
 		FileName   string
 		Branches   []fileviewer.GitBranch // TODO: fix this
-	}{repoConfig, repoConfig.Name, data.Commit, data.CommitHash, data.RepoRev, data.FilePath, data.FileName, data.Branches}
+	}{repoConfig, repoConfig.Name, data.Commit, data.CommitHash, data.RepoRev, data.HeadRev, data.FilePath, data.FileName, data.Branches}
 
 	s.renderPage(ctx, w, r, "experimental.html", &page{
 		Title:         "experimental",
@@ -1134,7 +1139,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/getRenderedSearchResults/", srv.Handler(srv.ServeRenderedSearchResults))
 	m.Add("GET", "/api/v2/getRenderedFileTree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeRendered))
 	// m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
-	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
+	// m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
 	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/", srv.Handler(srv.ServeGitLogJson))
 	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
 	m.Add("GET", "/api/v2/json/git-ls-tree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeJson))

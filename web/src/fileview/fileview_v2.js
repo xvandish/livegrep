@@ -203,48 +203,95 @@ function toggleHistoryPanel(e) {
 //   overwhelming either the frontend or backend
 // TODO(xvandish): Decide whether to do this by fetching SSR content or keeping it
 //  as is.
-async function loadHistory() {
+var gitLogAfterCursor = 0;
+var cursorStep = 1000;
+// the afterCursor needs to be stored by key
+// keyed by request in form revspec=x&path=y
+// we also clear out 
+
+function createAndInsertLogPaginationButtons() {
+    var btnsContainer = elFactory("div", { id: "git-history-table-pagination-btns" },
+        elFactory("button", { "id": "git-log-show-more", "data-type": "more", "data-cursor": cursorStep }, "Show more"),
+        elFactory("button", { "id": "git-log-show-all", "data-type": "all", "data-cursor": cursorStep }, "Show all")
+      );
+  gitHistoryTable.parentNode.appendChild(btnsContainer);
+}
+
+async function loadHistory(paginationBtn) {
   // always fetch history at head, in case someone is viewing the file at a non head link, that way
   // they'll see future history and be able to navigate to it
+  // only include revspec if we are viewing the non-head rev
+  //
+
+  var pathToLoadLogFor = window.scriptData.filepath;
+
+  // if the log currently shown is for a different file, reset the afterCount
+  if (gitHistoryTable.dataset.filepath != pathToLoadLogFor) {
+    gitLogAfterCursor = 0;
+  } else if (paginationBtn) {
+    // if this is a request for pagination, increment the gitLogAfterCursor
+    gitLogAfterCursor = paginationBtn.dataset.afterCursor;
+  }
+
+  var sp = new URLSearchParams();
+  sp.set("path", pathToLoadLogFor);
+  sp.set("afterCursor", gitLogAfterCursor);
+  sp.set("first", (paginationBtn && paginationBtn.dataset.type) === "all" ? "0" : cursorStep);
+
+  if (window.scriptData.repoRev != window.scriptData.headRev) {
+    // if repoRev ever changes it will trigger a reload, so don't worry about it
+    // changing in between the time this function fires and it finishes
+    sp.set("revspec", window.scriptData.repoRev); 
+  }
+
   var gitHistory = await fetch(
-    `/api/v2/json/git-log/${window.scriptData.repo}/${window.scriptData.repoCommit}/${window.scriptData.filepath}`
+    `/api/v2/json/git-log/${window.scriptData.repo}/?${sp.toString()}`
   )
     .then((r) => r.json())
     .then((r) => r);
-  console.log({ gitHistory });
-
-  // build the table in JS for now just to try. Later we can switch back to SSR HTML.
-
-  // TODO(xvandish): Handle the 0 commit case, if thats possible..?
 
   var commits = gitHistory.Commits;
 
-  // clear out the existing table
-  var existingTable = document.getElementById("git-history-table");
-  if (existingTable) {
-    existingTable.remove();
+  // if the file we're viewing has been changed, remove all the current rows in
+  // the body
+  var paginationButtonsContainer = document.getElementById("git-history-table-pagination-btns");
+  if (gitHistoryTable.dataset.filepath != pathToLoadLogFor) {
+    // delete all rows except the first  
+    var rowCount = gitHistoryTable.rows.length;
+    for (var i = 1; i < rowCount; i++) {
+      gitHistoryTable.deleteRow(1); // always delete 1, since rows is modified on each loop
+    }
+
+    // delete the pagination buttons, even if we're about to update/remove them
+    // for this new query
+    if (paginationButtonsContainer) paginationButtonsContainer.remove();
   }
 
-  var headerItems = ["", "Short Hash", "Author", "Commit Date", "Subject", ""];
-  var table = elFactory(
-    "table",
-    { id: "git-history-table" },
-    elFactory(
-      "thead",
-      {},
-      elFactory(
-        "tr",
-        {},
-        ...headerItems.map((item) => elFactory("th", {}, item))
-      )
-    )
-  );
+  if (commits.length >= cursorStep && !gitHistory.MaybeLastPage) {
+    // if the pagination buttons don't exist, create them
+    if (!paginationButtonsContainer) {
+      createAndInsertLogPaginationButtons();
+    } else { // otherwise, update the cursors for "next" and "all" buttons
+      var btns = paginationButtonsContainer.querySelectorAll("btn");
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].dataset.afterCursor = gitLogAfterCursor + cursorStep;
+      }
+    }
+  } else if (paginationButtonsContainer) { // if theres no more to paginate, and the buttons exist 
+    paginationButtonsContainer.remove();
+  }
+
+  // if we clicked on the "showAll" button, remove the pagination buttons
+  if (paginationBtn && paginationBtn.dataset.type === "all") {
+    paginationButtonsContainer.remove();
+  }
+
 
   var foundMatchingCommit = false;
   for (var i = 0; i < commits.length; i++) {
-    const tr = table.insertRow();
+    const tr = gitHistoryTable.insertRow();
     var commit = commits[i];
-    tr.dataset.commit = commit.Hash;
+    tr.dataset.commit = commit.ID;
 
     // when viewing the repo at a given commit, not all files have a log for that commit,
     // even if they existed at that time. Hence, we're not gauranteed that any commit
@@ -253,20 +300,14 @@ async function loadHistory() {
     // TODO: when the commit matching isn't the first, scroll the commit history window so that it
     // shows as the first. Somehow, visually indicate that there are more recent commits above.
     var isMatchingCommit = false;
-    if (
-      !foundMatchingCommit &&
-      window.scriptData.fileCommitHash == commit.Hash
-    ) {
+    if (!foundMatchingCommit && window.scriptData.fileCommitHash == commit.ID) {
       tr.classList.add("current-commit");
       isMatchingCommit = true;
       foundMatchingCommit = true;
     }
 
-    // TODO (on server, rev-parse so top commit is always HEAD)
-
     var expandContainer = elFactory("div", { class: "row-expander" });
     if (commit.Body.length > 0) {
-      console.log("commit here");
       var btn = elFactory(
         "button",
         { class: "icon-toggle log", "data-toggled": "true" },
@@ -280,8 +321,7 @@ async function loadHistory() {
       expandContainer.appendChild(btn);
     }
 
-    // always add this, in case some row can expand we dont want shifts
-
+    // always add expandContainer, in case some row can expand we dont want shifts
     tr.append(
       elFactory("td", {}, expandContainer),
       elFactory(
@@ -289,12 +329,12 @@ async function loadHistory() {
         {},
         elFactory(
           "a",
-          { href: gitHistory.CommitLinkPrefix + "/commit/" + commit.Hash },
-          commit.ShortHash
+          { href: gitHistory.CommitLinkPrefix + "/commit/" + commit.ID },
+          commit.ID.slice(0, 7)
         )
       ),
-      elFactory("td", {}, commit.AuthorEmail),
-      elFactory("td", {}, commit.Date),
+      elFactory("td", {}, commit.Author.Email),
+      elFactory("td", {}, commit.Author.Date),
       elFactory("td", {}, commit.Subject)
     );
 
@@ -304,13 +344,13 @@ async function loadHistory() {
     // on something thats not a file (directory, repo root) don't render the diff button
     if (
       (i == commits.length - 1 && gitHistory.MaybeLastPage) ||
-      window.scriptData.filepath == ""
+      pathToLoadLogFor == ""
     ) {
       console.log(
         "diff link should be hidden: isLast=" +
           (i == commits.length - 1 && gitHistory.MaybeLastPage) +
           " filepath=" +
-          window.scriptData.filepath
+          pathToLoadLogFor
       );
       shouldDiffLinkBeHidden = true;
     }
@@ -323,7 +363,7 @@ async function loadHistory() {
         "a",
         {
           href: "blah",
-          "data-commit": commit.Hash,
+          "data-commit": commit.ID,
           class: "diff-link" + (shouldDiffLinkBeHidden ? " hidden" : ""),
         },
         "diff"
@@ -332,7 +372,7 @@ async function loadHistory() {
         "a",
         {
           href: "blah",
-          "data-commit": commit.Hash,
+          "data-commit": commit.ID,
           class: "view-link",
           "data-toggled": isMatchingCommit ? "true" : "false",
         },
@@ -359,16 +399,16 @@ async function loadHistory() {
     }
   }
 
-  if (!foundMatchingCommit) {
+  if (!foundMatchingCommit && commits.length > 0) {
     // go to the first row and mark it "current-commit"
     // select the "view" button
-    var firstRow = table.rows[1]; // not 0 since thats the thead
+    var firstRow = gitHistoryTable.rows[1]; // not 0 since thats the thead
     console.log({ firstRow });
     firstRow.classList.add("current-commit");
     firstRow.getElementsByClassName("view-link")[0].dataset.toggled = "true";
   }
 
-  document.getElementsByClassName("lower-detail-content")[0].appendChild(table);
+  gitHistoryTable.dataset.filepath = pathToLoadLogFor;
 }
 
 // given a click on a tree, hide or show all children
@@ -1070,6 +1110,7 @@ var lineNumberContainer;
 var root;
 var sideNav;
 var historyPanel;  
+var gitHistoryTable;
 var verticalNavigationSplitter;
 var horizontalLowerPaneSplitter;
 var navigationPane;
@@ -1582,12 +1623,13 @@ function getExternalLink(lineRange) {
 // initData gets
 function initScriptData(initData) {
   console.log({ initData })
-  // lets see if this works
+  // TODO: this is no bueno............. .......................................
   window.scriptData = {
     repo: initData.RepoName,
     repoCommit: initData.Commit,
     repoCommitHash: initData.CommitHash,
     repoRev: initData.RepoRev,
+    headRev: initData.HeadRev,
     filepath: initData.FilePath,
     filename: initData.FileName,
     fileCommitHash: initData.CommitHash,
@@ -1643,6 +1685,7 @@ function init(initData) {
   root = document.querySelector(".file-content"); // TODO: this is identical to lineNumberContainer
   sideNav = document.getElementById("side-nav");
   historyPanel = document.getElementsByClassName("lower-detail-wrapper")[0];
+  gitHistoryTable = document.getElementById("git-history-table");
   // get the open git search tab
   openGitMetaTab = document.querySelector("#git-tabs > li[data-selected='true']");
   

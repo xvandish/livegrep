@@ -336,6 +336,18 @@
                         </button>
                       </div>
                       <div class="lower-detail-content">
+                        <table id="git-history-table" data-filepath="{{.FilePath}}">
+                          <thead>
+                            <tr>
+                              <th></th> <!-- commit link col -->
+                              <th>ID</th>
+                              <th>Author</th>
+                              <th>Commit Date</th>
+                              <th>Description</th>
+                              <th></th> <!-- action buttons col -->
+                          </thead>
+                          <tbody></tbody>
+                        </table>
                       <!-- TODO: Add a loading spinner while loading content if its taking longer than,
                         say, 200ms -->
                       </div>
