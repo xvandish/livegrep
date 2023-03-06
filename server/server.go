@@ -267,6 +267,7 @@ func (s *server) ServeGitLogJson(ctx context.Context, w http.ResponseWriter, r *
 		firstVal, err = strconv.ParseUint(first, 10, 64)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("could not parse first: %s\n", err.Error()), 500)
+			return
 		}
 	}
 
@@ -275,6 +276,7 @@ func (s *server) ServeGitLogJson(ctx context.Context, w http.ResponseWriter, r *
 		afterCursorVal, err = strconv.ParseUint(queryVals.Get("afterCursor"), 10, 64)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("could not parse afterCursor: %s\n", err.Error()), 500)
+			return
 		}
 
 	}

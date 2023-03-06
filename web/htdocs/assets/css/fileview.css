@@ -830,3 +830,11 @@ a.link-button:hover {
 .splitter:hover {
   background-color: #dadce0;
 }
+
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #DD3B38;
+  font-size: 14px;
+}

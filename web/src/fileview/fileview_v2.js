@@ -248,7 +248,18 @@ async function loadHistory(paginationBtn) {
     `/api/v2/json/git-log/${window.scriptData.repo}/?${sp.toString()}`
   )
     .then((r) => r.json())
-    .then((r) => r);
+    .then((r) => r)
+    .catch(( err ) => {
+      console.error("error fetching git log: " + err);
+      gitHistoryTable.parentNode.insertBefore(
+        elFactory("div", { "class": "error-container" }, "Error fetching commits. Check console for more")
+      , gitHistoryTable.nextElementSibling);
+      return new Error(err);
+    });
+
+  if (gitHistory instanceof Error) {
+    return;
+  }
 
   var commits = gitHistory.Commits;
 
@@ -1070,6 +1081,12 @@ window.addEventListener("click", function (event) {
     event.target.tagName == "LI"
   ) {
     switchGitSearchTab(event);
+  }
+
+  if (event.target.id === "git-log-show-more" || event.target.id === "git-log-show-all") {
+    // loadHistory will decide what to do based on the data attributes of the
+    // button we clicked
+    loadHistory(event.target);
   }
 });
 
