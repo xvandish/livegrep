@@ -942,6 +942,14 @@ window.addEventListener("click", function (event) {
     }
   }
 
+  if (fileLinksMenuOpen) {
+    if (!fileLinksMenuContainer.contains(event.target)) {
+      console.log("links menu open, closing");
+      fileLinksMenu.style.display = "none";
+      fileLinksMenuOpen = false;
+    }
+  }
+
   if (
     event.target.tagName == "A" &&
     event.target.pathname.endsWith("/blah") &&
@@ -1122,6 +1130,9 @@ var gitAutocompleteMenuOpen = false;
 var gitSearchBox;
 var gitSearchBoxContainer;
 var gitSearchTabsContainer;
+var fileLinksMenu;
+var fileLinksMenuContainer;
+var fileLinksMenuOpen = false;
 var lineNumberContainer;
 var root;
 var sideNav;
@@ -1164,6 +1175,17 @@ function toggleGitAutocompleteMenu() {
   } else {
     gitAutocompleteMenu.style.display = "initial";
     gitAutocompleteMenuOpen = true;
+  }
+}
+
+function toggleFileLinksMenu() {
+  console.log("in here file links popup");
+  if (fileLinksMenuOpen) {
+    fileLinksMenu.style.display = "none";
+    fileLinksMenuOpen = false;
+  } else {
+    fileLinksMenu.style.display = "initial";
+    fileLinksMenuOpen = true;
   }
 }
 
@@ -1708,11 +1730,8 @@ function init(initData) {
   // there's probably a better, more abstract way to do this, but for now this is how we roll
   // verticalNavigationSplitter = document.querySelector(".splitter.vertical");
   horizontalLowerPaneSplitter = document.querySelector("#file-pane-splitter");
-  // navigationPane = document.querySelector(".repository-navigation");
-
-  // if (!verticalNavigationSplitter || !horizontalLowerPaneSplitter || !navigationPane) {
-  //   console.error("selector is off");
-  // }
+  fileLinksMenuContainer = document.getElementById("file-links-container");
+  fileLinksMenu = document.getElementById("file-links-popup");
 
   // attatch resize handlers to every splitter
   document.querySelectorAll('.splitter').forEach(function (el) {
@@ -1735,6 +1754,7 @@ function init(initData) {
 
   document.getElementById("toggle-blame").addEventListener("click", toggleBlame);
   document.getElementById("toggle-history").addEventListener("click", toggleHistoryPanel);
+  document.getElementById("toggle-file-links").addEventListener("click", toggleFileLinksMenu);
 
   document.addEventListener("click", function (e) {
     var btn = e.target.closest("button");
