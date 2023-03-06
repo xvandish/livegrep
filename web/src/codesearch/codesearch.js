@@ -365,7 +365,7 @@ function init() {
     initStateFromQueryParams();
   });
 
-  if (hasParams()) {
+  if (hasParams() && window.page == "codesearch") {
     initStateFromQueryParams();
   } else {
     initControlsFromLocalPrefs();

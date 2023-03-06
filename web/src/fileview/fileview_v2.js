@@ -1004,6 +1004,7 @@ window.addEventListener("click", function (event) {
 
   if (event.target.tagName == "A" && event.target.href.endsWith("#0")) {
     console.log("in handler");
+    event.preventDefault();
     var leftCommit = window.scriptData.diffLeftCommit;
     var rightCommit = window.scriptData.diffRightCommit;
 
