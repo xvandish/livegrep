@@ -883,4 +883,15 @@ a.link-button:hover {
   border: none;
   display: flex;
   justify-content: space-between;
+  min-height: 35px;
+}
+
+#file-links-popup .link-button-container button span {
+  text-align: left;
+  width: 90%;
+}
+
+#file-links-popup .link-button-container button svg {
+  width: 16px;
+  height: 16px;
 }

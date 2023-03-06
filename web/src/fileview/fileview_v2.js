@@ -622,6 +622,8 @@ async function loadFileAtCommit(event, repo, path, commitHash, clickLocation) {
     console.log("fetching history since we switched to a new file and panel is open");
     loadHistory();
   }
+
+  updateFileLinksButtons();
 }
 
 function expandLogLine(event) {
@@ -944,9 +946,24 @@ window.addEventListener("click", function (event) {
 
   if (fileLinksMenuOpen) {
     if (!fileLinksMenuContainer.contains(event.target)) {
-      console.log("links menu open, closing");
-      fileLinksMenu.style.display = "none";
-      fileLinksMenuOpen = false;
+      toggleFileLinksMenu();
+    } else {
+      // check if we clicked on one of the buttons. If we did, copy its text to
+      // the clipboard, and then close the popup
+      if (event.target.classList.contains("copy-button")) {
+        var textToCopy = event.target.querySelector("span");
+        if (!textToCopy) {
+          console.error("copy button has no text, but should");
+          return;
+        }
+
+        textToCopy = textToCopy.innerText;
+        console.log({ textToCopy });
+        // TODO: nicer ux around failures here
+        this.navigator.clipboard.writeText(textToCopy);
+    
+        toggleFileLinksMenu();
+      }
     }
   }
 
@@ -1657,6 +1674,29 @@ function getExternalLink(lineRange) {
 }
 
 // ----------------------- End of handling for favorite repos ---------//
+//
+
+// container -> button -> span
+function getSpanFromContainer(elemId) {
+  var container = document.getElementById(elemId);
+  if (!container) {
+    return null;
+  }
+
+  return container.querySelector("button.copy-button span");
+}
+
+function updateFileLinksButtons() {
+  var pathL = getSpanFromContainer("path-link-container");
+  var headL = getSpanFromContainer("head-link-container");
+  var commitL = getSpanFromContainer("commit-link-container");
+
+  // these should never be undefined, so don't gaurd against it
+  pathL.innerText = window.scriptData.filepath;
+  headL.innerText = window.location.origin + "/experimental/" + window.scriptData.repo + "/+/" + window.scriptData.repoRev + ":" + window.window.scriptData.filepath; 
+  commitL.innerText = window.location.origin + "/experimental/" + window.scriptData.repo + "/+/" + window.scriptData.repoRev + ":" + window.window.scriptData.filepath + "?" + "dfc=" + window.scriptData.fileCommitHash;
+
+}
 
 // initData gets
 function initScriptData(initData) {
@@ -1755,6 +1795,7 @@ function init(initData) {
   document.getElementById("toggle-blame").addEventListener("click", toggleBlame);
   document.getElementById("toggle-history").addEventListener("click", toggleHistoryPanel);
   document.getElementById("toggle-file-links").addEventListener("click", toggleFileLinksMenu);
+  updateFileLinksButtons();
 
   document.addEventListener("click", function (e) {
     var btn = e.target.closest("button");
