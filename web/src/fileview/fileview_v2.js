@@ -230,7 +230,7 @@ async function loadHistory(paginationBtn) {
     gitLogAfterCursor = 0;
   } else if (paginationBtn) {
     // if this is a request for pagination, increment the gitLogAfterCursor
-    gitLogAfterCursor = paginationBtn.dataset.afterCursor;
+    gitLogAfterCursor = paginationBtn.dataset.cursor;
   }
 
   var sp = new URLSearchParams();
