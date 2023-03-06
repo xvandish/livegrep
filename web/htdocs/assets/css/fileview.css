@@ -884,11 +884,14 @@ a.link-button:hover {
   display: flex;
   justify-content: space-between;
   min-height: 35px;
+  overflow: hidden;
 }
 
 #file-links-popup .link-button-container button span {
   text-align: left;
-  width: 90%;
+  width: 95%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #file-links-popup .link-button-container button svg {
