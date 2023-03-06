@@ -614,7 +614,7 @@ func BuildGitLog(logArgs CommitOptions, repo config.RepoConfig) (*GitLog, error)
 
 	return &GitLog{
 		Commits:       commits,
-		MaybeLastPage: len(commits) == int(logArgs.N),
+		MaybeLastPage: len(commits) < int(logArgs.N),
 	}, nil
 }
 
