@@ -279,6 +279,7 @@ box-sizing: border-box;
   text-align: right;
   max-width: 1%;
   width: 1%;
+  scroll-margin-top: 20vh;
 }
 
 .repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno:hover {

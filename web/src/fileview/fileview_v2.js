@@ -1395,43 +1395,13 @@ function getOffset(element) {
   };
 }
 
-function scrollToRange(range, elementContainer) {
-  // - If we have a single line, scroll the viewport so that the element is
-  // at 1/3 of the viewport.
-  // - If we have a range, try and center the range in the viewport
-  // - If the range is to high to fit in the viewport, fallback to the single
-  //   element scenario for the first line
-
-  // TODO: almost perfect, sometimes leaves the line just a few lines out
-  // of range
-  var viewport = elementContainer;
-  var viewportHeight = viewport.clientHeight;
-
-  var scrollOffset = Math.floor(viewportHeight / 3.0);
-
+function scrollToRange(range) {
   var firstLineElement = root.querySelector("#L" + range.start);
   if (!firstLineElement) {
     // We were given a scroll offset to a line number that doesn't exist in the page, bail
     return;
   }
-  if (range.start != range.end) {
-    // We have a range, try and center the entire range. If it's to high
-    // for the viewport, fallback to revealing the first element.
-    var lastLineElement = elementContainer.querySelector("#L" + range.end);
-    var rangeHeight =
-      getOffset(lastLineElement).top +
-      lastLineElement.clientHeight -
-      getOffset(firstLineElement).top;
-    if (rangeHeight <= viewportHeight) {
-      // Range fits in viewport, center it
-      scrollOffset = 0.5 * (viewportHeight - rangeHeight);
-    } else {
-      scrollOffset = firstLineElement.clientHeight / 2; // Stick to (almost) the top of the viewport
-    }
-  }
-
-  // viewport.scrollTop(firstLineElement.offset().top - scrollOffset);
-  viewport.scrollTo({ top: getOffset(firstLineElement).top - scrollOffset });
+  firstLineElement.scrollIntoView({ behavior: "instant" });
 }
 
 function addHighlightClassesForRange(range, root) {
@@ -1453,7 +1423,7 @@ function handleHashChange(shouldScrollElementIntoView) {
   if (range) {
     addHighlightClassesForRange(range, lineNumberContainer);
     if (shouldScrollElementIntoView) {
-      scrollToRange(range, root);
+      scrollToRange(range);
     }
   }
 
@@ -1779,7 +1749,11 @@ function init(initData) {
     resizable(el);
   });
 
-  initLineNumbers(lineNumberContainer);
+  // we wait 1 ms to make sure we fire after the browser scroll-to-hash
+  // event
+  setTimeout(function () {
+    initLineNumbers(lineNumberContainer);
+  }, 1)
   loadRepoFavoritesFromLocalStorage();
 
   var scopedSearchQuery = `repo:${window.scriptData.repo} `;
