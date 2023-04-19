@@ -1185,6 +1185,57 @@ func GitBlameBlob(relativePath string, repo config.RepoConfig, commit string) (*
 
 var fileDoesNotExistError = errors.New("This file does not exist at this point in history")
 
+// Used to support zoekt "preview file" actions.
+// Since we don't want to maintain repoConfig for zoekt
+// repos, we tell this function explicitly where the repo
+// is and what its name is
+// Only supports files for now.
+func BuildFileDataForZoektFilePreview(relativePath, repoPath, commit string) (*FileViewerContext, error) {
+	commitHash := commit
+	out, err := gitCommitHash(commit, repoPath)
+	if err == nil {
+		commitHash = out[:strings.Index(out, "\n")]
+	}
+	cleanPath := path.Clean(relativePath)
+	if cleanPath == "." {
+		cleanPath = ""
+	}
+	obj := commitHash + ":" + cleanPath
+
+	var fileContent *SourceFileContent
+
+	objectType, err := gitObjectType(obj, repoPath)
+
+	if err != nil {
+		fmt.Printf("error getting object type: %v\n", err)
+		return nil, err
+	}
+	if objectType == "tree" {
+		return nil, errors.New("directories not supported yet")
+	}
+	content, err := gitCatBlob(obj, repoPath)
+	if err != nil {
+		return nil, err
+	}
+	filename := filepath.Base(cleanPath)
+	language := filenameToLangMap[filename]
+	if language == "" {
+		language = extToLangMap[filepath.Ext(cleanPath)]
+	}
+	fileContent = &SourceFileContent{
+		Content: content,
+		// LineCount: strings.Count(string(content), "\n"),
+		LineCount: 0,
+		Language:  language,
+		FileName:  filename,
+		FilePath:  relativePath,
+	}
+
+	return &FileViewerContext{
+		FileContent: fileContent,
+	}, nil
+}
+
 func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (*FileViewerContext, error) {
 	commitHash := commit
 	out, err := gitCommitHash(commit, repo.Path)

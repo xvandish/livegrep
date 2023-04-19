@@ -419,6 +419,45 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 	})
 }
 
+func (s *server) ServeSyntaxHighlightedFileForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getSyntaxHighlightedFileForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
+	}
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+	fmt.Printf("repoPath=%s\n", repoPath)
+	data, err := fileviewer.BuildFileDataForZoektFilePreview(path, repoPath, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+
+	s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
 func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -1145,6 +1184,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/", srv.Handler(srv.ServeGitLogJson))
 	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
 	m.Add("GET", "/api/v2/json/git-ls-tree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeJson))
+	m.Add("GET", "/api/v2/getSyntaxHighlightedFileForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeSyntaxHighlightedFileForZoekt))
 	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))
 
 	var h http.Handler = m
