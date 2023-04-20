@@ -21,6 +21,7 @@ var (
 	serveAddr         = flag.String("listen", "127.0.0.1:8910", "The address to listen on")
 	backendAddr       = flag.String("connect", "localhost:9999", "The address to connect to")
 	backupBackendAddr = flag.String("connect-backup", "", "The address to connect to and use for queries if the primary is down")
+	fileviewerOnly    = flag.Bool("fileviewer-only", false, "When true, don't connect to a livegrep backend. The server then only correctly answers fileviewer requests")
 	docRoot           = flag.String("docroot", "", "The livegrep document root (web/ directory). If not provided, this defaults to web/ inside the bazel-created runfiles directory adjacent to the livegrep binary.")
 	indexConfig       = flag.String("index-config", "", "Codesearch index config file; provide to enable repo browsing")
 	reload            = flag.Bool("reload", false, "Reload template files on every request")
@@ -69,6 +70,7 @@ func main() {
 			TagsFormat: os.Getenv("STATSD_TAGS_FORMAT"),
 		},
 		ZoektRepoCache: *zoektRepoCache,
+		FileviewerOnly: *fileviewerOnly,
 	}
 
 	if *indexConfig != "" {

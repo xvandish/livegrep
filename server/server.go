@@ -1103,14 +1103,18 @@ func New(cfg *config.Config) (http.Handler, error) {
 		log.Printf(ctx, "Finished initializing StatsD client")
 	}
 
-	for _, bk := range srv.config.Backends {
-		be, e := NewBackend(bk)
-		if e != nil {
-			return nil, e
+	if !srv.config.FileviewerOnly {
+		for _, bk := range srv.config.Backends {
+			be, e := NewBackend(bk)
+			if e != nil {
+				return nil, e
+			}
+			be.Start()
+			srv.bk[be.Id] = be
+			srv.bkOrder = append(srv.bkOrder, be.Id)
 		}
-		be.Start()
-		srv.bk[be.Id] = be
-		srv.bkOrder = append(srv.bkOrder, be.Id)
+	} else {
+		fmt.Printf("starting in fileviewer only mode\n")
 	}
 
 	var repoNames []string
@@ -1126,6 +1130,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.serveFilePathRegex = serveFilePathRegex
 
+	// We don't restrict the routes available in fileviewer
+	// only mode, assuming that some reverse proxy ahead
+	// of us is taking care of that
 	m := pat.New()
 	m.Add("GET", "/healthz", http.HandlerFunc(srv.ServeHealthZ))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))

@@ -94,6 +94,11 @@ type Config struct {
 	// deployment, this is the location, on disk, of all
 	// of the bare git repos
 	ZoektRepoCache string
+
+	// When true, the server makes no attempt to connect
+	// to a search backend, and thus is only useful for
+	// answering fileviewer queries
+	FileviewerOnly bool
 }
 
 type IndexConfig struct {
