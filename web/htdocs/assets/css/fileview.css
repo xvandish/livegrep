@@ -1,0 +1,901 @@
+body#fileviewer-body { margin: 0; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+:root {
+  --main-bg-color: brown;
+  --app-main-bg: white;
+  --app-panel-bg: white;
+  --app-subtle-border: #dadcd0;
+  --app-header-panel-bg: rgba(234,238,242,0.5); 
+  --app-link-and-button-text: #337ab7;
+  --secondary-button-hover-bg: #c6d7e6;
+  --tertiary-button-hover-bg: rgba(60,64,67,0.04);
+  --code-line-wrap: pre-wrap;
+  --diff-table-layout: fixed;
+}
+
+.repository-browser {
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  flex: 1 1 100%;
+  border-color: #dadcd0;
+  min-height: 100%;
+}
+.browse-repository-breadcrumb {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 36px;
+    max-height: none;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--app-subtle-border);
+    background-color: var(--app-panel-bg);
+}
+
+.browse-repository-contents { 
+    display: flex;
+    box-sizing: border-box;
+    flex-direction: row;
+    flex: 1 1 100%;
+}
+.repository-navigation {
+    display: flex;
+    width: 276px;
+    flex-direction: column;
+    max-width: calc(100% - 510px)!important;
+    position: relative;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    border-right: 1px solid var(--app-subtle-border);
+    max-height: 97vh;
+    overflow: auto;
+}
+
+.repository-navigation #side-nav {
+  position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow: hidden;
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+}
+
+.repository-navigation #side-nav #nav-tab-group {
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+  padding: 10px;
+}
+
+.repository-navigation #side-nav #root {
+  position: relative;
+  overflow: auto;
+  z-index: 1;
+  flex-grow: 1;
+  padding-left: 10px;
+}
+
+.repository-navigation #side-nav ul {
+  list-style: none;
+  margin: 0px;
+  padding: 0px;
+}
+
+/* hide all children unless expanded */
+.repository-navigation #side-nav div.children:not(.expanded) {
+  display: none;
+}
+
+.repository-navigation #side-nav div.selected {
+  background-color: #d2e3fc;
+}
+
+.repository-navigation #side-nav div a {
+  display:flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  text-decoration: none;
+  min-height: 20px;
+}
+
+.repository-navigation #side-nav div a:hover {
+  background-color: rgba(95,99,104,0.08); 
+}
+
+.repository-detail { 
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: auto;
+  overflow: auto;
+}
+
+.repository-detail .main-view {
+  display: flex;
+    flex-direction: column;
+    overflow: auto;
+    flex: 1 1 auto;
+    box-sizing: border-box;
+    min-width: auto;
+}
+
+.repository-detail .main-view .middle-view {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+
+.repository-detail .main-view .middle-view .file-detail {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    outline: 0;
+    flex: 1 1 100%;
+    min-height: 100px;
+}
+
+
+.repository-detail .main-view .middle-view .file-detail .file-header {
+    display: flex;
+    box-sizing: border-box;
+    flex-direction: row;
+    /* overflow: auto; */
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+    flex: 0 0 auto;
+    border-color: #dadcd0;
+    background-color: var(--app-header-panel-bg);
+    min-height: 40px;
+    padding: 5px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper {
+box-sizing: border-box;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: row;
+    place-content: center space-between;
+    align-items: center;
+}
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 10px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .file-header-wrapper .file-actions button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .diff-actions {
+  padding: 0 10px;
+}
+
+/* buttons for both file-header-wrapper and diff-header-wrapper */
+.repository-detail .main-view .middle-view .file-detail .file-header button {
+  background-color: white;
+  border: 1px solid var(--app-subtle-border);
+  border-radius: 5px;
+  padding: 5px;
+  color: var(--app-link-and-button-text);
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header button:hover {
+  background-color: var(--secondary-button-hover-bg);
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .diff-header-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  align-items: center;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-header .diff-header-wrapper .right-commit {
+  display: flex;
+  flex: 0 0 100%;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content {
+      overflow: auto;
+    position: relative;
+    outline: 0;
+    flex: 1 1 100%;
+    font-family: monospace;
+}
+
+/* diff-content will render into this pane and un-hide it, while hiding file-content */
+.repository-detail .main-view .middle-view .file-detail .diff-content {
+    overflow: auto;
+    position: relative;
+    outline: 0;
+    flex: 1 1 100%;
+    font-family: monospace;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table {
+    border-spacing: 0;
+    border-collapse: collapse;
+    /* table-layout: fixed; */
+    width: 100%;
+    tab-size: 4;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.blame-striped {
+  background-color: #eaeaea !important;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.blame-col {
+  vertical-align: top;
+  max-width: 300px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.blame-col:empty {
+  padding: 0;
+  margin: 0;
+  border: none;
+  width: 0px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table .blame-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 10px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table .blame-line.hidden {
+  width: 0px;
+  padding: 0px;
+  margin: 0px;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno {
+  background-color: #f7f7f7;
+  padding-left: 15px;
+  padding-right: 5px;
+  border-left: 1px solid #dadcd0;
+  color: #888;
+  border-right: 1px solid #dadcd0;
+  user-select: none;
+  text-align: right;
+  max-width: 1%;
+  width: 1%;
+  scroll-margin-top: 20vh;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.lno:hover {
+  cursor: pointer;
+  color: #000;
+}
+
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr td.ln {
+  white-space: var(--code-line-wrap);
+  padding-left: 1em;
+}
+
+/* TODO: this won't work after blame!! since some lines may not have a third column. switch to last of type */
+/* highlight the code line */
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.highlighted td:nth-child(3) {
+  background: rgba(255, 234, 170, 0.75);
+}
+
+/* highlight the line number in a slightly lighter color */
+.repository-detail .main-view .middle-view .file-detail .file-content table tbody tr.highlighted td:nth-child(2) {
+  background: rgba(255, 234, 170, 0.5);
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper {
+    overflow: hidden;
+    border-top-style: solid;
+    border-top-width: 1px;
+    flex: 1 0 auto;
+    height: 50%;
+    max-height: calc(100% - 110px); /* when not closed */
+    min-height: 40px;
+    position: relative;
+    border-color: #dadcd0;
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper.closed {
+    min-height: 40px;
+    max-height: 40px;
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel {
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    height: 100%;
+    width: 100%;
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel .lower-detail-header {
+  height: 40px;
+  border-color: #dadcd0;
+  background-color: var(--app-header-panel-bg);
+  display: flex;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.12);
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.repository-detail .main-view .middle-view .lower-detail-wrapper .lower-detail-panel .lower-detail-content {
+  position: relative;
+  overflow: scroll; /* TODO: make this hidden like google */
+  display: flex;
+  flex-direction: column;
+  transition: height 500ms cubic-bezier(0.35, 0, 0.25, 1);
+  height: 100%;
+  width: 100%;
+}
+
+#git-history-table {
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+#git-history-table tr {
+  display: grid;
+  grid-template-columns: 40px 100px 100px 115px 1fr 100px;
+  justify-content: flex-start;
+  text-align: left;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,0,0,.12);
+  min-height: 30px;
+}
+
+#git-history-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#git-history-table tr:hover {
+  background-color: #fafafa; 
+}
+
+#git-history-table tr.current-commit {
+  background-color: aliceblue;
+}
+
+/* a row with more important than rest, but less than current-commit */
+#git-history-table tr.secondary-row {
+  background-color: #fef7e0;
+}
+
+#git-history-table tr:hover td div.actions-container {
+  opacity: 1;
+}
+
+#git-history-table tr:hover td div.actions-container a:hover {
+  background-color: var(--secondary-button-hover-bg);
+}
+
+#git-history-table tr td div.actions-container a[data-toggled="true"] {
+  background-color: #3a80b3;
+  color: white;
+}
+#git-history-table tr td div.actions-container a {
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 3px;
+  max-height: 22px;
+  min-width: 30px;
+  padding: 5px;
+  font-weight: 100;
+  text-decoration: none;
+  /* text-transform: uppercase; */
+}
+
+#git-history-table tr.current-commit td div.actions-container {
+  opacity: 1;
+}
+#git-history-table tr.secondary-row td div.actions-container {
+  opacity: 1;
+}
+
+#git-history-table tr td div.actions-container {
+  opacity: 0;
+  display: flex;
+  padding-right: 5px;
+}
+
+#git-history-table tr td div.fileview-buttons-container {
+  display: flex;
+}
+
+#git-history-table tr td div.diff-buttons-container {
+  display: flex;
+}
+
+#git-history-table tr td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#git-history-table .expanded-row-content {
+  border-top: none;
+  display: grid;
+  grid-column: 1/-1;
+  justify-content: flex-start;
+  font-size: 12px;
+  margin-left: 3rem;
+  font-family: 'Courier New', Courier, monospace;
+}
+#git-history-table .expanded-row-content pre {
+  white-space: pre-wrap;
+}
+
+#git-history-table .hide-row {
+  display: none;
+}
+
+#git-history-table-pagination-btns button {
+  display: block;
+  width: 100%;
+  height: 30px;
+  border: none;
+  background-color: inherit;
+  border-top: 0.5px solid var(--app-subtle-border); /* TODO: double border on first from bottom table */
+}
+
+#git-history-table-pagination-btns button:hover {
+  background-color: var(--tertiary-button-hover-bg);
+  color: #185abc; /* googles primary default */
+}
+
+/* TODO(xvandish): Scope this to the table */
+button.icon-toggle {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background-color: transparent;
+}
+button.icon-toggle:hover {
+  background-color: var(--secondary-button-hover-bg);
+}
+
+button.icon-toggle[data-toggled='false'] img {
+  transform: rotate(180deg);
+}
+
+button#toggle-history {
+  width: 36px;
+  height: 36px;
+}
+
+button#toggle-history img {
+  width: 20px;
+  height: 20px;
+}
+
+button.expander {
+  background-color: transparent;
+    border: 0;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: 24px;
+    padding: 0;
+    width: 18px;
+}
+
+button.expander .arrow {
+  border-left: 5px solid black;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    display: inline-block;
+    height: 0;
+    margin: 0 5px;
+    transition: -webkit-transform .2s ease;
+    transition: transform .2s ease;
+    transition: transform .2s ease,-webkit-transform .2s ease;
+    width: 0;
+}
+
+button.expander .arrow.expanded {
+  transform: rotate(90deg);
+}
+
+/* prevent actions from inside a button to be clicked, so we don't have to
+* handle those cases as carefully */
+button > * {
+  pointer-events: none;
+}
+
+a > * {
+  pointer-events: none;
+}
+
+#app {
+  display: flex;
+    flex: 1 1 100%;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#app-bar {
+  position: relative;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid #dadce0;
+}
+
+#app-bar header {
+  display: flex;
+    gap: 32px;
+    height: 60px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+#repository-browser-wrapper {
+  display: flex;
+    flex: 1 1 100%;
+    min-height: 0;
+}
+
+#nested-wrapper {
+  display: flex;
+    flex-grow: 1;
+    flex-direction: column;
+    overflow: auto;
+}
+
+#input-line-wrapper {
+  flex: 1 1 auto;
+  min-width: 288px;
+  display: flex;
+  -webkit-box-flex: 1;
+  justify-content: center;
+}
+
+.input-line {
+  margin: 0 12px;
+    max-width: 800px;
+    min-width: 300px;
+    width: 100%;
+}
+
+#autocomplete-menu {
+    display: none;
+    background-color: white;
+    width: 99%;
+    min-height: 100px;
+    max-height: 90vh;
+    overflow: scroll;
+    font-family: monospace;
+    padding-top: 10px;
+    z-index: 2;
+    position: absolute;
+    padding-left: 10px;
+    padding-bottom: 10px;
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px;
+}
+
+#repo-selector-container {
+}
+
+.meta-selector-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  padding-left: 4px;
+}
+
+/* we want a more link-like color */
+.meta-selector-container:hover {
+  background-color: #d0eaf9;
+}
+
+.meta-selector-container:hover button {
+  background-color: #eaeaea;
+}
+
+.meta-selector-container a {
+  padding: 4px;
+}
+
+.meta-selector-container a:hover {
+  text-decoration: none;
+}
+
+.meta-selector-container button {
+    display: flex;
+    place-content: center;
+    align-items: center;
+    padding: 4px;
+    box-sizing: border-box;
+    max-height: 100%;
+    border-radius: 0 4px 4px 0;
+    height: 100%;
+    line-height: 16px;
+    width: 16px;
+    padding: 4px;
+    border: none;
+    background-color: inherit;
+}
+
+.meta-selector-container button:hover {
+  background-color: #518ec4;
+}
+
+#repo-autocomplete-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  width: 360px;
+  padding: 10px;
+  min-height: 300px;
+  max-height: 90vh;
+  overflow: auto;
+  font-family: monospace;
+  z-index: 2;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  border-radius: 5px;
+  margin-top: 6px;
+  border: 1px solid #999;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc:hover {
+  background-color: #fafafa;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button {
+  background-color: inherit;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button.starred svg {
+  fill: #779fe9;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button:hover {
+  background-color: #eaeaea;
+}
+
+#repo-autocomplete-menu #repos-resultarea .rlc button svg {
+  width: 15px;
+  height: 15px;
+  stroke: #184d83;
+}
+
+#git-search-input {
+  padding: 5px;
+  width: 300px;
+  margin-bottom: 10px;
+}
+
+#git-tabs {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid black;
+}
+
+#git-tabs [data-tab] {
+  padding: 0.5em;
+  list-style: none;
+}
+
+#git-tabs [data-tab]:hover {
+  background-color: #eaeaea;
+  cursor: pointer;
+}
+
+#git-tabs [data-tab][data-selected="true"] {
+  background-color: #d2e3fc;
+  color: #185abc;
+}
+
+
+#git-autocomplete-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  width: 500px;
+  padding: 10px;
+  min-height: 300px;
+  max-height: 80vh;
+  overflow: auto;
+  font-family: monospace;
+  z-index: 2;
+  /* #22 in css-box-shadow */
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  border-radius: 5px;
+  margin-top: 6px;
+  border: 1px solid black;
+}
+
+#git-content a {
+  padding: 5px;
+}
+
+#git-content a:hover {
+  background-color: #eaeaea;
+}
+
+#git-content a[data-shown="false"] {
+  display: none;
+}
+
+.select-with-icon-container .icon {
+  bottom: 1px !important;
+}
+
+#logo-box {
+  display: flex;
+  align-items: center;
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+#super-pipe {
+  height: 22px;
+  border-left: 1px solid #333;
+  padding-right: 6px;
+  margin-left: 5px;
+  display: inline-block;
+}
+
+#middle-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+#middle-nav > #crumbs-and-selectors {
+  display: flex;
+  gap: 10px;
+}
+
+#middle-nav > #crumbs-and-selectors > #path-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* yes, this is hearsay. Sorry. */
+a.link-button {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 4px 12px;
+  border: 1px solid rgba(0, 126, 229, 0.25); 
+  border-radius: 5px;
+}
+
+a.link-button:hover {
+  cursor: pointer;
+  text-decoration: none;
+  background-color: #eaeaea;
+}
+
+.flex-link {
+  display: flex;
+  justify-content: space-between;
+}
+
+.flex-link span:first-of-type {
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.splitter {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    max-width: none;
+    position: relative;
+    background-color: #e8eaed;
+    border-color: #e8eaed;
+}
+
+.splitter.vertical {
+    cursor: col-resize;
+    width: 4px;
+}
+
+.splitter.horizontal {
+  cursor: row-resize;
+  height: 4px;
+}
+
+.splitter:hover {
+  background-color: #dadce0;
+}
+
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #DD3B38;
+  font-size: 14px;
+}
+
+#file-links-popup {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: white;
+  width: 700px;
+  height: 300px;
+  padding: 10px;
+  z-index: 2;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+  border-radius: 5px;
+  margin-top: 6px;
+  border: 1px solid black;
+}
+
+#file-links-container {
+  position: relative;
+}
+
+.link-button-container {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+#file-links-popup .link-button-container button {
+  width: 100%;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  min-height: 35px;
+  overflow: hidden;
+}
+
+#file-links-popup .link-button-container button span {
+  text-align: left;
+  width: 95%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#file-links-popup .link-button-container button svg {
+  width: 16px;
+  height: 16px;
+}

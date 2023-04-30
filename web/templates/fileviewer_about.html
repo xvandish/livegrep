@@ -1,0 +1,139 @@
+{{template "layout" .}}
+
+{{ define "body"}}
+<div class="about-text">
+    <style>body { font-family:'Times New Roman', Times, serif; font-size: 1.3rem; }</style>
+    <p>
+        This fileviewer is a rip-off of the publically Google fileviewer for <a href="https://cs.opensource.google/">cs.opensource.google</a>.
+    </p>
+
+    <h2>Goals</h2>
+    <div>
+        <ul>
+            <li>Provide a fast, near local-disk speed experience while browsing a repos files</li>
+            <li>Provide access to common Git operations, log, blame, diff, for the current file</li>
+            <li>Make it easy to search within and browse files</li>
+            <li>Provide an intuitive browsing experience</li>
+        </ul>
+    </div>
+
+    <h2>Features</h2>
+    <div>
+        <section>
+            <h3>Search Bar</h3>
+            <p>
+                The search bar allows you to perform more search queries while viewing a file. It starts off scoped to the repository you're currently in.
+            </p>
+        </section>
+        <section>
+        <h3>View Repo At Different Revisions</h3>
+            <h4>Repo Selector</h4>
+            <p>
+                This selector will allow you to switch between all the repositories that livegrep is configured to allow filebrowsing for. A list of all repositories is shown when you initally open it (yes, all, even if its in the 1000s). To filter repositories, a search bar is provided. Under the hood this search bar takes your query and runs a <code>repo:${yourQuery}</code> filter against codesearch.
+
+                To speed up access to common repos, "favorites" are provided. Each repo has a star icon next to it, click it and a repo will be added to your favorites. Favorites are shown at the very top of the list. Thanks to Sean Renaud for the suggestion.
+
+                A decent amount of care was put into to make the favorites feature intuitive, including:
+                <ul>
+                    <li>Favorites are not filtered by your search, with the assumption most people have only a few favorited repos</li>
+                    <li>Favorites are not shown twice, they are filtered out from search results</li>
+                </ul>
+            </p>
+
+            <h4>Branch/Tag/Commit Selector</h4>
+            <p>
+                This is really three selectors combined into one tabbed popup.
+                At the top is a searchbar, which will run a local (JavaScript) search for your query among the items in whichever tab you have open.
+            </p>
+
+            <h5>Branches Selector</h5>
+            This selector will allow you to switch between all of a repos branches. A list of all branches is shown when you initially open it (yes, again, all).
+
+            For conviniece the following things are done:
+            <ul>
+                <li>The branches are sorted by last activity date, newsest at the top</li>
+                <li>The HEAD/default branch is shown at the very top, regardless of activity date</li>
+                <li>The last activity date is shown</li>
+            </ul> 
+
+            <h5>Tags Selector</h5>
+            Identical in feature-set as the branches selector, except it works on git tags.
+
+            <h5>Commits Selector</h5>
+            This selector is not implemented yet, but will eventually allow you to search commits on the branch your on
+            by either subject/message and view the repo at that branch:commit combination.
+        </section>
+
+        <section>
+        <h3>File History Panel</h3>
+        <p>
+            At the bottom of a file, there is a panel that says "History" with a toggle button.
+            Open it up, and a table listing all the commits that have modified that file, with metdata about each commit presented. This panel is
+            <b>very</b> powerful. At a high level, it allows you two main things:
+            <ol>
+                <li>View a file at any point in its history</li>
+                <li>Diff a file against itself at any two revisions within its history. This is my favorite feature!</li>
+            </ol>
+        </p>
+
+        <h4>Using the Split Diff functionality</h4>
+        <p>
+            When you hover over a commit in the history panel, on the right side you'll see two link-buttons presented, "diff" and "view".
+            Click on the "diff" button and a split diff will open up, diffing the commit you clicked on against the previous commit (chronologically).
+            Once the split diff is open, you'll notice when hovering over the commits again that the "diff" and "view" buttons have been replaced by
+            "left" and "right" buttons. Clicking on either of these buttons will change the commit used to diff in either the "left" or "right" panes. Thus, you can diff
+            a file against itself at any point in its history, quickly and easily.
+        </p>
+        </section>
+
+        <section>
+        <h3>Git Blame Functionality</h3>
+        <p>
+            A "Blame" button is provided, when toggled it will show a blame of all the lines
+            in the current file/revision combo.
+
+            For ease of use, every other blame hunk is highlighted, so you can more easily identify
+            which lines belong to which commit.
+        </p>
+        </section>
+
+        <section>
+            <h3>Miscellaneous Cool Stuff</h3> 
+            <ul>
+                <li>The fileviewer will attempt to keep your "context" while moving around. If you have the history panel open, and you open a different file, the history panel will reload with that files history. The same will happen for most major operations, if you have something open and you switch files, the fileviewer will keep that thing open and reload it.</li>
+
+            </ul>
+        </section>
+    </div>
+
+    <h2>Trade-Offs</h2>
+    <div>
+        <ul>
+            <li>A general, say "overexberance" in the number of commits/branches/metaInfo fetched per API request is very present. While this is generally preferable for the user expirience because it reduces the amount of pagination a user has to do, it also puts a higher strain on servers. At a smaller scale, this is perfectly fine, but may become troublesome if you deploy this in a high traffic environment</li>
+        </ul>
+    </div>
+
+    <h2>Features Not Yet Implemented</h2>
+    <div>
+        <ul>
+            <li>A settings page allowing you to configure your experience. Line-wrapping, font-size, themes, eetc</li>
+            <li>A dropdown menu allowing you to copy/view links to the current file/repo</li>
+            <li>Highlighting matches of your search query after you open a file found during a search. This is a gnarly problem to solve:
+                <ul>
+                    <li>You can't highlight syntax highlighted content well, because to highlight something, it has to be split into tokens (variable names, punctation, etc). These tokens are represented as <code>span</code> elements. As such, you can not easily map a range of spans back to the text that they represented, in order to know whether to highlight it or not.</li>
+                    <li>Ideally, you don't have to perform another search within the file, assuming you opened a file from search results. </li>
+                    <li>If you use a local JavaScript regex search, you may get confusing/conflicting results compared to the codesearch results for the same query.</li>
+                    <li>To avoid confusion, ideally you use codesearch to search for your query within a file, then highlight the ranges</li>
+                    <li>Since you can't map syntax rendered content back to its source easily, you probably need something like a "source" layer under the fileviewer. This layer would be in the exacty same visual position as the presentation layer with syntax highlighted context. You would perform highlights on this layer, and use CSS to show the highlights on top of the presentation layer.</li>
+                </ul>
+            </li>
+            <li>Use <code>--follow</code> in git log to view the commits of a file before it was renamed</li>
+            <li>The blame layer will allow you to link back to the history panel, and will allow the common "view blame before this commit" action</li>
+
+        </ul>
+    </div>
+
+    <p>The fileviewer was developed by Rodrigo Silva Mendoza as 10% time project</p>
+
+</div>
+{{ end}}

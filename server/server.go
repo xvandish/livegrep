@@ -2,13 +2,16 @@ package server
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	texttemplate "text/template"
 	"time"
@@ -19,6 +22,7 @@ import (
 	"gopkg.in/alexcesaro/statsd.v2"
 
 	"github.com/livegrep/livegrep/server/config"
+	"github.com/livegrep/livegrep/server/fileviewer"
 	"github.com/livegrep/livegrep/server/log"
 	"github.com/livegrep/livegrep/server/reqid"
 	"github.com/livegrep/livegrep/server/templates"
@@ -36,6 +40,7 @@ type page struct {
 	Config        *config.Config
 	AssetHashes   map[string]string
 	Nonce         template.HTMLAttr // either `` or ` nonce="..."`
+	BodyId        string
 }
 
 type server struct {
@@ -144,7 +149,7 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	data, err := gitShowCommit(repoConfig, commit)
+	data, err := fileviewer.GitShowCommit(repoConfig, commit)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error doing git-show: %v\n", err), 500)
@@ -158,14 +163,206 @@ func (s *server) ServeGitShow(ctx context.Context, w http.ResponseWriter, r *htt
 	})
 }
 
+func (s *server) ServeGitBlameJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/json/git-blame/:parent/:repo/:rev/", r.URL.Path)
+
+	fullRepoPath := parent + "/" + repoName
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repoConfig, ok := s.repos[fullRepoPath]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	blameData, err := fileviewer.GitBlameBlob(path, repoConfig, rev)
+
+	if err != nil {
+		w.WriteHeader(500)
+		return
+		// w.Write((err.Error()))
+	}
+
+	replyJSON(ctx, w, 200, blameData)
+}
+
+func (s *server) ServeSimpleGitLogJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/json/git-log/:parent/:repo/:rev/", r.URL.Path)
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[parent+"/"+repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := fileviewer.BuildSimpleGitLogData(path, rev, repo)
+
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+	}
+	// fmt.Printf("git_log_data=%+v\n", data)
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName
+
+	replyJSON(ctx, w, 200, data)
+	// now we need to marshal data to json
+}
+
+// returns whether the filebrowser is enabled for the particular repo
+// mentioned, and if so the repoConfig
+// repo is a string like `xvandish/livegrep`
+func (s *server) filebrowseEnabled(repo string) (*config.RepoConfig, error) {
+	if len(s.repos) == 0 {
+		return nil, errors.New("File browsing and git commands not enabled")
+	}
+
+	repoConfig, ok := s.repos[repo]
+
+	if !ok {
+		return nil, errors.New("repo: %s not found. Maybe reload the server to read the latest config.\n")
+	}
+
+	return &repoConfig, nil
+}
+
+// what should the url be? I'd like to do something lik
+// api/v2/json/git-log/:parent/:repo/?rev=x&path=x&after=x&blah
+func (s *server) ServeGitLogJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	queryVals := r.URL.Query()
+
+	parent := queryVals.Get(":parent")
+	repo := queryVals.Get(":repo")
+
+	repoConfig, err := s.filebrowseEnabled(parent + "/" + repo)
+
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	// see fileviewer.CommitOptions documentation for details
+	// on each option
+	revspec := queryVals.Get("revspec")
+	path := queryVals.Get("path")
+
+	// check the numerical values
+	first := queryVals.Get("first")
+
+	var firstVal uint64
+	if queryVals.Has("first") {
+		firstVal, err = strconv.ParseUint(first, 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("could not parse first: %s\n", err.Error()), 500)
+			return
+		}
+	}
+
+	var afterCursorVal uint64
+	if queryVals.Has("afterCursor") {
+		afterCursorVal, err = strconv.ParseUint(queryVals.Get("afterCursor"), 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("could not parse afterCursor: %s\n", err.Error()), 500)
+			return
+		}
+
+	}
+
+	opts := fileviewer.CommitOptions{
+		Range: revspec,
+		Path:  path,
+		N:     uint(firstVal),
+		SkipN: uint(afterCursorVal),
+	}
+
+	commitLog, err := fileviewer.BuildGitLog(opts, *repoConfig)
+
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	replyJSON(ctx, w, 200, commitLog)
+}
+
+func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/json/git-ls-tree/:parent/:repo/:rev/", r.URL.Path)
+
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[parent+"/"+repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	data, err := fileviewer.BuildDirectoryTree(path, repo, rev)
+	if err != nil {
+		writeError(ctx, w, 500, "", err.Error())
+		return
+	}
+
+	replyJSON(ctx, w, 200, data)
+}
+
+func (s *server) ServeGitLsTreeRendered(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repoName := r.URL.Query().Get(":repo")
+	rev := r.URL.Query().Get(":rev")
+	path := pat.Tail("/api/v2/getRenderedFileTree/:parent/:repo/:rev/", r.URL.Path)
+
+	fmt.Printf("parent:%s repoName:%s rev:%s path:%s\n", parent, repoName, rev, path)
+	if len(s.repos) == 0 {
+		http.Error(w, "File browsing and git commands not enabled", 404)
+		return
+	}
+
+	repo, ok := s.repos[parent+"/"+repoName]
+	if !ok {
+		http.Error(w, "No such repo", 404)
+		return
+	}
+
+	fmt.Printf("repo.Path=%s repo.Name=%s\n", repo.Path, repo.Name)
+	data, err := fileviewer.BuildDirectoryTree(path, repo, rev)
+
+	if err != nil {
+		writeError(ctx, w, 500, "", err.Error())
+		return
+	}
+
+	rendered := templates.RenderDirectoryTree(data, -15, repo.Name, rev, path)
+	w.Write([]byte(rendered))
+}
+
 func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repoName := r.URL.Query().Get(":repo")
+
 	path := pat.Tail("/delve/:parent/:repo/commits/:rev/", r.URL.Path)
 	firstParent := r.URL.Query().Get("firstParent")
 
 	if firstParent == "" {
-		firstParent = "HEAD"
+		firstParent = r.URL.Query().Get(":rev")
 	}
 
 	if len(s.repos) == 0 {
@@ -179,12 +376,12 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	data, err := buildSimpleGitLogData(path, firstParent, repo)
+	data, err := fileviewer.BuildSimpleGitLogData(path, firstParent, repo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error building log data: %v\n", err), 500)
 		return
 	}
-	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName + "/"
+	data.CommitLinkPrefix = "/delve/" + parent + "/" + repoName
 
 	if !data.MaybeLastPage {
 		w.Header().Set("X-next-parent", data.NextParent)
@@ -217,6 +414,109 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 	s.renderPage(ctx, w, r, "simplegitlog.html", &page{
 		Title:         "simplegitlog",
 		ScriptName:    "gitlog",
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
+func (s *server) ServeSyntaxHighlightedFileForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getSyntaxHighlightedFileForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
+	}
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+	fmt.Printf("repoPath=%s\n", repoPath)
+	data, err := fileviewer.BuildFileDataForZoektFilePreview(path, repoPath, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+
+	s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
+		IncludeHeader: false,
+		Data:          data,
+	})
+}
+
+func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/raw-blob/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
+	}
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	data, err := fileviewer.BuildFileData(path, repoConfig, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		return
+	}
+	// We build this carefully increase /blob/ is in the path to the file that
+	// we're actually viewing
+	data.LogLink = fmt.Sprintf("/delve/%s/%s/commits/%s/%s", parent, repo, rev, path)
+	// if we were going to permalink, make it what we want
+	// TODO(xvandish): do this in fileview.go
+	if data.Permalink != "" {
+		data.Permalink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, data.CommitHash, path)
+	} else if data.Headlink != "" {
+		data.Headlink = fmt.Sprintf("/delve/%s/%s/blob/%s/%s", parent, repo, "HEAD", path)
+	}
+
+	// log.Printf(ctx, "going to print raw thing")
+	// log.Printf(ctx, "data is %+v", data)
+	s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
+		Title:         data.PathSegments[len(data.PathSegments)-1].Name,
 		IncludeHeader: false,
 		Data:          data,
 	})
@@ -262,7 +562,7 @@ func (s *server) ServeGitBlob(ctx context.Context, w http.ResponseWriter, r *htt
 		return
 	}
 
-	data, err := buildFileData(path, repoConfig, rev)
+	data, err := fileviewer.BuildFileData(path, repoConfig, rev)
 	if err != nil {
 		errMsg := fmt.Sprintf("delve-error: Error reading file path=%s, rev=%s - %s", path, rev, err)
 		logAndServeError(ctx, w, errMsg, 500)
@@ -320,7 +620,7 @@ func (s *server) ServeFile(ctx context.Context, w http.ResponseWriter, r *http.R
 		return
 	}
 
-	data, err := buildFileData(path, repo, commit)
+	data, err := fileviewer.BuildFileData(path, repo, commit)
 	if err != nil {
 		errMsg := fmt.Sprintf("Error: reading file - %s", err)
 		logAndServeError(ctx, w, errMsg, 500)
@@ -346,6 +646,226 @@ func (s *server) ServeAbout(ctx context.Context, w http.ResponseWriter, r *http.
 	s.renderPage(ctx, w, r, "about.html", &page{
 		Title:         "about",
 		IncludeHeader: true,
+	})
+}
+
+func (s *server) ServeAboutFileviewer(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	s.renderPage(ctx, w, r, "fileviewer_about.html", &page{
+		Title:         "fileviewer about",
+		IncludeHeader: true,
+	})
+}
+
+func (s *server) ServeDiff(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+	revA := r.URL.Query().Get(":revA")
+	revB := r.URL.Query().Get(":revB")
+
+	path := pat.Tail("/diff/:parent/:repo/:revA/:revB/", r.URL.Path)
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	diff, err := fileviewer.GetDiffBetweenTwoCommits(path, repoConfig, revA, revB, false)
+
+	// most likely, a request for
+	if diff == nil {
+		if revA == revB {
+			io.WriteString(w, "Commits for comparison are identical.")
+		} else {
+			w.WriteHeader(500)
+		}
+		return
+	}
+
+	rows := diff.GetDiffRowsSplit()
+	if err != nil {
+		log.Printf(ctx, "splitdiff err=%v\n", err)
+		io.WriteString(w, err.Error())
+		return
+	}
+
+	s.renderPage(ctx, w, r, "splitdiff.html", &page{
+		Title:         "Diff",
+		IncludeHeader: false,
+		Data: struct {
+			DiffRows []fileviewer.IDiffRow
+			FileName string
+		}{
+			DiffRows: rows,
+			FileName: filepath.Base(path),
+		},
+	})
+
+	// io.WriteString(w, fmt.Sprintf("<html><body><div style=\"display:flex; gap:10px\">%s%s</div></body></html>", left, right))
+}
+
+// the fileviewer requests the repos it can use from the server, rather than the
+// cs backend because the fileviewer is still not set up to update its list of repos
+// when the index changes, so if we try to open a repo that the cs backend thinks is
+// valid, but the server does not we'll error out.
+// So instead, we stick with the safe method of asking the server whats up
+// TODO: Finish that PR up that dynamically updates the webserver with the cs repos
+
+// TODO: allow this page to be rendered when no branch is passed. In that case, we should
+// figure out HEAD, then pass that to buildFileData
+// TODO: When dfc is set, allow log to return whether there are "future" entries, so that users
+// can jump back the most recent
+// TODO: handle empty repos better
+// TODO: we really need to know the HEAD rev!
+func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/experimental/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var repoRev, path string
+	if len(sp) == 2 {
+		repoRev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			repoRev = sp[0]
+		} else {
+			repoRev = "HEAD"
+		}
+		path = ""
+	}
+
+	q := r.URL.Query()
+	dataFileCommit := q.Get("dfc")
+
+	log.Printf(ctx, "repoRev=%s path=%s\n", repoRev, path)
+
+	parentMap, ok := s.newRepos[parent]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("parent: %s not found\n", parent))
+		return
+	}
+
+	repoConfig, ok := parentMap[repo]
+
+	if !ok {
+		io.WriteString(w, fmt.Sprintf("repo: %s not found\n", repo))
+		return
+	}
+
+	// TODO: cache this, or precompute it
+	// important to know what branch/tag/commit
+	headRev, err := fileviewer.GitRevParseAbbrev("HEAD", repoConfig.Path)
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("failed to fetch HEAD ref\n", repo))
+		return
+	}
+
+	// if the repoRev == "HEAD", resolve it
+	if repoRev == "HEAD" {
+		repoRev = headRev
+	}
+
+	var commitToLoadFileAt string
+	if dataFileCommit != "" {
+		// if dfc is declared, view that file at that commit, not
+		// the repo commit
+		commitToLoadFileAt = dataFileCommit
+	} else {
+		// otherwise, get the last commit to modify the file. We use this to be more specific
+		// about what we're seeing, which is useful for the frontend
+		lastRev, err := fileviewer.GitGetLastRevToTouchPath(path, repoConfig.Path, repoRev)
+		if err != nil {
+			// still attempt to load the file at the repo commit, which will probably fail
+			commitToLoadFileAt = repoRev
+		} else {
+			commitToLoadFileAt = lastRev
+		}
+	}
+
+	data, err := fileviewer.BuildFileData(path, repoConfig, commitToLoadFileAt)
+	// fileContent not filled in, but filepath exists
+	if err != nil {
+		// if this errors out, most likely the file does not exist,
+		// TODO: dicide if this is clean enough, or whether buildFileData
+		// should always return a "default" fileviewercontext
+		filename := filepath.Base(path)
+		data = &fileviewer.FileViewerContext{
+			Repo:       repoConfig,
+			RepoRev:    repoRev,
+			Commit:     commitToLoadFileAt,
+			CommitHash: commitToLoadFileAt,
+			FileContent: &fileviewer.SourceFileContent{
+				FilePath: path,
+				FileName: filename,
+				Invalid:  true,
+			},
+			FilePath: path,
+			FileName: filename,
+		}
+	}
+
+	// if readmeContent is available, we put it into
+
+	// these options do not depend on the file existing.
+	// they do however depend on the `repoRev` being valid.
+	// that will be something to tackle in the future <- TODO(xvandish)
+	// TODO: use goroutines to do these in parallel
+	tree, err := fileviewer.BuildDirectoryTree(path, repoConfig, repoRev)
+	if err != nil {
+		log.Printf(ctx, "Error building directory tree: %s\n", err.Error())
+	}
+	branches, err := fileviewer.ListAllBranches(repoConfig)
+	if err != nil {
+		log.Printf(ctx, "Error getting branches: %s\n", err.Error())
+	}
+	tags, err := fileviewer.ListAllTags(repoConfig)
+	if err != nil {
+		log.Printf(ctx, "Error getting tags: %s\n", err.Error())
+	}
+
+	data.DirectoryTree = tree
+	data.Branches = branches
+	data.Tags = tags
+	data.RepoRev = repoRev
+	data.RepoConfig = repoConfig
+	data.HeadRev = headRev
+
+	script_data := &struct {
+		RepoConfig config.RepoConfig
+		RepoName   string
+		Commit     string
+		CommitHash string
+		RepoRev    string
+		HeadRev    string
+		FilePath   string
+		FileName   string
+		Branches   []fileviewer.GitBranch // TODO: fix this
+	}{repoConfig, repoConfig.Name, data.Commit, data.CommitHash, data.RepoRev, data.HeadRev, data.FilePath, data.FileName, data.Branches}
+
+	s.renderPage(ctx, w, r, "experimental.html", &page{
+		Title:         "experimental",
+		IncludeHeader: false,
+		ScriptName:    "experimental",
+		ScriptData:    script_data,
+		Data:          data,
+		BodyId:        "fileviewer-body",
 	})
 }
 
@@ -466,6 +986,7 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 		log.Printf(ctx, "Error: no template named %v", templateName)
 		return
 	}
+	log.Printf(ctx, "found template %s", templateName)
 
 	pageData.Config = s.config
 	pageData.AssetHashes = s.AssetHashes
@@ -481,6 +1002,8 @@ func (s *server) renderPage(ctx context.Context, w io.Writer, r *http.Request, t
 		log.Printf(ctx, "Error rendering %v: %s", templateName, err)
 		return
 	}
+
+	log.Printf(ctx, "success %s", templateName)
 }
 
 type reloadHandler struct {
@@ -580,14 +1103,18 @@ func New(cfg *config.Config) (http.Handler, error) {
 		log.Printf(ctx, "Finished initializing StatsD client")
 	}
 
-	for _, bk := range srv.config.Backends {
-		be, e := NewBackend(bk)
-		if e != nil {
-			return nil, e
+	if !srv.config.FileviewerOnly {
+		for _, bk := range srv.config.Backends {
+			be, e := NewBackend(bk)
+			if e != nil {
+				return nil, e
+			}
+			be.Start()
+			srv.bk[be.Id] = be
+			srv.bkOrder = append(srv.bkOrder, be.Id)
 		}
-		be.Start()
-		srv.bk[be.Id] = be
-		srv.bkOrder = append(srv.bkOrder, be.Id)
+	} else {
+		fmt.Printf("starting in fileviewer only mode\n")
 	}
 
 	var repoNames []string
@@ -603,6 +1130,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 	}
 	srv.serveFilePathRegex = serveFilePathRegex
 
+	// We don't restrict the routes available in fileviewer
+	// only mode, assuming that some reverse proxy ahead
+	// of us is taking care of that
 	m := pat.New()
 	m.Add("GET", "/healthz", http.HandlerFunc(srv.ServeHealthZ))
 	m.Add("GET", "/debug/healthcheck", http.HandlerFunc(srv.ServeHealthcheck))
@@ -614,10 +1144,19 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/delve/:parent/:repo/blob/:rev/", srv.Handler(srv.ServeGitBlob))
 	m.Add("GET", "/delve/:parent/:repo/commit/:commitHash/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
+
 	m.Add("GET", "/delve/", srv.Handler(srv.ServeFile))
+	m.Add("GET", "/diff/:parent/:repo/:revA/:revB/", srv.Handler(srv.ServeDiff))
+
+	// the following handlers render HTML that JS code fetches and inlines into the page
+	// so the pages don't have any headers or extra things
+	// m.Add("GET", "/raw/:parent/:repo/tree/:rev/", srv.Handler(srv.ServeGitBlobRaw))
+	m.Add("GET", "/raw-blob/:parent/:repo/+/", srv.Handler(srv.ServeGitBlobRaw))
+	m.Add("GET", "/experimental/:parent/:repo/+/", srv.Handler(srv.ServeExperimental))
 	m.Add("GET", "/simple-git-log/", srv.Handler(srv.ServeSimpleGitLog))
 	m.Add("GET", "/git-show/", srv.Handler(srv.ServeGitShow))
 	m.Add("GET", "/about", srv.Handler(srv.ServeAbout))
+	m.Add("GET", "/about-fileviewer", srv.Handler(srv.ServeAboutFileviewer))
 	m.Add("GET", "/help", srv.Handler(srv.ServeHelp))
 	m.Add("GET", "/opensearch.xml", srv.Handler(srv.ServeOpensearch))
 	m.Add("GET", "/", srv.Handler(srv.ServeRoot))
@@ -646,6 +1185,14 @@ func New(cfg *config.Config) (http.Handler, error) {
 
 	m.Add("GET", "/api/v2/getRenderedSearchResults/:backend", srv.Handler(srv.ServeRenderedSearchResults))
 	m.Add("GET", "/api/v2/getRenderedSearchResults/", srv.Handler(srv.ServeRenderedSearchResults))
+	m.Add("GET", "/api/v2/getRenderedFileTree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeRendered))
+	// m.Add("GET", "/delve/:parent/:repo/commits/:rev/", srv.Handler(srv.ServeSimpleGitLog))
+	// m.Add("GET", "/api/v2/json/git-log/:parent/:repo/:rev/", srv.Handler(srv.ServeSimpleGitLogJson))
+	m.Add("GET", "/api/v2/json/git-log/:parent/:repo/", srv.Handler(srv.ServeGitLogJson))
+	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
+	m.Add("GET", "/api/v2/json/git-ls-tree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeJson))
+	m.Add("GET", "/api/v2/getSyntaxHighlightedFileForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeSyntaxHighlightedFileForZoekt))
+	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))
 
 	var h http.Handler = m
 
@@ -710,3 +1257,26 @@ func getRepoPathFromURL(repoRegex *regexp.Regexp, url, pathPrefix string) (repo 
 
 	return matches[1], matches[2], nil
 }
+
+// working thoughts ---
+// context: client -> webserver (Go) -> codesearch (c++)
+//  fileviewer is implemented entirely in webserver/Go
+//  search is implemented entirely in codesearch, webserver is just the wrapper that renders results
+//
+// when we want to highlight the matches of a query within a file, we'd like
+// to not redo the search. However, a search may have timed out, e.g all matches
+// within a file may not have completed. We could of course cache or not based on that basis (timed_out or not).
+//
+// The brute force method, when a query is present in a fileviewer request
+// with the `?q={}` param, is for the webserver to do the search by using the golang regexp package to do a search
+// The good news is that golang/regepx uses the same RE2 syntax. The bad news is that results may be slightly different than the codesearch backend ones, as the fold_case and is_regex params have the ability to tune the search query.
+//
+// The most consistent way would be to simply repeat the query to codesearch again, but filter for the exact path, and with an extremely high number of max_matches, in case the search is for something simple like `t`. Additionally, we should design an api that only returns match bounds for matches, so that we don't bloat the payload with information we're not going to use. That does not need to happen at first.
+
+// if we just rely on codesearch, we should also make it so the local Find box also reaches out to codesearch, rather than using a local js regex find, to avoid confusing/conflicting results between the two regex implementations.
+
+// a difficulty in actually highlighting matches for a query in a file is syntax highlighting messing everything up.
+// a document is rendered as a table of lineNums and lines
+// each line is split into `n` spans, not into a simple <pre>lineText</pre>
+// when we have a range of text we want to highlight, that text may be split into `n` spans!! That means that we cannot just easily add/remove <mark></mark> tags around the text content at specific positions.
+// The good news is the spans do not modify the text. So, possibly, we could have a presentation layer under the fileviewer, and when a range is highlighted we can use a css blend filter to have the highlight color blend with the syntax highlighted content.

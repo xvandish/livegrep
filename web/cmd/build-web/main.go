@@ -33,6 +33,38 @@ func main() {
 		os.Exit(1)
 	}
 
+	result = api.Build(api.BuildOptions{
+		EntryPoints: []string{"web/src/fileview/fileview_v2.js"},
+		Outfile: path.Join(*outDir,
+			"htdocs", "assets", "js", "fileview_v2.min.js"),
+		Bundle:            true,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		Write:             true,
+		LogLevel:          api.LogLevelInfo,
+	})
+
+	if len(result.Errors) > 0 {
+		os.Exit(1)
+	}
+
+	result = api.Build(api.BuildOptions{
+		EntryPoints: []string{"web/src/codesearch/codesearch.js"},
+		Outfile: path.Join(*outDir,
+			"htdocs", "assets", "js", "codesearch.min.js"),
+		Bundle:            true,
+		MinifyWhitespace:  true,
+		MinifyIdentifiers: true,
+		MinifySyntax:      true,
+		Write:             true,
+		LogLevel:          api.LogLevelInfo,
+	})
+
+	if len(result.Errors) > 0 {
+		os.Exit(1)
+	}
+
 	// minify CSS
 	result = api.Build(api.BuildOptions{
 		EntryPoints:       []string{"web/htdocs/assets/css/codesearch.css"},

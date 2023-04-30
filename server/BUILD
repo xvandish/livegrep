@@ -6,7 +6,6 @@ go_library(
     srcs = [
         "api.go",
         "backend.go",
-        "fileview.go",
         "json.go",
         "query.go",
         "server.go",
@@ -25,6 +24,7 @@ go_library(
         "//server/log:go_default_library",
         "//server/reqid:go_default_library",
         "//server/templates:go_default_library",
+        "//server/fileviewer:go_default_library",
         "//src/proto:go_proto",
         "@com_github_bmizerany_pat//:go_default_library",
         "@org_golang_google_grpc//:go_default_library",
@@ -34,6 +34,7 @@ go_library(
         "@org_golang_google_grpc//connectivity",
         "@org_golang_x_net//context:go_default_library",
         "@in_gopkg_alexcesaro_statsd_v2//:go_default_library",
+        "@com_github_sergi_go_diff//diffmatchpatch:go_default_library",
     ],
 )
 
@@ -42,7 +43,6 @@ go_test(
     srcs = [
         "query_test.go",
         "server_test.go",
-        "fileview_test.go",
     ],
     data = [
         "//web:htdocs",

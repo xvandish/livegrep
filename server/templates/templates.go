@@ -18,7 +18,9 @@ import (
 	htmlf "github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
 	"github.com/alecthomas/chroma/styles"
+
 	"github.com/livegrep/livegrep/server/api"
+	"github.com/livegrep/livegrep/server/fileviewer"
 )
 
 func linkTag(nonce template.HTMLAttr, rel string, s string, m map[string]string) template.HTML {
@@ -104,6 +106,125 @@ func renderCodeLine(line string, bounds [][2]int) []CodePart {
 	return codeParts
 }
 
+func getTreeItemLink(node *api.TreeNode, paddingLeft int, repoName, repoRev string, fileInPath bool) string {
+	link := fmt.Sprintf("/experimental/%s/%s/%s/%s", repoName, node.Type, repoRev, node.Path)
+	leftComp := imgLink
+	btnCls := "arrow"
+	if fileInPath {
+		btnCls += " expanded"
+	}
+	buttonExpander := fmt.Sprintf("<button class=\"expander\"><div class=\"%s\" /></button>", btnCls)
+	if node.Type == "tree" {
+		leftComp = buttonExpander
+	}
+
+	// padding at the root is -15, explained below. However, we don't want to
+	// render with -15px padding, so we normalize to 0.
+	if paddingLeft < 0 {
+		paddingLeft = 0
+	}
+	return fmt.Sprintf("<a style=\"padding-left:%dpx;\" data-path=\"%s\" data-hash=\"%s\" href=\"%s\">%s<span>%s</span></a>", paddingLeft, node.Path, repoRev, link, leftComp, node.Name)
+}
+
+var imgLink = "<img src=\"/assets/img/file-icon.svg\" width=\"16px\" height=\"16px\" />"
+
+// -15?? good question.
+// at the root, we don't want to append left padding, so root items sit flush.
+// However, for ease of understanding, we always want to add +15 at every level.
+// Except, the first, as stated before. So, to avoid exception checking that checks if
+// we're at the first, and conditionally adds 15, we just start at -15, and always add
+// 15.
+var rootPadding = -15
+
+// TODO: repo favorites!!! In the repo searcher, allow somone to pin
+//  a repo as favorite so they can easily switch
+
+// TODO: (lower priority) show the active branches at the top of the git
+// selector
+
+// not fun to read
+func RenderDirectoryTree(rootDir *api.TreeNode, paddingLeft int, repoName, repoRev, filepath string) template.HTML {
+	if rootDir == nil {
+		return ""
+	}
+
+	cls := ""
+
+	// if this rootNode has nothing to do with the open file (filepath)
+	// close it, so the file tree isn't really busy
+
+	// TODO: this could eventually be passed down in the recursive calls
+	// so we aren't doing needless string comparisons
+	// TODO: fix this for similarly named files in paths
+	//  e.g names that start with filename but aren't exact
+	fileInPath := strings.HasPrefix(filepath, rootDir.Path)
+
+	// TODO: refactor file tree so that we can set a property on the parent element
+	// and that will automatically take care of the child elements being hidden or
+	// not
+
+	outHtml := fmt.Sprintf("<div class=\"%s\"", cls)
+	if paddingLeft == rootPadding {
+		outHtml += "id=\"root\">"
+	} else {
+		outHtml += ">"
+
+		// now, render either the folder name, or file name
+		// if folder, it will later loop and render the children
+		link := getTreeItemLink(rootDir, paddingLeft, repoName, repoRev, fileInPath)
+		if rootDir.Type == "tree" {
+			outHtml += fmt.Sprintf("<div>%s</div>", link)
+		} else {
+			isSelected := rootDir.Path == filepath
+			cls := ""
+			if isSelected {
+				cls = "selected"
+			}
+			outHtml += fmt.Sprintf("<div class=\"%s\">%s%s</div>", cls, imgLink, link)
+		}
+	}
+
+	// now, if a folder, loop through children
+	if len(rootDir.Children) > 0 {
+		// but first, add a containg div for all the children
+		outerCls := "children"
+		if fileInPath || paddingLeft == rootPadding {
+			outerCls += " expanded"
+		}
+		outHtml += fmt.Sprintf("<div class=\"%s\">", outerCls)
+		for _, child := range rootDir.Children {
+			// now, we're at test (at least for the first iteration)
+
+			// if the child has no children, just "render" it right away.
+			// TODO: cleaner way to not include ul
+			if len(child.Children) == 0 {
+				// nextPadding := paddingLeft + 15
+				// if left == 0 {
+				// 	nextPadding = 0
+				// }
+				link := getTreeItemLink(child, paddingLeft+15, repoName, repoRev, fileInPath)
+				isSelected := child.Path == filepath
+				cls := ""
+				if isSelected {
+					cls = "selected"
+				}
+				outHtml += fmt.Sprintf("<div class=\"%s\">%s</div>", cls, link)
+			} else {
+				// fmt.Printf("at child with name=%s, depth=%d going to loop through its children.\n", child.Name, depth+1)
+				outHtml += string(RenderDirectoryTree(child, paddingLeft+15, repoName, repoRev, filepath))
+			}
+		}
+		outHtml += "</div>"
+	}
+
+	outHtml += "</div>"
+	if paddingLeft == rootPadding {
+		outHtml += "</nav>"
+	}
+
+	return template.HTML(outHtml)
+}
+
 // used to cap slice iteration
 func min(a, b int) int {
 	if a < b {
@@ -147,6 +268,8 @@ func convertContentBlobToArrayOfLines(content string) []template.HTML {
 type SyntaxHighlightedContent struct {
 	Content []template.HTML
 }
+
+type SyntaxHighlightedLine template.HTML
 
 // TODO(xvandish): Convert this function so that our build process can use it
 // and inject it into our stylesheets. Right now, manual process.
@@ -195,7 +318,6 @@ func styleAttr(styles map[chroma.TokenType]string, tt chroma.TokenType) string {
 	}
 	return fmt.Sprintf(` class="%s"`, cls)
 }
-
 func writeCSS(w io.Writer, style *chroma.Style) error {
 	css := styleToCSS(style)
 
@@ -223,6 +345,45 @@ func writeCSS(w io.Writer, style *chroma.Style) error {
 
 func timeTrack(start time.Time, name string) {
 	fmt.Printf("%s took %s\n", name, time.Since(start))
+}
+
+func getLexerForFilename(filename string) chroma.Lexer {
+	l := lexers.Match(filename)
+	if l == nil {
+		l = lexers.Fallback
+	}
+	fmt.Printf("using lexer: %s\n", l.Config().Name)
+	return l
+}
+
+func getSyntaxHighlightedLine(line string, l chroma.Lexer) template.HTML {
+	defer timeTrack(time.Now(), "getSyntaxHighlightedLine")
+	if len(strings.TrimSpace(line)) == 0 {
+		return template.HTML("<span></span>")
+	}
+
+	css := styleToCSS(styles.Xcode) // TODO: cache this!
+
+	// TODO: check if getting the lexer failed
+
+	l = chroma.Coalesce(l)
+
+	it, err := l.Tokenise(nil, line)
+
+	if err != nil {
+		return template.HTML(line)
+	}
+
+	tokens := it.Tokens()
+
+	var b strings.Builder
+	for _, token := range tokens {
+		html := html.EscapeString(token.String())
+		attr := styleAttr(css, token.Type)
+		b.WriteString(fmt.Sprintf("<span%s>%s</span>", attr, html))
+	}
+
+	return template.HTML(b.String())
 }
 
 func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighlightedContent {
@@ -294,6 +455,11 @@ func getFuncs() map[string]interface{} {
 		"renderCodeLine":                   renderCodeLine,
 		"convertContentBlobToArrayOfLines": convertContentBlobToArrayOfLines,
 		"getSyntaxHighlightedContent":      getSyntaxHighlightedContent,
+		"renderDirectoryTree":              RenderDirectoryTree,
+		"getDiffRowType":                   getDiffRowType,
+		"getClassFromRowType":              getClassFromRowType,
+		"getSyntaxHighlightedLine":         getSyntaxHighlightedLine,
+		"getLexerForFilename":              getLexerForFilename,
 	}
 }
 
@@ -336,4 +502,34 @@ func LoadAssetHashes(assetHashFile string, assetHashMap map[string]string) error
 	}
 
 	return nil
+}
+
+func getDiffRowType(row fileviewer.IDiffRow) string {
+	switch row.(type) {
+	case fileviewer.IDiffRowAdded:
+		return "added"
+	case fileviewer.IDiffRowDeleted:
+		return "deleted"
+	case fileviewer.IDiffRowContext:
+		return "context"
+	case fileviewer.IDiffRowModified:
+		return "modified"
+	case fileviewer.IDiffRowHunk:
+		return "hunk"
+	default:
+		fmt.Printf("encountered weird row. row T=%T val=%v\n type=%v", row)
+		return "blah"
+	}
+
+	return "blah"
+}
+
+func getClassFromRowType(rowType string) string {
+	switch rowType {
+	case "hunk":
+		return "hunk-row"
+	default:
+		return "row"
+	}
+	return ""
 }

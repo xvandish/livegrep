@@ -9,9 +9,6 @@ var helpArea;
 var caseSelect;
 var regexToggle;
 
-var liveDot;
-var liveText;
-
 var searchOptions = {
   q: "",
   regex: false,
@@ -27,12 +24,19 @@ var two_seconds = 2000;
 // the searchapram for the changed option. Ok for now tho
 function updateSearchParamState() {
   var sp = new URLSearchParams(window.location.search);
-
   // we don't encode the query ourseleves, as that's already being performed by
   // something here, and it resulted in a double encoding.
   sp.set("q", searchOptions.q);
   sp.set("regex", searchOptions.regex);
   sp.set("fold_case", searchOptions.case);
+
+  // IMPORTANT: If not running in the codesearch context, we don't track the
+  // search state in the url. This is to avoid polluting the url with context
+  // that might not be relevant to that page
+  if (window.page != "codesearch") {
+    doSearch(sp);
+    return;
+  }
 
   // If the user is typing quickly, just keep replacing the
   // current URL.  But after they've paused, enroll the URL they
@@ -45,14 +49,20 @@ function updateSearchParamState() {
   }
   lastUrlUpdate = now;
 
-  doSearch();
+  doSearch(sp);
 }
 
 // Take the present search options, perform a search
 // then update the
 var urlFetching;
-function doSearch() {
-  if (searchOptions.q === "") {
+function doSearch(searchParams) {
+  if (!searchParams) {
+    console.error("doSearch() - searchParams undefined");
+    return;
+  }
+
+  var currQuery = searchParams.get("q");
+  if (!currQuery || currQuery === "") {
     helpArea.style.display = "initial";
     resultsContainer.innerHTML = "";
     errorsBox.style.display = "none";
@@ -61,7 +71,7 @@ function doSearch() {
   var time1 = performance.now();
   var time2;
   // we take the chance this fires before we clean up the query params
-  var urlToFetch = "/api/v2/getRenderedSearchResults/" + window.location.search;
+  var urlToFetch = "/api/v2/getRenderedSearchResults/?" + searchParams.toString();
   urlFetching = urlToFetch;
   fetch(urlToFetch)
     .then(function (r) {
@@ -123,6 +133,8 @@ var validControlOptions = {
   context: ["true", "false"],
   case: ["auto", "false", "true"],
 };
+
+// TODO: refactor this to use updateQueryParamState()
 function initStateFromQueryParams() {
   var currURL = new URL(document.location);
   var sp = currURL.searchParams;
@@ -157,7 +169,7 @@ function initStateFromQueryParams() {
     case: caseVal,
   };
 
-  doSearch();
+  doSearch(sp);
 }
 
 // the regex toggle
@@ -283,14 +295,14 @@ function handleFileExtBtnClick(e) {
 function init() {
   "use strict";
 
+  console.log("in cs init");
+
   searchBox = document.getElementById("searchbox");
   resultsContainer = document.querySelector("#resultarea > #results");
   helpArea = document.getElementById("helparea");
   caseSelect = document.getElementById("case-sensitivity-toggle");
   regexToggle = document.querySelector("button[id=toggle-regex]");
   errorsBox = document.getElementById("regex-error");
-  liveDot = document.getElementById("live-status-dot");
-  liveText = document.getElementById("live-status-text");
 
   caseSelect.addEventListener("change", function (e) {
     var newVal = e.target.value;
@@ -353,7 +365,7 @@ function init() {
     initStateFromQueryParams();
   });
 
-  if (hasParams()) {
+  if (hasParams() && window.page == "codesearch") {
     initStateFromQueryParams();
   } else {
     initControlsFromLocalPrefs();
@@ -361,6 +373,8 @@ function init() {
 
   renderSearchHistory();
 }
+
+window.codesearchInit = init;
 
 module.exports = {
   init: init,

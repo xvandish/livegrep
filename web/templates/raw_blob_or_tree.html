@@ -1,21 +1,16 @@
-{{define "filecontent"}}
+{{ with .Data.FileContent }}
   {{ $lang := .Language }}
   {{ $highlightedContent := getSyntaxHighlightedContent .Content $lang .FileName }}
-  <table id="file-content-table">
-    <thead hidden aria-hidden="true">
-      <th style="max-width: 300px">BlameInfo</th>
-      <th style="width: 1%; max-width: 1%;">Lber</th>
-      <th>Code Line</th>
-    </thead>
+  <table>
     <tbody class="chroma">
     {{ range $i, $e := $highlightedContent.Content }}
       {{$lineNum := toLineNum $i}}
       <tr>
         <td class="blame-col"></td>
         <td id="L{{$lineNum}}" class="lno">{{$lineNum}}</td>
-        <td id="LC{{$lineNum}}" class="ln">{{ $e }}</td>
+        <td id="LC{{$lineNum}}" style="white-space: pre;padding-left: 1rem;">{{ $e }}</td>
       </tr>
     {{ end }}
     </tbody>
   </table>
-{{end}}
+{{ end }}

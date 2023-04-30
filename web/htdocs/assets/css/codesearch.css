@@ -1,3 +1,5 @@
+@import "fileview.css";
+
 /* Credit - https://aykevl.nl/2014/09/fix-jumping-scrollbar */
 /* makes it so that on naviagtions (or events) the scrollbar
  * appearing doesn't cause a layout shift */
@@ -121,37 +123,6 @@ button:hover {
 #regex-error {
     padding-top: 3px;
     display: none;
-}
-
-#live-status-main-info-container {
-    display: flex;
-    align-items: center;
-    color: #888;
-    font-style: normal;
-}
-
-#live-status-sub-info {
-    color: #888;
-}
-
-.live-dot {
-    height: 12px;
-    width: 12px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 10px;
-}
-
-.live-dot[data-status='up'] {
-    background-color: rgb(56, 142, 60);
-}
-
-.live-dot[data-status='error'] {
-    background-color: red;
-}
-
-.live-dot[data-status='warn'] {
-    background-color: #FFEFCF;
 }
 
 #errortext {
@@ -432,6 +403,9 @@ button:hover {
     font-size: 0.75em;
 }
 
+/* how much backwards compatability should I leave...? */
+/* should I just make it so that */
+
 /* File viewer */
 .file-viewer, .git-show, .simple-git-log {
     border-collapse: collapse;
@@ -482,7 +456,7 @@ button:hover {
 
 .file-viewer .content-wrapper {
     /* Offset the content so that the overlapping header doesn't occlude it. */
-    margin-top: 6em;
+    margin-top: 2em;
 }
 
 .file-viewer .dir-viewer-wrapper {
@@ -695,6 +669,17 @@ div.example {
 .example .link {
     font-size: 80%;
     float: right;
+}
+
+.file-viewer .alert {
+    margin-top: 6em;
+    padding: 10px;
+    background-color: aliceblue;
+    font-weight: bold;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Chroma colors for the xcode theme */
