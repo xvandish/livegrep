@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	texttemplate "text/template"
 	"time"
 
@@ -44,20 +45,22 @@ type page struct {
 }
 
 type server struct {
-	config      *config.Config
-	bk          map[string]*Backend
-	bkOrder     []string
-	repos       map[string]config.RepoConfig
-	newRepos    map[string]map[string]config.RepoConfig
-	inner       http.Handler
-	Templates   map[string]*template.Template
-	OpenSearch  *texttemplate.Template
-	AssetHashes map[string]string
-	Layout      *template.Template
+	config     *config.Config
+	bk         map[string]*Backend
+	bkOrder    []string
+	repos      map[string]config.RepoConfig
+	newRepos   map[string]map[string]config.RepoConfig
+	inner      http.Handler
+	OpenSearch *texttemplate.Template
+	Layout     *template.Template
 
 	statsd *statsd.Client
 
 	serveFilePathRegex *regexp.Regexp
+
+	mu          sync.Mutex
+	Templates   map[string]*template.Template
+	AssetHashes map[string]string
 }
 
 func (s *server) loadTemplates() {
@@ -238,6 +241,76 @@ func (s *server) filebrowseEnabled(repo string) (*config.RepoConfig, error) {
 
 	return &repoConfig, nil
 }
+func (s *server) ServeGitLogForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	queryVals := r.URL.Query()
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getGitLogForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
+	}
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+
+	var err error
+	// see fileviewer.CommitOptions documentation for details
+	// on each option
+	// check the numerical values
+	first := queryVals.Get("first")
+
+	var firstVal uint64
+	if queryVals.Has("first") {
+		firstVal, err = strconv.ParseUint(first, 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("could not parse first: %s\n", err.Error()), 500)
+			return
+		}
+	}
+
+	var afterCursorVal uint64
+	if queryVals.Has("afterCursor") {
+		afterCursorVal, err = strconv.ParseUint(queryVals.Get("afterCursor"), 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("could not parse afterCursor: %s\n", err.Error()), 500)
+			return
+		}
+
+	}
+
+	opts := fileviewer.CommitOptions{
+		Range: rev,
+		Path:  path,
+		N:     uint(firstVal),
+		SkipN: uint(afterCursorVal),
+	}
+
+	commitLog, err := fileviewer.BuildGitLog(opts, repoPath)
+
+	if err != nil {
+		fmt.Printf("err=%v\n", err)
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	replyJSON(ctx, w, 200, commitLog)
+}
 
 // what should the url be? I'd like to do something lik
 // api/v2/json/git-log/:parent/:repo/?rev=x&path=x&after=x&blah
@@ -250,6 +323,7 @@ func (s *server) ServeGitLogJson(ctx context.Context, w http.ResponseWriter, r *
 	repoConfig, err := s.filebrowseEnabled(parent + "/" + repo)
 
 	if err != nil {
+		fmt.Printf("err=%v\n", err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -288,14 +362,54 @@ func (s *server) ServeGitLogJson(ctx context.Context, w http.ResponseWriter, r *
 		SkipN: uint(afterCursorVal),
 	}
 
-	commitLog, err := fileviewer.BuildGitLog(opts, *repoConfig)
+	commitLog, err := fileviewer.BuildGitLog(opts, repoConfig.Path)
 
 	if err != nil {
+		fmt.Printf("err=%v\n", err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
 	replyJSON(ctx, w, 200, commitLog)
+}
+
+func (s *server) TestHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("hello"))
+}
+
+func (s *server) ServeGitLsTreeForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getDirectoryTreeForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	log.Printf(ctx, "sp=%v\n", sp)
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
+	}
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+	data, err := fileviewer.GetLsTreeOutput(path, repoPath, rev)
+	if err != nil {
+		writeError(ctx, w, 500, "", err.Error())
+		return
+	}
+
+	w.Write(data)
 }
 
 func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -315,7 +429,7 @@ func (s *server) ServeGitLsTreeJson(ctx context.Context, w http.ResponseWriter, 
 		return
 	}
 
-	data, err := fileviewer.BuildDirectoryTree(path, repo, rev)
+	data, err := fileviewer.BuildDirectoryTree(path, repo.Path, rev)
 	if err != nil {
 		writeError(ctx, w, 500, "", err.Error())
 		return
@@ -343,7 +457,7 @@ func (s *server) ServeGitLsTreeRendered(ctx context.Context, w http.ResponseWrit
 	}
 
 	fmt.Printf("repo.Path=%s repo.Name=%s\n", repo.Path, repo.Name)
-	data, err := fileviewer.BuildDirectoryTree(path, repo, rev)
+	data, err := fileviewer.BuildDirectoryTree(path, repo.Path, rev)
 
 	if err != nil {
 		writeError(ctx, w, 500, "", err.Error())
@@ -419,6 +533,7 @@ func (s *server) ServeSimpleGitLog(ctx context.Context, w http.ResponseWriter, r
 	})
 }
 
+// I'll change the name later, but
 func (s *server) ServeSyntaxHighlightedFileForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	parent := r.URL.Query().Get(":parent")
 	repo := r.URL.Query().Get(":repo")
@@ -446,9 +561,9 @@ func (s *server) ServeSyntaxHighlightedFileForZoekt(ctx context.Context, w http.
 
 	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
 	fmt.Printf("repoPath=%s\n", repoPath)
-	data, err := fileviewer.BuildFileDataForZoektFilePreview(path, repoPath, rev)
+	data, err := fileviewer.BuildFileDataForZoektFilePreview(path, repoPath, parent+"/"+repo, rev)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading file - %s", err), 500)
+		http.Error(w, fmt.Sprintf("Error reading file or tree - %s", err), 500)
 		return
 	}
 
@@ -827,7 +942,7 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	// they do however depend on the `repoRev` being valid.
 	// that will be something to tackle in the future <- TODO(xvandish)
 	// TODO: use goroutines to do these in parallel
-	tree, err := fileviewer.BuildDirectoryTree(path, repoConfig, repoRev)
+	tree, err := fileviewer.BuildDirectoryTree(path, repoConfig.Path, repoRev)
 	if err != nil {
 		log.Printf(ctx, "Error building directory tree: %s\n", err.Error())
 	}
@@ -1012,7 +1127,13 @@ type reloadHandler struct {
 }
 
 func (h *reloadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// We protect loadTemplates from concurrent calls, as it makes writes/deletes to
+	// the template and asset hashes maps. Concurrent calls can cause server crashes.
+	// Typically the reloadHandler is a development feature, so the extra time some
+	// calls may spend waiting on the mutex is fine.
+	h.srv.mu.Lock()
 	h.srv.loadTemplates()
+	h.srv.mu.Unlock()
 	h.inner.ServeHTTP(w, r)
 }
 
@@ -1192,6 +1313,9 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/json/git-blame/:parent/:repo/:rev/", srv.Handler(srv.ServeGitBlameJson))
 	m.Add("GET", "/api/v2/json/git-ls-tree/:parent/:repo/:rev/", srv.Handler(srv.ServeGitLsTreeJson))
 	m.Add("GET", "/api/v2/getSyntaxHighlightedFileForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeSyntaxHighlightedFileForZoekt))
+	m.Add("GET", "/api/v2/getDirectoryTreeForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeGitLsTreeForZoekt))
+	m.Add("GET", "/api/v2/getGitLogForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeGitLogForZoekt))
+	m.Add("GET", "/api/v2/getDirectoryTreeForZoekt/", srv.Handler(srv.TestHandler))
 	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))
 
 	var h http.Handler = m
