@@ -241,6 +241,43 @@ func (s *server) filebrowseEnabled(repo string) (*config.RepoConfig, error) {
 
 	return &repoConfig, nil
 }
+
+func (s *server) ServeListAllBranchesForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getAllBranchesForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+
+	branches, err := fileviewer.ListAllBranches(repoPath)
+	if err != nil {
+		fmt.Printf("err=%v\n", err)
+		http.Error(w, "could not list branches for repo provided", 500)
+		return
+	}
+
+	replyJSON(ctx, w, 200, branches)
+}
+func (s *server) ServeListAllTagsForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getAllTagsForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+
+	tags, err := fileviewer.ListAllTags(repoPath)
+	if err != nil {
+		fmt.Printf("err=%v\n", err)
+		http.Error(w, "could not list branches for repo provided", 500)
+		return
+	}
+
+	replyJSON(ctx, w, 200, tags)
+}
 func (s *server) ServeGitLogForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	queryVals := r.URL.Query()
 	parent := r.URL.Query().Get(":parent")
@@ -946,11 +983,11 @@ func (s *server) ServeExperimental(ctx context.Context, w http.ResponseWriter, r
 	if err != nil {
 		log.Printf(ctx, "Error building directory tree: %s\n", err.Error())
 	}
-	branches, err := fileviewer.ListAllBranches(repoConfig)
+	branches, err := fileviewer.ListAllBranches(repoConfig.Path)
 	if err != nil {
 		log.Printf(ctx, "Error getting branches: %s\n", err.Error())
 	}
-	tags, err := fileviewer.ListAllTags(repoConfig)
+	tags, err := fileviewer.ListAllTags(repoConfig.Path)
 	if err != nil {
 		log.Printf(ctx, "Error getting tags: %s\n", err.Error())
 	}
@@ -1315,6 +1352,8 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/getSyntaxHighlightedFileForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeSyntaxHighlightedFileForZoekt))
 	m.Add("GET", "/api/v2/getDirectoryTreeForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeGitLsTreeForZoekt))
 	m.Add("GET", "/api/v2/getGitLogForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeGitLogForZoekt))
+	m.Add("GET", "/api/v2/getAllBranchesForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeListAllBranchesForZoekt))
+	m.Add("GET", "/api/v2/getAllTagsForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeListAllTagsForZoekt))
 	m.Add("GET", "/api/v2/getDirectoryTreeForZoekt/", srv.Handler(srv.TestHandler))
 	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))
 

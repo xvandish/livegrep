@@ -1667,9 +1667,9 @@ func ReverseSlice(s interface{}) {
 	}
 }
 
-func ListAllBranches(repo config.RepoConfig) ([]GitBranch, error) {
+func ListAllBranches(repoPath string) ([]GitBranch, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
+	cmd := exec.Command("git", "-C", repoPath, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -1732,9 +1732,9 @@ func parseGitListTagsOutput(input *bufio.Scanner) []GitTag {
 	return tags
 }
 
-func ListAllTags(repo config.RepoConfig) ([]GitTag, error) {
+func ListAllTags(repoPath string) ([]GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
+	cmd := exec.Command("git", "-C", repoPath, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
 
 	stdout, err := cmd.StdoutPipe()
 
