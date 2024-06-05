@@ -604,10 +604,65 @@ func (s *server) ServeSyntaxHighlightedFileForZoekt(ctx context.Context, w http.
 		return
 	}
 
+	// TEMPORARY - We're migrating to codemirror. The following bit of code should eventually
+	// also be presented in GetGitBlobRawForZoekt()
+	// if this is markdown, parse it, don't sytax highlight it by running it through raw_blob_or_tree.html
+	if data.FileContent != nil && data.FileContent.Language == "markdown" {
+		renderedMd, err := fileviewer.RenderMarkdown(data.FileContent.Content)
+		if err == nil {
+			w.Write(renderedMd.Bytes())
+			return
+		}
+
+		// otherwise, fall through and render this as syntax highlighted
+
+	}
+
 	s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
 		IncludeHeader: false,
 		Data:          data,
 	})
+}
+
+func (s *server) GetGitBlobRawForZoekt(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	parent := r.URL.Query().Get(":parent")
+	repo := r.URL.Query().Get(":repo")
+
+	repoRevAndPath := pat.Tail("/api/v2/getGitBlobRawForZoekt/:parent/:repo/+/", r.URL.Path)
+	log.Printf(ctx, "repoRevAndPath: %s\n", repoRevAndPath)
+	sp := strings.Split(repoRevAndPath, ":")
+
+	var rev, path string
+	if len(sp) == 2 {
+		rev = sp[0]
+		path = sp[1]
+	} else {
+		// we're in a broken case.
+		log.Printf(ctx, "ERROR: repoRevAndPath: %s -- split len != 2\n", repoRevAndPath)
+		if len(sp) == 1 && sp[0] != "" {
+			log.Printf(ctx, "sp[1\n")
+			rev = sp[0]
+		} else {
+			rev = "HEAD"
+		}
+		path = ""
+	}
+
+	repoPath := fmt.Sprintf("%s/%s/%s.git", s.config.ZoektRepoCache, parent, repo)
+
+	data, err := fileviewer.BuildFileDataForZoektFilePreview(path, repoPath, parent+"/"+repo, rev)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file or tree - %s", err), 500)
+		return
+	}
+
+	fmt.Printf("data=%+v\n", data)
+	if data.FileContent != nil {
+		w.Write([]byte(data.FileContent.Content))
+	} else if data.DirContent != nil && data.DirContent.ReadmeContent != nil {
+		w.Write([]byte("not implemented yet"))
+	}
+
 }
 
 func (s *server) ServeGitBlobRaw(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -1355,6 +1410,7 @@ func New(cfg *config.Config) (http.Handler, error) {
 	m.Add("GET", "/api/v2/getAllBranchesForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeListAllBranchesForZoekt))
 	m.Add("GET", "/api/v2/getAllTagsForZoekt/:parent/:repo/+/", srv.Handler(srv.ServeListAllTagsForZoekt))
 	m.Add("GET", "/api/v2/getDirectoryTreeForZoekt/", srv.Handler(srv.TestHandler))
+	m.Add("GET", "/api/v2/getGitBlobRawForZoekt/:parent/:repo/+/", srv.Handler(srv.GetGitBlobRawForZoekt))
 	// m.Add("POST", "/api/v2/json/fileviewer-repos", srv.Handler(srv.ServeFileviewerRepos))
 
 	var h http.Handler = m
