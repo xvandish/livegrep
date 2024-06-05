@@ -257,10 +257,16 @@ func viewUrl(repo string, path string, isDir bool) string {
 	return "/delve/" + repo + "/" + entryType + "/" + "HEAD/" + path
 }
 
-func getFileUrl(repo string, pathFromRoot string, name string, isDir bool) string {
-	fileUrl := viewUrl(repo, filepath.Join(pathFromRoot, path.Clean(name)), isDir)
-	if isDir {
-		fileUrl += "/"
+func getFileUrl(repo, pathFromRoot, name, commitHash string, isDir bool, useViewUrl bool) string {
+	var fileUrl string
+	fullPath := filepath.Join(pathFromRoot, path.Clean(name))
+	if useViewUrl {
+		fileUrl = viewUrl(repo, fullPath, isDir)
+		if isDir {
+			fileUrl += "/"
+		}
+	} else {
+		fileUrl = "/" + repo + "/+/" + commitHash + ":" + fullPath
 	}
 	return fileUrl
 }
@@ -289,16 +295,16 @@ func buildReadmeRegex(supportedReadmeExtensions []string) *regexp.Regexp {
 	return repoFileRegex
 }
 
-func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot string, repo config.RepoConfig) directoryListEntry {
+func buildDirectoryListEntry(treeEntry gitTreeEntry, pathFromRoot, repoName, repoPath, commitHash string, useViewUrl bool) directoryListEntry {
 	var fileUrl string
 	var symlinkTarget string
 	if treeEntry.Mode == "120000" {
-		resolvedPath, err := gitCatBlob(treeEntry.ObjectId, repo.Path)
+		resolvedPath, err := gitCatBlob(treeEntry.ObjectId, repoPath)
 		if err == nil {
 			symlinkTarget = resolvedPath
 		}
 	} else {
-		fileUrl = getFileUrl(repo.Name, pathFromRoot, treeEntry.ObjectName, treeEntry.ObjectType == "tree")
+		fileUrl = getFileUrl(repoName, pathFromRoot, treeEntry.ObjectName, commitHash, treeEntry.ObjectType == "tree", useViewUrl)
 	}
 	return directoryListEntry{
 		Name:          treeEntry.ObjectName,
@@ -411,7 +417,7 @@ func getPathSegments(pathSplits []string, repo config.RepoConfig) []breadCrumbEn
 		parentPath := path.Clean(strings.Join(pathSplits[0:i], "/"))
 		segments[i] = breadCrumbEntry{
 			Name: name,
-			Path: getFileUrl(repo.Name, parentPath, name, true),
+			Path: getFileUrl(repo.Name, parentPath, name, "", true, false),
 		}
 	}
 
@@ -590,8 +596,8 @@ func (opts CommitOptions) genLogArgs(initialArgs []string) (args []string, err e
 	return args, nil
 }
 
-func BuildGitLog(logArgs CommitOptions, repo config.RepoConfig) (*GitLog, error) {
-	args, err := logArgs.genLogArgs([]string{"-C", repo.Path, "log", logFormatWithoutRefs})
+func BuildGitLog(logArgs CommitOptions, repoPath string) (*GitLog, error) {
+	args, err := logArgs.genLogArgs([]string{"-C", repoPath, "log", logFormatWithoutRefs})
 	if err != nil {
 		return nil, err
 	}
@@ -1190,7 +1196,7 @@ var fileDoesNotExistError = errors.New("This file does not exist at this point i
 // repos, we tell this function explicitly where the repo
 // is and what its name is
 // Only supports files for now.
-func BuildFileDataForZoektFilePreview(relativePath, repoPath, commit string) (*FileViewerContext, error) {
+func BuildFileDataForZoektFilePreview(relativePath, repoPath, repoName, commit string) (*FileViewerContext, error) {
 	commitHash := commit
 	out, err := gitCommitHash(commit, repoPath)
 	if err == nil {
@@ -1203,6 +1209,7 @@ func BuildFileDataForZoektFilePreview(relativePath, repoPath, commit string) (*F
 	obj := commitHash + ":" + cleanPath
 
 	var fileContent *SourceFileContent
+	var dirContent *directoryContent
 
 	objectType, err := gitObjectType(obj, repoPath)
 
@@ -1211,28 +1218,77 @@ func BuildFileDataForZoektFilePreview(relativePath, repoPath, commit string) (*F
 		return nil, err
 	}
 	if objectType == "tree" {
-		return nil, errors.New("directories not supported yet")
-	}
-	content, err := gitCatBlob(obj, repoPath)
-	if err != nil {
-		return nil, err
-	}
-	filename := filepath.Base(cleanPath)
-	language := filenameToLangMap[filename]
-	if language == "" {
-		language = extToLangMap[filepath.Ext(cleanPath)]
-	}
-	fileContent = &SourceFileContent{
-		Content: content,
-		// LineCount: strings.Count(string(content), "\n"),
-		LineCount: 0,
-		Language:  language,
-		FileName:  filename,
-		FilePath:  relativePath,
+		fmt.Printf("objectType is tree\n")
+		treeEntries, err := gitListDir(obj, repoPath)
+		if err != nil {
+			fmt.Printf("err=%v\n", err)
+			return nil, err
+		}
+
+		dirEntries := make([]directoryListEntry, len(treeEntries))
+		var readmePath, readmeLang, readmeName string
+		for i, treeEntry := range treeEntries {
+			dirEntries[i] = buildDirectoryListEntry(treeEntry, cleanPath, repoName, repoPath, commitHash, false)
+
+			// special case, for README or readme without an extension
+			if strings.ToLower(dirEntries[i].Name) == "readme" {
+				readmeName = dirEntries[i].Name
+				readmePath = obj + dirEntries[i].Name
+				readmeLang = "md"
+				continue
+			}
+
+			parts := supportedReadmeRegex.FindStringSubmatch(dirEntries[i].Name)
+			if len(parts) != 3 {
+				continue
+			}
+			readmeName = parts[0]
+			readmePath = obj + parts[0]
+			readmeLang = parts[2]
+		}
+
+		var readmeContent *SourceFileContent
+		if readmePath != "" {
+			if content, err := gitCatBlob(readmePath, repoPath); err == nil {
+				readmeContent = &SourceFileContent{
+					Content:   content,
+					LineCount: strings.Count(content, "\n"),
+					Language:  extToLangMap["."+readmeLang],
+					FileName:  readmeName,
+					FilePath:  relativePath,
+				}
+			}
+		}
+
+		sort.Sort(DirListingSort(dirEntries))
+		dirContent = &directoryContent{
+			Entries:       dirEntries,
+			ReadmeContent: readmeContent,
+		}
+	} else if objectType == "blob" {
+		fmt.Printf("objectType is blob\n")
+		content, err := gitCatBlob(obj, repoPath)
+		if err != nil {
+			return nil, err
+		}
+		filename := filepath.Base(cleanPath)
+		language := filenameToLangMap[filename]
+		if language == "" {
+			language = extToLangMap[filepath.Ext(cleanPath)]
+		}
+		fileContent = &SourceFileContent{
+			Content: content,
+			// LineCount: strings.Count(string(content), "\n"),
+			LineCount: 0,
+			Language:  language,
+			FileName:  filename,
+			FilePath:  relativePath,
+		}
 	}
 
 	return &FileViewerContext{
 		FileContent: fileContent,
+		DirContent:  dirContent,
 	}, nil
 }
 
@@ -1272,7 +1328,7 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		dirEntries := make([]directoryListEntry, len(treeEntries))
 		var readmePath, readmeLang, readmeName string
 		for i, treeEntry := range treeEntries {
-			dirEntries[i] = buildDirectoryListEntry(treeEntry, cleanPath, repo)
+			dirEntries[i] = buildDirectoryListEntry(treeEntry, cleanPath, repo.Name, repo.Path, commitHash, true)
 			// Git supports case sensitive files, so README.md & readme.md in the same tree is possible
 			// so in this case we just grab the first matching file
 			if readmePath != "" {
@@ -1341,7 +1397,7 @@ func BuildFileData(relativePath string, repo config.RepoConfig, commit string) (
 		parentPath := path.Clean(strings.Join(pathSplits[0:i], "/"))
 		segments[i] = breadCrumbEntry{
 			Name: name,
-			Path: getFileUrl(repo.Name, parentPath, name, true),
+			Path: getFileUrl(repo.Name, parentPath, name, "", true, false),
 		}
 	}
 
@@ -1560,13 +1616,9 @@ func buildDirectoryTree(out []byte) (*api.TreeNode, error) {
 	return rootDir, nil
 }
 
-// At a given commit, build the directory tree
-// The frontend will have to be responsible for traversing it and finding/opening the current
-func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit string) (*api.TreeNode, error) {
-	// cleanPath := path.Clean(relativePath)
-	// to start out, we always compute the tree for the root.
-	defer timeTrack(time.Now(), "buildDirectoryTree")
-	cmd := exec.Command("git", "-C", repo.Path, "ls-tree",
+func GetLsTreeOutput(relativePath string, repo, commit string) ([]byte, error) {
+	defer timeTrack(time.Now(), "getLSTree")
+	cmd := exec.Command("git", "-C", repo, "ls-tree",
 		"--long", // show size
 		"--full-name",
 		"-z",
@@ -1582,6 +1634,21 @@ func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 		return nil, err
 	}
 
+	return out, err
+
+}
+
+// At a given commit, build the directory tree
+// The frontend will have to be responsible for traversing it and finding/opening the current
+func BuildDirectoryTree(relativePath string, repo, commit string) (*api.TreeNode, error) {
+	// cleanPath := path.Clean(relativePath)
+	// to start out, we always compute the tree for the root.
+	defer timeTrack(time.Now(), "buildDirectoryTree")
+	out, err := GetLsTreeOutput(relativePath, repo, commit)
+	if err != nil {
+		return nil, err
+	}
+
 	return buildDirectoryTree(out)
 }
 
@@ -1591,7 +1658,7 @@ func BuildDirectoryTree(relativePath string, repo config.RepoConfig, commit stri
 var refFormat = "%(HEAD)%00%(authordate:human)%00%(refname:short)"
 var sortFormat = "authordate"
 
-//panic if s is not a slice
+// panic if s is not a slice
 func ReverseSlice(s interface{}) {
 	size := reflect.ValueOf(s).Len()
 	swap := reflect.Swapper(s)
@@ -1600,9 +1667,9 @@ func ReverseSlice(s interface{}) {
 	}
 }
 
-func ListAllBranches(repo config.RepoConfig) ([]GitBranch, error) {
+func ListAllBranches(repoPath string) ([]GitBranch, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/heads
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
+	cmd := exec.Command("git", "-C", repoPath, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/heads")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -1665,9 +1732,9 @@ func parseGitListTagsOutput(input *bufio.Scanner) []GitTag {
 	return tags
 }
 
-func ListAllTags(repo config.RepoConfig) ([]GitTag, error) {
+func ListAllTags(repoPath string) ([]GitTag, error) {
 	// git for-each-ref --format='%(HEAD) %(refname:short)' refs/tags
-	cmd := exec.Command("git", "-C", repo.Path, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
+	cmd := exec.Command("git", "-C", repoPath, "for-each-ref", "--format="+refFormat, "--sort="+sortFormat, "refs/tags")
 
 	stdout, err := cmd.StdoutPipe()
 
@@ -2186,7 +2253,8 @@ func parseGitUnifiedDiff(input *bufio.Scanner) *GitDiff {
 // this version of the function is going to just parse the output of git diff and attempt
 // to put it in a data structure that makes sense as a split half
 // it MAY:
-//	1. use the patience algorithm instead of myers
+//  1. use the patience algorithm instead of myers
+//
 // it PROBABLY WONT:
 //  1. Attempt to add context that can be collapsed
 func GetDiffBetweenTwoCommits(relativePath string, repo config.RepoConfig, oldRev string, newRev string, hideWhitespace bool) (*GitDiff, error) {
