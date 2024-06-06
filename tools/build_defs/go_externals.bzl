@@ -109,6 +109,13 @@ def go_externals():
         version = "v0.10.0",
     )
     go_repository(
+        name = "com_github_alecthomas_chroma_v2",
+        build_file_proto_mode = "disable_global",
+        importpath = "github.com/alecthomas/chroma/v2",
+        sum = "h1:Wh8qLEgMMsN7mgyG8/qIpegky2Hvzr4By6gEF7cmWgw=",
+        version = "v2.12.0",
+    )
+    go_repository(
         name = "com_github_davecgh_go_spew",
         importpath = "github.com/davecgh/go-spew",
         sum = "h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=",
@@ -193,6 +200,28 @@ def go_externals():
         importpath = "github.com/sergi/go-diff",
         sum = "h1:we8PVUC3FE2uYfodKH/nBHMSetSfHDR6scGdBi+erh0=",
         version = "v1.1.0",
+    )
+
+    go_repository(
+        name = "com_github_yuin_goldmark",
+        build_file_proto_mode = "disable_global",
+        importpath = "github.com/yuin/goldmark",
+        sum = "h1:3bajkSilaCbjdKVsKdZjZCLBNPL9pYzrCakKaf4U49U=",
+        version = "v1.7.1",
+    )
+    go_repository(
+        name = "com_github_yuin_goldmark_emoji",
+        build_file_proto_mode = "disable_global",
+        importpath = "github.com/yuin/goldmark-emoji",
+        sum = "h1:ctuWEyzGBwiucEqxzwe0SOYDXPAucOrE9NQC18Wa1os=",
+        version = "v1.0.1",
+    )
+    go_repository(
+        name = "com_github_yuin_goldmark_highlighting_v2",
+        build_file_proto_mode = "disable_global",
+        importpath = "github.com/yuin/goldmark-highlighting/v2",
+        sum = "h1:Py16JEzkSdKAtEFJjiaYLYBOWGXc1r/xHj/Q/5lA37k=",
+        version = "v2.0.0-20220924101305-151362477c87",
     )
 
     for ext in _externals:

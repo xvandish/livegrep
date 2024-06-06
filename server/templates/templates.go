@@ -441,6 +441,19 @@ func getSyntaxHighlightedContent(content, language, filename string) SyntaxHighl
 	}
 }
 
+func renderMarkdown(content, lang string) template.HTML {
+	if lang != "markdown" {
+		return ""
+	}
+
+	buff, err := fileviewer.RenderMarkdown(content)
+	if err != nil {
+		return template.HTML("Error Parsing Markdonw.")
+	}
+
+	return template.HTML(buff.String())
+}
+
 func getFuncs() map[string]interface{} {
 	return map[string]interface{}{
 		"loop":                             func(n int) []struct{} { return make([]struct{}, n) },
@@ -460,6 +473,7 @@ func getFuncs() map[string]interface{} {
 		"getClassFromRowType":              getClassFromRowType,
 		"getSyntaxHighlightedLine":         getSyntaxHighlightedLine,
 		"getLexerForFilename":              getLexerForFilename,
+		"getRenderedMarkdown":              renderMarkdown,
 	}
 }
 
