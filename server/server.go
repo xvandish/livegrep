@@ -657,6 +657,24 @@ func (s *server) GetGitBlobRawForZoekt(ctx context.Context, w http.ResponseWrite
 	}
 
 	fmt.Printf("data=%+v\n", data)
+	if data.FileContent != nil && data.FileContent.Language == "markdown" {
+		renderedMd, err := fileviewer.RenderMarkdown(data.FileContent.Content)
+		if err == nil {
+			w.Header().Set("X-CS-Rendered-Blob", "true")
+			w.Write(renderedMd.Bytes())
+			return
+		}
+	}
+
+	if data.DirContent != nil {
+		w.Header().Set("X-CS-Rendered-Blob", "true")
+		s.renderPage(ctx, w, r, "raw_blob_or_tree.html", &page{
+			IncludeHeader: false,
+			Data:          data,
+		})
+		return
+	}
+
 	if data.FileContent != nil {
 		w.Write([]byte(data.FileContent.Content))
 	} else if data.DirContent != nil && data.DirContent.ReadmeContent != nil {
